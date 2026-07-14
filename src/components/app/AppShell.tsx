@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, ScanLine, Activity, Trophy, Users, Gift, Settings,
-  Menu, X, Sun, Moon, Bell, Search, Flame, Leaf,
+  Menu, X, Sun, Moon, Bell, Search, Flame, Leaf, UsersRound,
 } from "lucide-react";
 
 const NAV = [
@@ -14,6 +14,7 @@ const NAV = [
   { href: "/aktivitas", label: "Aktivitas", icon: Activity },
   { href: "/challenge", label: "Challenge", icon: Trophy },
   { href: "/leaderboard", label: "Leaderboard", icon: Users },
+  { href: "/komunitas", label: "Komunitas", icon: UsersRound },
   { href: "/reward", label: "Reward", icon: Gift },
 ];
 
@@ -127,7 +128,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <Bell className="h-[18px] w-[18px]" />
                 <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-destructive" />
               </button>
-              <div className="grid h-9 w-9 place-items-center rounded-full bg-gradient-to-br from-brand to-lime text-sm font-bold text-white">RA</div>
+              <Link href="/profil" className="grid h-9 w-9 place-items-center rounded-full bg-gradient-to-br from-brand to-lime text-sm font-bold text-white transition hover:opacity-90">RA</Link>
             </div>
           </div>
         </header>
