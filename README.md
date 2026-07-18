@@ -37,7 +37,7 @@ Prinsip utama yang mengunci desain:
 
 ```
 FASE 1  Fondasi & Design System        SELESAI
-FASE 2  Halaman UI (data dummy)        SELESAI
+FASE 2  Halaman UI (data dummy)        SELESAI (Tahap Revisi)
 FASE 3  Database + Auth (Supabase)     SEDANG DIKERJAKAN
 FASE 4  Sambungkan UI ke data asli     BERIKUTNYA
 FASE 5  AI asli (Roboflow + Gemini)    BELUM
