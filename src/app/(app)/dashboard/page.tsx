@@ -6,6 +6,8 @@ import {
 import { StatCard } from "@/components/ui/StatCard";
 import { ProgressRing } from "@/components/ui/ProgressRing";
 import { RankCrest } from "@/components/brand/RankCrest";
+import { DashboardNotices } from "@/components/app/DashboardNotices";
+import { DashboardWidgets } from "@/components/app/DashboardWidgets";
 
 const WEEK = [
   { d: "Sen", v: 45 }, { d: "Sel", v: 70 }, { d: "Rab", v: 55 },
@@ -55,6 +57,9 @@ export default function DashboardPage() {
         </div>
         <Link href="/aktivitas" className="btn btn-primary"><Play className="h-[18px] w-[18px]" /> Mulai aktivitas</Link>
       </div>
+
+      <DashboardNotices />
+      <DashboardWidgets />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard icon={HeartPulse} label="Health Score" value="86" hint="+4 dari kemarin" accent="brand" />
@@ -178,7 +183,7 @@ export default function DashboardPage() {
           <div className="card card-pad bg-gradient-to-br from-brand to-lime text-white">
             <MapPin className="h-6 w-6" />
             <p className="mt-3 font-display text-lg font-bold">Belum bergerak hari ini?</p>
-            <p className="mt-1 text-sm text-white/90">Mulai lari atau bersepeda, biarkan GPS menghitung XP-mu.</p>
+            <p className="mt-1 text-sm text-white/90">Mulai lari, jalan, atau bersepeda, biarkan GPS menghitung XP-mu.</p>
             <Link href="/aktivitas" className="btn mt-4 bg-white text-brand hover:bg-white/90">Mulai sekarang</Link>
           </div>
         </div>

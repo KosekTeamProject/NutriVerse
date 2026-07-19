@@ -1,5 +1,6 @@
 import { Footprints, Bike, ShieldCheck, Info } from "lucide-react";
 import { ActivityTracker } from "@/components/app/ActivityTracker";
+import { GpsConsent } from "@/components/app/GpsConsent";
 
 const RIWAYAT = [
   { tanggal: "Hari ini", jenis: "run", jarak: "5,20", durasi: "31:40", xp: 520 },
@@ -13,9 +14,11 @@ export default function AktivitasPage() {
       <div>
         <h1 className="font-display text-2xl font-extrabold tracking-tight sm:text-3xl">Aktivitas</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Lari atau bersepeda untuk mengumpulkan XP. Hanya aktivitas fisik nyata yang dihitung.
+          Lari, bersepeda, atau jalan kaki untuk mengumpulkan XP. Hanya aktivitas fisik nyata yang dihitung.
         </p>
       </div>
+
+      <GpsConsent />
 
       <div className="flex items-start gap-2 rounded-2xl border border-sky/20 bg-sky/5 p-4 text-sm text-muted-foreground">
         <Info className="mt-0.5 h-4 w-4 shrink-0 text-sky" />

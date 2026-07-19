@@ -1,22 +1,46 @@
-export type Food = {
-  name: string;
+export type Nutrition = {
   kcal: number;
   protein: number;
   carbs: number;
   fat: number;
+  fiber: number;
+  sugar: number;
+  sodium: number; // mg
+  vitamins: string;
+};
+
+export type Food = Nutrition & {
+  name: string;
   portion: string;
 };
 
+/**
+ * Basis kecil untuk pencarian/fallback. Pada Fase 5, nilai nutrisi berasal dari
+ * Gemini API (dikirim & diproses oleh business logic), bukan tabel statis ini.
+ */
 export const FOODS: Food[] = [
-  { name: "Nasi Goreng", kcal: 333, protein: 9, carbs: 44, fat: 12, portion: "1 piring" },
-  { name: "Ayam Geprek + Nasi", kcal: 620, protein: 34, carbs: 58, fat: 28, portion: "1 porsi" },
-  { name: "Gado-gado", kcal: 295, protein: 12, carbs: 30, fat: 15, portion: "1 porsi" },
-  { name: "Soto Ayam", kcal: 240, protein: 18, carbs: 20, fat: 9, portion: "1 mangkuk" },
-  { name: "Bakso", kcal: 330, protein: 20, carbs: 30, fat: 14, portion: "1 mangkuk" },
-  { name: "Mie Goreng", kcal: 380, protein: 10, carbs: 52, fat: 14, portion: "1 piring" },
-  { name: "Rendang + Nasi", kcal: 680, protein: 30, carbs: 55, fat: 36, portion: "1 porsi" },
-  { name: "Salad Buah", kcal: 180, protein: 4, carbs: 34, fat: 4, portion: "1 mangkuk" },
+  { name: "Nasi Goreng", kcal: 333, protein: 9, carbs: 44, fat: 12, fiber: 2, sugar: 3, sodium: 640, vitamins: "B1, B3", portion: "1 piring" },
+  { name: "Ayam Geprek + Nasi", kcal: 620, protein: 34, carbs: 58, fat: 28, fiber: 3, sugar: 4, sodium: 980, vitamins: "B6, B12", portion: "1 porsi" },
+  { name: "Gado-gado", kcal: 295, protein: 12, carbs: 30, fat: 15, fiber: 6, sugar: 8, sodium: 520, vitamins: "A, C, K", portion: "1 porsi" },
+  { name: "Soto Ayam", kcal: 240, protein: 18, carbs: 20, fat: 9, fiber: 2, sugar: 3, sodium: 720, vitamins: "A, B3", portion: "1 mangkuk" },
+  { name: "Bakso", kcal: 330, protein: 20, carbs: 30, fat: 14, fiber: 1, sugar: 2, sodium: 900, vitamins: "B12", portion: "1 mangkuk" },
+  { name: "Mie Goreng", kcal: 380, protein: 10, carbs: 52, fat: 14, fiber: 3, sugar: 5, sodium: 850, vitamins: "B1", portion: "1 piring" },
+  { name: "Rendang + Nasi", kcal: 680, protein: 30, carbs: 55, fat: 36, fiber: 4, sugar: 3, sodium: 760, vitamins: "B12, Zat besi", portion: "1 porsi" },
+  { name: "Salad Buah", kcal: 180, protein: 4, carbs: 34, fat: 4, fiber: 5, sugar: 26, sodium: 60, vitamins: "A, C", portion: "1 mangkuk" },
+  { name: "Nasi Padang", kcal: 640, protein: 24, carbs: 70, fat: 28, fiber: 5, sugar: 4, sodium: 900, vitamins: "A, B12", portion: "1 porsi" },
+  { name: "Sate Ayam + Lontong", kcal: 450, protein: 26, carbs: 40, fat: 18, fiber: 2, sugar: 6, sodium: 780, vitamins: "B3, B6", portion: "10 tusuk" },
+  { name: "Pecel Lele + Nasi", kcal: 520, protein: 28, carbs: 48, fat: 22, fiber: 3, sugar: 3, sodium: 700, vitamins: "D, B12", portion: "1 porsi" },
+  { name: "Nasi Uduk", kcal: 350, protein: 8, carbs: 50, fat: 12, fiber: 2, sugar: 2, sodium: 560, vitamins: "B1", portion: "1 porsi" },
+  { name: "Telur Dadar", kcal: 150, protein: 10, carbs: 2, fat: 11, fiber: 0, sugar: 1, sodium: 210, vitamins: "A, D, B12", portion: "1 butir" },
+  { name: "Tempe Goreng", kcal: 120, protein: 8, carbs: 6, fat: 8, fiber: 3, sugar: 1, sodium: 180, vitamins: "B2, B12", portion: "2 potong" },
+  { name: "Pisang", kcal: 90, protein: 1, carbs: 23, fat: 0, fiber: 3, sugar: 12, sodium: 1, vitamins: "B6, C", portion: "1 buah" },
 ];
+
+export function searchFoods(query: string): Food[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return FOODS;
+  return FOODS.filter((f) => f.name.toLowerCase().includes(q));
+}
 
 export type Verdict = { label: string; tone: "brand" | "amber" | "destructive" };
 
@@ -26,6 +50,50 @@ export function verdict(kcal: number): Verdict {
   return { label: "Tinggi kalori", tone: "destructive" };
 }
 
-export function burnMinutes(kcal: number): { run: number; bike: number } {
-  return { run: Math.max(1, Math.round(kcal / 10)), bike: Math.max(1, Math.round(kcal / 7)) };
+export function burnMinutes(kcal: number): { run: number; bike: number; walk: number } {
+  return {
+    run: Math.max(1, Math.round(kcal / 10)),
+    bike: Math.max(1, Math.round(kcal / 7)),
+    walk: Math.max(1, Math.round(kcal / 4)),
+  };
+}
+
+export type FoodAnalysis = {
+  nutrition: Nutrition;
+  burn: { run: number; bike: number; walk: number };
+  activityRec: string;
+  insight: string;
+};
+
+/**
+ * SIMULASI keluaran AI Food Analysis. Pada Fase 5, business logic mengirim
+ * foto/nama + porsi ke Gemini API, lalu memproses respons ini. Struktur dibuat
+ * sama agar penggantian ke Gemini nanti minim perubahan.
+ */
+export function analyze(food: Food, portion: number): FoodAnalysis {
+  const scale = (n: number) => Math.round(n * portion);
+  const nutrition: Nutrition = {
+    kcal: scale(food.kcal),
+    protein: scale(food.protein),
+    carbs: scale(food.carbs),
+    fat: scale(food.fat),
+    fiber: scale(food.fiber),
+    sugar: scale(food.sugar),
+    sodium: scale(food.sodium),
+    vitamins: food.vitamins,
+  };
+  const burn = burnMinutes(nutrition.kcal);
+  let activityRec: string;
+  let insight: string;
+  if (nutrition.kcal <= 300) {
+    activityRec = `Jalan santai ${burn.walk} menit sudah cukup mengimbangi.`;
+    insight = "Porsi ringan dan seimbang. Cocok untuk menjaga defisit kalori.";
+  } else if (nutrition.kcal <= 550) {
+    activityRec = `Lari ${burn.run} menit atau bersepeda ${burn.bike} menit untuk mengimbangi.`;
+    insight = "Kalori menengah. Perhatikan asupan berikutnya agar tetap sesuai target.";
+  } else {
+    activityRec = `Butuh lari ${burn.run} menit atau bersepeda ${burn.bike} menit untuk membakarnya.`;
+    insight = "Tinggi kalori. Imbangi dengan aktivitas fisik dan pilih porsi lebih ringan nanti.";
+  }
+  return { nutrition, burn, activityRec, insight };
 }
