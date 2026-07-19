@@ -10,7 +10,7 @@ NutriVerse membuat hidup sehat terasa seperti bermain game kompetitif. Inti sist
 
 Prinsip utama yang mengunci desain:
 
-- **XP hanya dari aktivitas fisik nyata yang dilacak GPS** (lari/sepeda), dengan validasi anti-cheat berbasis kecepatan (pace).
+- **XP hanya dari aktivitas fisik nyata yang dilacak GPS** (lari/sepeda/jalan), dengan validasi anti-cheat berbasis kecepatan (pace).
 - **Scan makanan bersifat informatif** — menampilkan estimasi gizi dan saran cara membakar kalori, tetapi **tidak menambah XP** (mencegah XP di-farming dari foto makanan).
 - **Dua mata uang:** XP untuk peringkat (hanya naik), HP (Health Points) untuk ditukar di Reward Store.
 
@@ -28,8 +28,10 @@ Prinsip utama yang mengunci desain:
 | Database & Auth | Supabase (PostgreSQL 16+, Auth, Storage, Realtime) |
 | ORM | Prisma 7 |
 | Validasi & Form | Zod 4 + React Hook Form |
-| AI & Vision | Gemini API + Roboflow *(menyusul)* |
+| AI Engine | Gemini API *(multimodal — menyusul di Fase 5)* |
 | Deploy | Vercel |
+
+> Catatan arsitektur: seluruh AI memakai **Gemini API** yang dimediasi business logic. Proyek ini tidak membangun/melatih model sendiri (Roboflow/MobileNetV3/scikit-learn tidak dipakai).
 
 ---
 
@@ -37,10 +39,10 @@ Prinsip utama yang mengunci desain:
 
 ```
 FASE 1  Fondasi & Design System        SELESAI
-FASE 2  Halaman UI (data dummy)        SELESAI (Tahap Revisi)
+FASE 2  Halaman UI + revisi            SELESAI
 FASE 3  Database + Auth (Supabase)     SEDANG DIKERJAKAN
 FASE 4  Sambungkan UI ke data asli     BERIKUTNYA
-FASE 5  AI asli (Roboflow + Gemini)    BELUM
+FASE 5  AI asli (Gemini API)           BELUM
 FASE 6  Deploy ke Vercel               BELUM
 ```
 
@@ -53,6 +55,7 @@ Catatan: seluruh halaman UI sudah jadi namun masih memakai data dummy (belum ada
 - **Node.js 24.18.0** (disarankan lewat [fnm](https://github.com/Schniz/fnm))
 - **pnpm 11+** (aktifkan lewat `corepack enable`)
 - **Git**
+- Akun **GitHub** yang sudah diundang sebagai *collaborator* repo ini (minta ke Yoga)
 
 > ### Penting untuk pengguna Windows — jebakan dua Node
 > Di sebagian laptop terdapat **dua instalasi Node** sekaligus. Terminal VS Code default sering memakai Node sistem yang **tidak punya pnpm**, sehingga muncul error `pnpm: not recognized`.
@@ -64,7 +67,7 @@ Catatan: seluruh halaman UI sudah jadi namun masih memakai data dummy (belum ada
 
 ---
 
-## Cara Clone & Instalasi
+## Cara Clone & Instalasi (langkah pertama)
 
 Jalankan di **Windows PowerShell**:
 
@@ -90,12 +93,20 @@ Buka <http://localhost:3000> di browser untuk melihat hasilnya.
 
 > Build script (`sharp`, `unrs-resolver`) sudah disetujui lewat `pnpm-workspace.yaml`, jadi kamu tidak akan terkena error `ERR_PNPM_IGNORED_BUILDS` saat clone.
 
-Terakhir, atur identitas commit-mu sendiri:
+### Konfigurasi Git sekali di awal (WAJIB, agar tidak error saat push)
+
+Setelah clone, jalankan sekali saja di dalam folder proyek:
 
 ```powershell
+# Identitas commit-mu (ganti dengan namamu)
 git config user.name "Nama Kamu"
 git config user.email "email-kamu@contoh.com"
+
+# Samakan cara menggabungkan update: pakai merge (mencegah error "divergent branches")
+git config pull.rebase false
 ```
+
+> Saat pertama kali `git push`, GitHub akan meminta login. Pilih **"Sign in with your browser"** dan login dengan **akun GitHub-mu sendiri** yang sudah diundang sebagai collaborator. Jangan pakai akun orang lain.
 
 ---
 
@@ -108,15 +119,16 @@ src/
 │  ├─ layout.tsx             Font + anti-flash dark mode
 │  ├─ page.tsx               Landing page
 │  └─ (app)/                 Route group halaman aplikasi
-│     ├─ dashboard/          Ringkasan, Health Score, grafik XP
-│     ├─ aktivitas/          Pelacak GPS (berfungsi) + anti-cheat
-│     ├─ scan/               Scan makanan (informatif, tanpa XP)
+│     ├─ dashboard/          Ringkasan, Health Score, widget, notifikasi
+│     ├─ aktivitas/          Pelacak GPS (berfungsi) + anti-cheat + izin GPS
+│     ├─ scan/               Scan makanan + input manual + AI Chat + riwayat
 │     ├─ leaderboard/        Podium + tab Global/Kampus/Teman
-│     ├─ challenge/          Challenge Hub terpadu
+│     ├─ challenge/          Challenge Hub (kategori, auto-complete, opsional)
 │     ├─ reward/             Reward Store (saldo HP)
 │     ├─ profil/             Badge, pencapaian, statistik
 │     ├─ komunitas/          Story, feed, community challenge
-│     └─ pengaturan/         Profil, target, dark mode, notifikasi
+│     ├─ pengaturan/         Profil, target, dark mode, notifikasi
+│     └─ onboarding/         Form input data diri pasca-register
 ├─ components/
 │  ├─ brand/                 RankCrest (perisai SVG per tier)
 │  ├─ app/                   AppShell, ActivityTracker, dll.
@@ -126,26 +138,79 @@ src/
 
 ---
 
-## Alur Kerja Git
+## Alur Kerja Git (WAJIB dibaca sebelum mulai)
 
-- **`main`** — produksi, dijaga selalu bersih.
+Dua branch utama:
+
+- **`main`** — produksi, dijaga selalu bersih. Jangan push ke sini langsung.
 - **`develop`** — integrasi & kerja aktif. **Semua orang bekerja di sini.**
 
-Alur harian (biasakan, untuk menghindari tabrakan):
+### Aturan emas (menghindari error & tabrakan)
+
+1. **SELALU `git pull` dulu** sebelum mulai kerja **dan** sebelum push.
+2. Kerjakan **hanya file di bagianmu**. Umumkan di grup WA sebelum menyentuh file bersama ("aku pegang file X").
+3. **Commit kecil dan sering** lebih aman daripada satu commit besar.
+4. **Jangan pernah** commit file `.env` (berisi kunci rahasia).
+
+### Alur harian (ikuti urutan ini persis)
 
 ```powershell
+# 1. Pastikan di branch develop
 git checkout develop
-git pull                    # SELALU tarik update dulu sebelum kerja
-# ... kerjakan bagianmu ...
+
+# 2. Tarik update terbaru DULU (wajib, sebelum mulai kerja)
+git pull origin develop
+
+# 3. ... kerjakan bagianmu ...
+
+# 4. Simpan perubahan
 git add .
 git commit -m "feat(aktivitas): simpan hasil GPS ke DB"
-git pull                    # tarik lagi kalau ada perubahan teman
-git push
+
+# 5. Tarik lagi sebelum push (kalau ada update dari teman)
+git pull origin develop
+
+# 6. Kirim ke GitHub
+git push origin develop
 ```
 
-Gunakan **Conventional Commits**: `feat`, `fix`, `docs`, `chore`, `style`, `refactor`.
+Gunakan **Conventional Commits** untuk pesan commit: `feat`, `fix`, `docs`, `chore`, `style`, `refactor`.
 
-> **Koordinasi:** sebelum menyentuh file bersama, umumkan dulu di grup WA tim ("aku pegang file X"). Commit kecil dan sering lebih aman daripada satu commit besar.
+---
+
+## Troubleshooting Git (kalau push gagal)
+
+### 1. Push ditolak: `! [rejected] ... (non-fast-forward)`
+
+Artinya ada perubahan di GitHub yang belum ada di laptopmu (biasanya karena teman sudah push duluan). **Ini normal.** Perbaiki dengan menarik dulu lalu push lagi:
+
+```powershell
+git pull origin develop
+git push origin develop
+```
+
+> Kalau muncul layar editor teks meminta pesan merge: tekan `Esc`, ketik `:wq`, lalu tekan `Enter` (menyimpan & menutup).
+
+### 2. `remote: Repository not found` padahal repo ada
+
+Ini karena Git di laptopmu masih memakai **akun GitHub lama/salah**. Bersihkan login tersimpan:
+
+- Tekan **Start** → ketik **Credential Manager** → buka.
+- Klik **Windows Credentials** → cari semua entri yang mengandung **github.com** → klik → **Remove**.
+- Kembali ke terminal, jalankan `git push origin develop` lagi.
+- Saat diminta login, pilih **"Sign in with your browser"** dan login dengan **akun yang benar** (yang diundang sebagai collaborator).
+
+### 3. Muncul `CONFLICT` saat `git pull`
+
+Dua orang mengubah baris yang sama pada file yang sama. Buka file yang ditandai konflik (ada tanda `<<<<<<<`, `=======`, `>>>>>>>`), pilih versi yang benar, hapus tanda-tanda itu, lalu:
+
+```powershell
+git add .
+git commit -m "fix: selesaikan konflik merge"
+git push origin develop
+```
+
+Kalau ragu, **jangan tebak-tebak** — tanya di grup WA sebelum menyimpan.
 
 ---
 
