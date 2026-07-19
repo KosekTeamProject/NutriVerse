@@ -39,9 +39,9 @@ Prinsip utama yang mengunci desain:
 
 ```
 FASE 1  Fondasi & Design System        SELESAI
-FASE 2  Halaman UI + revisi            SELESAI
-FASE 3  Database + Auth (Supabase)     SEDANG DIKERJAKAN
-FASE 4  Sambungkan UI ke data asli     BERIKUTNYA
+FASE 2  Halaman UI + revisi            SEDANG DIKERJAKAN
+FASE 3  Database + Auth (Supabase)     BERIKUTNYA
+FASE 4  Sambungkan UI ke data asli     BELUM
 FASE 5  AI asli (Gemini API)           BELUM
 FASE 6  Deploy ke Vercel               BELUM
 ```
