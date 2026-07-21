@@ -81,7 +81,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {mobileOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
           <div className="absolute inset-0 bg-black/40" onClick={() => setMobileOpen(false)} />
-          <aside className="absolute inset-y-0 left-0 w-64 border-r border-line bg-sidebar">
+          <aside className="absolute inset-y-0 left-0 w-[85vw] max-w-64 border-r border-line bg-sidebar pb-[env(safe-area-inset-bottom)]">
             <button
               onClick={() => setMobileOpen(false)}
               className="absolute right-3 top-3 grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-secondary"
@@ -94,7 +94,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       )}
 
-      <div className="lg:pl-64">
+      <div className="min-w-0 lg:pl-64">
         <header className="sticky top-0 z-30 border-b border-line bg-background/80 backdrop-blur-xl">
           <div className="flex h-16 items-center gap-3 px-4 sm:px-6 lg:px-8">
             <button
@@ -125,7 +125,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-        <main className="px-4 py-8 sm:px-6 lg:px-8">{children}</main>
+        <main className="min-w-0 px-4 py-6 pb-[calc(2rem+env(safe-area-inset-bottom))] sm:px-6 sm:py-8 lg:px-8">{children}</main>
       </div>
     </div>
   );

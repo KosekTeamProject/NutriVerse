@@ -18,7 +18,7 @@ export function HealthStoryCard({ data, format, className = "", containerRef, ef
     <div 
       ref={containerRef}
       className={`relative overflow-hidden bg-gradient-to-br from-[#07140f] via-[#0f1f18] to-[#0a1711] text-[#e8f0eb] border border-[#162e24] shadow-lift transition-all duration-300 rounded-3xl ${
-        isVertical ? "aspect-[9/16] w-full max-w-[340px] p-8 flex flex-col justify-between" : "aspect-square w-full max-w-[380px] p-6 flex flex-col justify-between"
+        isVertical ? "aspect-[9/16] w-full max-w-[340px] p-4 min-[380px]:p-6 sm:p-8 flex flex-col justify-between" : "aspect-square w-full max-w-[380px] p-4 min-[380px]:p-5 sm:p-6 flex flex-col justify-between"
       } ${className}`}
       data-story-format={format}
     >

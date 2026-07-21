@@ -31,7 +31,7 @@ export function JourneyTimeline({ records }: JourneyTimelineProps) {
   }
 
   return (
-    <div className="relative border-l-2 border-line/50 ml-3 md:ml-6 pl-6 md:pl-10 space-y-10 py-2">
+    <div className="relative ml-2 min-w-0 space-y-10 border-l-2 border-line/50 py-2 pl-4 sm:ml-3 sm:pl-6 md:ml-6 md:pl-10">
       {records.map((r) => {
         const tone = getJourneyCategoryTone(r.category);
         const toneStyle = {
@@ -45,9 +45,9 @@ export function JourneyTimeline({ records }: JourneyTimelineProps) {
         const dateStr = r.occurredAt.split("T")[0];
 
         return (
-          <div key={r.id} className="relative group animate-fade-up">
+          <div key={r.id} className="group relative min-w-0 animate-fade-up">
             {/* Timeline node dot indicator */}
-            <span className="absolute -left-[35px] md:-left-[51px] top-1.5 flex h-6 w-6 items-center justify-center rounded-full border-2 border-background bg-card shadow-sm transition group-hover:scale-110">
+            <span className="absolute -left-[27px] top-1.5 flex h-6 w-6 items-center justify-center rounded-full border-2 border-background bg-card shadow-sm transition group-hover:scale-110 sm:-left-[35px] md:-left-[51px]">
               <span className="h-2 w-2 rounded-full bg-brand" />
             </span>
 
@@ -110,8 +110,8 @@ export function JourneyTimeline({ records }: JourneyTimelineProps) {
               )}
 
               {/* Bottom Actions link to Journey Details */}
-              <div className="flex items-center justify-between border-t border-line/50 pt-3">
-                <span className="text-[11px] text-muted-foreground italic truncate max-w-[70%]">
+              <div className="flex flex-col items-start gap-3 border-t border-line/50 pt-3 sm:flex-row sm:items-center sm:justify-between">
+                <span className="text-[11px] italic text-muted-foreground sm:max-w-[70%] sm:truncate">
                   {r.meaning}
                 </span>
                 <Link 

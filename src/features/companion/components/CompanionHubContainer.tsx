@@ -30,7 +30,7 @@ export function CompanionHubContainer({ insights }: CompanionHubContainerProps) 
   });
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 space-y-6">
       {/* Featured Hero Insight */}
       {primaryInsight && activeFilter === "all" && (
         <div className="space-y-3">

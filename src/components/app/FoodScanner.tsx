@@ -255,7 +255,7 @@ export function FoodScanner({ onAdd }: { onAdd?: (entry: LoggedFood) => void }) 
               <p className="text-xs text-muted-foreground mt-0.5">Tentukan porsi relatif makanan Anda untuk mengalikan zat gizi.</p>
             </div>
           </div>
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {PORTIONS.map((p) => (
               <button 
                 key={p} 

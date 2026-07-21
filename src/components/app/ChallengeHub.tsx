@@ -203,7 +203,7 @@ export function ChallengeHub() {
               }
               const Icon = ICONS[c.icon] ?? Target;
               return (
-                <div key={c.id} className="card card-pad flex items-center justify-between gap-4 card-hover">
+                <div key={c.id} className="card card-pad flex flex-col items-stretch justify-between gap-4 card-hover sm:flex-row sm:items-center">
                   <div className="flex items-center gap-4 min-w-0 flex-1">
                     <span className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl ${TIER_STYLE[c.tier]}`}>
                       <Icon className="h-6 w-6" />
@@ -213,13 +213,13 @@ export function ChallengeHub() {
                         <h3 className="truncate font-display text-base font-bold">{c.title}</h3>
                       </Link>
                       <p className="mt-0.5 text-xs text-muted-foreground truncate">{c.desc}</p>
-                      <div className="mt-2 flex gap-2">
+                      <div className="mt-2 flex gap-2 flex-wrap">
                         <CategoryChip category={c.category} />
                         <span className="pill bg-secondary text-muted-foreground text-[9px] font-bold uppercase">Optional Selection</span>
                       </div>
                     </div>
                   </div>
-                  <button onClick={() => follow(c.id)} className="btn btn-outline btn-xs font-bold shrink-0">
+                  <button onClick={() => follow(c.id)} className="btn btn-outline btn-xs font-bold shrink-0 w-full sm:w-auto">
                     <Plus className="h-3.5 w-3.5" /> Ikuti
                   </button>
                 </div>

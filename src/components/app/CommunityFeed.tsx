@@ -30,9 +30,9 @@ function PostCard({ p }: { readonly p: Post }) {
     : "bg-secondary text-muted-foreground border-line";
 
   return (
-    <div className="card card-pad space-y-4 bg-card border-line">
-      <div className="flex items-center gap-3">
-        <div className="grid h-11 w-11 place-items-center rounded-full bg-gradient-to-br from-brand to-lime text-sm font-bold text-white shadow-sm">
+    <div className="card card-pad min-w-0 space-y-4 border-line bg-card">
+      <div className="flex min-w-0 flex-wrap items-start gap-3">
+        <div className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-gradient-to-br from-brand to-lime text-sm font-bold text-white shadow-sm">
           {initials(p.name)}
         </div>
         <div className="flex-1 min-w-0">
@@ -46,7 +46,7 @@ function PostCard({ p }: { readonly p: Post }) {
           </div>
           <p className="text-xs text-muted-foreground">{p.time}</p>
         </div>
-        <span className={`pill text-[10px] font-bold uppercase ${KIND_STYLE[p.kind]}`}>
+        <span className={`pill max-w-full whitespace-normal break-words text-[10px] font-bold uppercase ${KIND_STYLE[p.kind]}`}>
           <Icon className="h-3.5 w-3.5" /> {p.detail}
         </span>
       </div>
@@ -55,15 +55,15 @@ function PostCard({ p }: { readonly p: Post }) {
         {p.text}
       </p>
 
-      <div className="flex items-center gap-2 border-t border-line/45 pt-3">
+      <div className="flex min-w-0 flex-col items-start gap-1 border-t border-line/45 pt-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
         <button
           onClick={() => setLiked((v) => !v)}
-          className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition ${liked ? "bg-brand-soft text-brand shadow-sm" : "text-muted-foreground hover:bg-secondary"}`}
+          className={`inline-flex max-w-full items-center gap-1.5 rounded-full px-2 py-1.5 text-left text-xs font-bold transition sm:px-3 ${liked ? "bg-brand-soft text-brand shadow-sm" : "text-muted-foreground hover:bg-secondary"}`}
           aria-label="Encourage post"
         >
           <Heart className={`h-3.5 w-3.5 ${liked ? "fill-current" : ""}`} /> Beri Semangat &middot; {p.encourages + (liked ? 1 : 0)}
         </button>
-        <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold text-muted-foreground">
+        <span className="inline-flex max-w-full items-center gap-1.5 rounded-full px-2 py-1.5 text-xs font-bold text-muted-foreground sm:px-3">
           <MessageCircle className="h-3.5 w-3.5" /> Komentar Dukungan &middot; {p.comments}
         </span>
       </div>
@@ -77,12 +77,12 @@ export function CommunityFeed() {
   const pct = Math.round((cc.now / cc.goal) * 100);
 
   return (
-    <div className="grid gap-6 lg:grid-cols-3">
+    <div className="grid min-w-0 gap-6 lg:grid-cols-3">
       {/* Feed Column */}
-      <div className="space-y-6 lg:col-span-2">
+      <div className="min-w-0 space-y-6 lg:col-span-2">
         {/* Stories widget */}
-        <div className="card card-pad border-line bg-card">
-          <div className="flex gap-4 overflow-x-auto pb-1">
+        <div className="card card-pad min-w-0 overflow-hidden border-line bg-card">
+          <div className="flex max-w-full gap-4 overflow-x-auto pb-2">
             {STORIES.map((s) => (
               <div key={s.id} className="flex shrink-0 flex-col items-center gap-1.5">
                 <div className={`grid h-16 w-16 place-items-center rounded-full ${s.you ? "border-2 border-dashed border-line" : "bg-gradient-to-br from-brand via-lime to-amber p-0.5"}`}>
@@ -109,7 +109,7 @@ export function CommunityFeed() {
       </div>
 
       {/* Sidebar Column */}
-      <div className="space-y-6">
+      <div className="min-w-0 space-y-6">
         {/* Privacy Card */}
         <div className="card card-pad bg-secondary/35 border-line/65 space-y-4">
           <div className="flex items-center gap-2">
@@ -125,8 +125,8 @@ export function CommunityFeed() {
 
         {/* Community Challenge */}
         <div className="card card-pad border-line bg-card space-y-4">
-          <div className="flex items-start justify-between">
-            <div>
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div className="min-w-0">
               <span className="pill bg-amber/10 text-amber border border-amber/15 text-[9px] font-bold uppercase tracking-wider">Active Challenge</span>
               <h3 className="font-display text-base font-bold text-foreground mt-1.5">{cc.title}</h3>
             </div>
@@ -134,7 +134,7 @@ export function CommunityFeed() {
           </div>
 
           <div>
-            <div className="flex items-center justify-between text-xs font-semibold text-muted-foreground">
+            <div className="flex flex-col gap-1 text-xs font-semibold text-muted-foreground min-[380px]:flex-row min-[380px]:items-center min-[380px]:justify-between">
               <span>Progress</span>
               <span>{cc.now.toLocaleString("id-ID")} / {cc.goal.toLocaleString("id-ID")} langkah ({pct}%)</span>
             </div>
@@ -143,7 +143,7 @@ export function CommunityFeed() {
             </div>
           </div>
 
-          <div className="flex items-center justify-between text-xs border-t border-line/45 pt-3">
+          <div className="flex flex-col items-start gap-2 border-t border-line/45 pt-3 text-xs min-[380px]:flex-row min-[380px]:items-center min-[380px]:justify-between">
             <span className="text-muted-foreground font-semibold">{cc.participants} travelers bergabung</span>
             {joined ? (
               <span className="pill bg-brand-soft text-brand font-bold flex items-center gap-1">

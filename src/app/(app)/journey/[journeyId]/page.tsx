@@ -36,7 +36,7 @@ export default async function JourneyDetailPage({ params }: JourneyDetailPagePro
     : undefined;
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 animate-fade-up">
+    <div className="mx-auto w-full min-w-0 max-w-5xl space-y-6 animate-fade-up">
       {/* Back button */}
       <div>
         <Link 
@@ -73,9 +73,9 @@ export default async function JourneyDetailPage({ params }: JourneyDetailPagePro
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid min-w-0 gap-6 lg:grid-cols-3">
         {/* Left main: Details card + Nora reflection */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="min-w-0 space-y-6 lg:col-span-2">
           <div className="card card-pad space-y-5">
             <div>
               <h3 className="font-display text-base font-bold text-foreground">Journey Details</h3>
@@ -85,7 +85,7 @@ export default async function JourneyDetailPage({ params }: JourneyDetailPagePro
             {/* Health Pulse shift display if present */}
             {record.healthPulseAfter !== undefined && record.healthPulseBefore !== undefined && (
               <div className="rounded-2xl border border-line/60 bg-secondary/30 p-4 space-y-3">
-                <div className="flex items-center justify-between text-sm">
+                <div className="flex flex-col gap-2 text-sm min-[360px]:flex-row min-[360px]:items-center min-[360px]:justify-between">
                   <span className="text-muted-foreground font-semibold">Pulse Progression</span>
                   <span className="font-extrabold text-foreground flex items-center gap-2">
                     <span className="text-muted-foreground font-normal line-through">{record.healthPulseBefore.toFixed(1)}</span>
@@ -153,12 +153,12 @@ export default async function JourneyDetailPage({ params }: JourneyDetailPagePro
           {/* Active Challenge Contribution widget */}
           {record.id === "journey-morning-walk" && (
             <div className="card card-pad space-y-4 border-line/60 bg-card">
-              <div className="flex items-start justify-between">
-                <div>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0">
                   <span className="pill bg-amber/10 text-amber text-[9px] font-bold uppercase tracking-wider">Challenge Contribution</span>
                   <h3 className="font-display text-base font-bold text-foreground mt-1">Light Cardio Journey</h3>
                 </div>
-                <span className="pill bg-brand-soft text-brand text-[9px] font-bold uppercase">
+                <span className="pill self-start bg-brand-soft text-brand text-[9px] font-bold uppercase sm:max-w-[45%]">
                   Automatic Activity Progress
                 </span>
               </div>
@@ -187,7 +187,7 @@ export default async function JourneyDetailPage({ params }: JourneyDetailPagePro
         </div>
 
         {/* Right side: Sidebar visual share preview container */}
-        <div className="lg:col-span-3 space-y-6">
+        <div className="min-w-0 space-y-6 lg:col-span-3">
           <HealthStoryPreviewContainer displayData={displayData} journeyId={record.id} />
         </div>
       </div>

@@ -67,7 +67,7 @@ export default function OnboardingPage() {
       </div>
 
       <div className="card card-pad space-y-5">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field icon={Ruler} label="Tinggi (cm)" why="Dasar hitung BMI &amp; kebutuhan energi.">
             <input value={tinggi} onChange={(e) => setTinggi(e.target.value)} inputMode="numeric" placeholder="cth. 170" className="input" />
           </Field>
@@ -75,7 +75,7 @@ export default function OnboardingPage() {
             <input value={berat} onChange={(e) => setBerat(e.target.value)} inputMode="numeric" placeholder="cth. 65" className="input" />
           </Field>
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field icon={Cake} label="Umur" why="Memengaruhi laju metabolisme.">
             <input value={umur} onChange={(e) => setUmur(e.target.value)} inputMode="numeric" placeholder="cth. 21" className="input" />
           </Field>

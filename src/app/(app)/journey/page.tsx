@@ -9,7 +9,7 @@ export default function JourneyOverviewPage() {
   const journeyReflection = getPrimaryCompanionInsight("journey");
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 animate-fade-up">
+    <div className="mx-auto w-full min-w-0 max-w-5xl space-y-6 animate-fade-up">
       {/* 1. Page Header */}
       <div className="border-b border-line/40 pb-5">
         <h1 className="font-display text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">
@@ -20,9 +20,9 @@ export default function JourneyOverviewPage() {
         </p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid min-w-0 gap-6 lg:grid-cols-3">
         {/* Main Column: Companion Reflection + Filters + Timeline */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="min-w-0 space-y-6 lg:col-span-2">
           {journeyReflection && (
             <CompanionCard 
               insight={journeyReflection} 
@@ -35,11 +35,11 @@ export default function JourneyOverviewPage() {
         </div>
 
         {/* Sidebar Column: Stats, Privacy & Info */}
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
           {/* Journey Summary Card */}
           <div className="card card-pad bg-gradient-to-br from-brand/5 to-secondary/30 border border-line space-y-4">
             <h3 className="font-display text-base font-bold text-foreground">Journey Summary</h3>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid min-w-0 grid-cols-1 gap-3 min-[360px]:grid-cols-2">
               <div className="rounded-2xl border border-line bg-card p-3 text-center shadow-sm">
                 <p className="text-[10px] text-muted-foreground font-semibold">JOURNEY DAY</p>
                 <p className="stat-num text-xl mt-1 text-foreground">148</p>

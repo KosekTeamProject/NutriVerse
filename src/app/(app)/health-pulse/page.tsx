@@ -17,7 +17,7 @@ export default function HealthPulseDetailPage() {
   const noraInsight = getPrimaryCompanionInsight("health-pulse");
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 animate-fade-up-premium">
+    <div className="mx-auto w-full min-w-0 max-w-5xl space-y-6 animate-fade-up-premium">
       {/* 1. Page Header */}
       <div className="border-b border-line/40 pb-5">
         <h1 className="font-display text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">
@@ -29,9 +29,9 @@ export default function HealthPulseDetailPage() {
       </div>
 
       {/* Grid: Main details + Sidebar actions */}
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid min-w-0 gap-6 lg:grid-cols-3">
         {/* Main Columns: Detailed card + Nora interpretation + Chart */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="min-w-0 space-y-6 lg:col-span-2">
           {/* Detailed Health Pulse Card */}
           <HealthPulseCard 
             snapshot={currentSnapshot} 
@@ -66,7 +66,7 @@ export default function HealthPulseDetailPage() {
         </div>
 
         {/* Sidebar details */}
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
           {/* Data Completeness Explanation */}
           <div className="card card-pad space-y-3">
             <div>

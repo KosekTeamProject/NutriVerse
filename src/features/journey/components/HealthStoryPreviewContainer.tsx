@@ -21,7 +21,7 @@ export function HealthStoryPreviewContainer({ displayData, journeyId = "journey-
   }, []);
 
   return (
-    <div className="card card-pad border-brand/20 bg-gradient-to-br from-brand/[0.02] to-secondary/35 space-y-6">
+    <div className="card card-pad min-w-0 border-brand/20 bg-gradient-to-br from-brand/[0.02] to-secondary/35 space-y-6">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-line/40 pb-4">
         <div>
           <h3 className="font-display text-base font-bold text-foreground flex items-center gap-1.5">
@@ -32,10 +32,10 @@ export function HealthStoryPreviewContainer({ displayData, journeyId = "journey-
         
         {/* Format selectors */}
         {displayData.shareEligible && (
-          <div className="inline-flex rounded-full bg-secondary p-1 shrink-0 self-start sm:self-center">
+          <div className="grid w-full grid-cols-1 gap-1 rounded-2xl bg-secondary p-1 min-[380px]:grid-cols-2 sm:w-auto sm:shrink-0 sm:rounded-full">
             <button
               onClick={() => setFormat("square")}
-              className={`rounded-full px-3 py-1 text-xs font-bold inline-flex items-center gap-1.5 transition ${
+              className={`justify-center rounded-full px-3 py-1 text-xs font-bold inline-flex items-center gap-1.5 transition ${
                 format === "square" ? "bg-card text-brand shadow-sm" : "text-muted-foreground hover:text-foreground"
               }`}
             >
@@ -43,7 +43,7 @@ export function HealthStoryPreviewContainer({ displayData, journeyId = "journey-
             </button>
             <button
               onClick={() => setFormat("vertical")}
-              className={`rounded-full px-3 py-1 text-xs font-bold inline-flex items-center gap-1.5 transition ${
+              className={`justify-center rounded-full px-3 py-1 text-xs font-bold inline-flex items-center gap-1.5 transition ${
                 format === "vertical" ? "bg-card text-brand shadow-sm" : "text-muted-foreground hover:text-foreground"
               }`}
             >
@@ -63,7 +63,7 @@ export function HealthStoryPreviewContainer({ displayData, journeyId = "journey-
 
       <div className="flex flex-col items-center gap-6 lg:flex-row lg:items-stretch lg:justify-center">
         {/* Canvas Visual Card Preview */}
-        <div className="flex-1 flex justify-center items-center py-4 bg-secondary/20 rounded-2xl border border-line/50 p-6 min-h-[400px]">
+        <div className="flex min-h-[320px] min-w-0 flex-1 items-center justify-center rounded-2xl border border-line/50 bg-secondary/20 p-3 py-4 sm:min-h-[400px] sm:p-6">
           <HealthStoryCard data={displayData} format={format} effectiveCaption={effectiveCaption} />
         </div>
 

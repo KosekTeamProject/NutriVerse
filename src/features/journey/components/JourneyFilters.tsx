@@ -11,7 +11,7 @@ interface JourneyFiltersProps {
 
 export function JourneyFilters({ activeFilter, onFilterChange, categories }: JourneyFiltersProps) {
   return (
-    <div className="flex flex-wrap gap-2 py-1 border-b border-line/20 pb-4 overflow-x-auto">
+    <div className="flex min-w-0 flex-wrap gap-2 border-b border-line/20 py-1 pb-4">
       <button
         onClick={() => onFilterChange("all")}
         aria-pressed={activeFilter === "all"}

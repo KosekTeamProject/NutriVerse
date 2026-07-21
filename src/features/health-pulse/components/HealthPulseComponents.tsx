@@ -52,16 +52,16 @@ export function HealthDimensionRow({
 
   return (
     <div className="space-y-1.5 p-3 rounded-2xl border border-line/45 bg-card/60">
-      <div className="flex items-center justify-between text-xs font-semibold">
-        <div className="flex items-center gap-1.5">
-          <span className="text-foreground">{getHealthDimensionLabel(dimScore.dimension)}</span>
+      <div className="flex flex-col gap-2 text-xs font-semibold min-[380px]:flex-row min-[380px]:items-start min-[380px]:justify-between">
+        <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+          <span className="break-words text-foreground">{getHealthDimensionLabel(dimScore.dimension)}</span>
           {showTrust && (
             <span className={`pill text-[9px] font-bold py-0 px-1.5 scale-90 ${verfStyle}`}>
               {getHealthDataTrustLabel(dimScore.trust)}
             </span>
           )}
         </div>
-        <div className="flex items-center gap-1 text-foreground">
+        <div className="flex shrink-0 items-center gap-1 text-foreground">
           <span className="text-[10px] text-muted-foreground font-normal">{trendIcon}</span>
           <span className="stat-num">{dimScore.score}%</span>
           <span className={`text-[10px] ${dimScore.change >= 0 ? "text-brand" : "text-amber"}`}>
@@ -135,7 +135,7 @@ export function HealthPulseCard({
     return (
       <div className={`card card-pad flex flex-col justify-between space-y-4 ${className}`}>
         <div>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <h3 className="font-display text-lg font-bold">Health Pulse</h3>
             <span className="pill bg-brand-soft text-brand font-semibold capitalize">
               {getHealthPulseStatusLabel(snapshot.status)}
@@ -168,7 +168,7 @@ export function HealthPulseCard({
           </div>
         )}
 
-        <div className="pt-2 border-t border-line/45 flex items-center justify-between">
+        <div className="flex flex-col gap-3 border-t border-line/45 pt-2 min-[380px]:flex-row min-[380px]:items-center min-[380px]:justify-between">
           <span className="text-[10px] text-muted-foreground">Kelengkapan: {snapshot.dataCompleteness}%</span>
           <Link href="/health-pulse" className="btn btn-outline btn-sm inline-flex items-center gap-1 text-xs font-bold">
             Lihat Detail <ArrowRight className="h-3.5 w-3.5" />
@@ -182,7 +182,7 @@ export function HealthPulseCard({
   return (
     <div className={`card card-pad flex flex-col justify-between space-y-6 ${className}`}>
       <div>
-        <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <h3 className="font-display text-lg font-bold">Health Pulse Hari Ini</h3>
           <span className="pill bg-brand-soft text-brand font-bold capitalize">
             {getHealthPulseStatusLabel(snapshot.status)}
@@ -210,14 +210,14 @@ export function HealthPulseCard({
         </div>
 
         <div className="w-full sm:w-1/2 space-y-3">
-          <div className="rounded-xl border border-line bg-card/65 p-3 flex justify-between items-center text-xs">
+          <div className="flex flex-col items-start gap-2 rounded-xl border border-line bg-card/65 p-3 text-xs min-[380px]:flex-row min-[380px]:items-center min-[380px]:justify-between">
             <span className="text-muted-foreground font-semibold">Area Terkuat</span>
             <span className="pill bg-brand-soft text-brand font-bold capitalize">
               {getHealthDimensionLabel(snapshot.strongestDimension)}
             </span>
           </div>
 
-          <div className="rounded-xl border border-line bg-card/65 p-3 flex justify-between items-center text-xs">
+          <div className="flex flex-col items-start gap-2 rounded-xl border border-line bg-card/65 p-3 text-xs min-[380px]:flex-row min-[380px]:items-center min-[380px]:justify-between">
             <span className="text-muted-foreground font-semibold">Fokus Pemulihan</span>
             <span className="pill bg-amber/10 text-amber font-bold capitalize">
               {getHealthDimensionLabel(snapshot.focusDimension)}
@@ -244,8 +244,8 @@ export function HealthPulseCard({
         if (!consistency) return null;
         return (
           <div className="card border border-line bg-secondary/35 p-4 space-y-2">
-            <div className="flex items-center justify-between text-xs font-bold">
-              <span className="text-foreground flex items-center gap-1.5">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-bold">
+              <span className="flex min-w-0 items-center gap-1.5 text-foreground">
                 <Sparkles className="h-4 w-4 text-brand" /> {getHealthDimensionLabel(consistency.dimension)}
               </span>
               <span className="stat-num text-brand text-xs tabular-nums">Skor: {consistency.score}%</span>
@@ -273,7 +273,7 @@ export function HealthPulseCard({
       {/* Next Action Box */}
       <div className="rounded-2xl border border-brand/20 bg-brand-soft/10 p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-xs text-brand font-bold uppercase tracking-wider flex items-center gap-1.5">
+          <p className="flex min-w-0 items-start gap-1.5 break-words text-xs font-bold uppercase tracking-wider text-brand">
             <Sparkles className="h-4 w-4" /> REKOMENDASI TINDAKAN SELANJUTNYA
           </p>
           <p className="text-sm text-foreground font-semibold mt-1">
@@ -322,7 +322,7 @@ export function HealthPulseHistoryChart({ history }: HealthPulseHistoryChartProp
         <p className="text-xs text-muted-foreground mt-0.5">Catatan indeks perkembangan pulse Anda</p>
       </div>
 
-      <div className="relative w-full overflow-hidden bg-secondary/15 rounded-2xl border border-line/45 p-4">
+      <div className="relative w-full min-w-0 overflow-hidden rounded-2xl border border-line/45 bg-secondary/15 p-2 sm:p-4">
         {/* SVG Drawing */}
         <svg 
           viewBox={`0 0 ${width} ${height}`} 

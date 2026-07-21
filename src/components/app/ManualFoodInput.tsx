@@ -57,7 +57,7 @@ export function ManualFoodInput({ onAdd }: { onAdd?: (entry: LoggedFood) => void
         </div>
 
         <p className="mt-4 mb-2 text-xs font-medium text-muted-foreground">Ukuran porsi</p>
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {PORTIONS.map((p) => (
             <button key={p} onClick={() => setPortion(p)} className={`rounded-xl border px-3 py-2.5 text-center text-sm font-semibold transition ${portion === p ? "border-brand bg-brand-soft text-brand" : "border-line text-muted-foreground hover:bg-secondary"}`}>{p}x</button>
           ))}

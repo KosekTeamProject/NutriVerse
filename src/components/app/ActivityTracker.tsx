@@ -171,7 +171,7 @@ export function ActivityTracker() {
   return (
     <div className="card card-pad">
       {/* activity type */}
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="inline-flex rounded-full bg-secondary p-1">
           {(["walk", "run", "bike"] as ActivityKind[]).map((k) => {
             const Icon = k === "walk" ? Footprints : k === "run" ? Footprints : Bike;
@@ -181,7 +181,7 @@ export function ActivityTracker() {
                 key={k}
                 onClick={() => !active && setKind(k)}
                 disabled={active}
-                className={`inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-semibold transition disabled:cursor-not-allowed ${
+                className={`inline-flex items-center gap-2 rounded-full px-3 sm:px-4 py-1.5 text-sm font-semibold transition disabled:cursor-not-allowed ${
                   on ? "bg-card text-brand shadow-sm" : "text-muted-foreground"
                 }`}
               >

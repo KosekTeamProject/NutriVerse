@@ -71,22 +71,22 @@ export function GoalProgressRow({
   return (
     <div className="flex flex-col gap-3 rounded-2xl border border-line/50 p-4 bg-card/65 justify-between">
       <div className="flex items-start justify-between gap-3">
-        <div className="flex items-start gap-3">
+        <div className="flex min-w-0 flex-1 items-start gap-3">
           <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-secondary text-foreground`}>
             <GoalCategoryIcon category={goal.category} />
           </span>
-          <div>
-            <h4 className="font-display text-sm font-bold text-foreground">{goal.title}</h4>
+          <div className="min-w-0">
+            <h4 className="font-display text-sm font-bold text-foreground break-words">{goal.title}</h4>
             <p className="text-[11px] text-muted-foreground leading-relaxed mt-0.5">{goal.description}</p>
           </div>
         </div>
 
-        <div className="flex flex-col items-end gap-1.5 shrink-0">
-          <span className={`pill text-[9px] font-bold uppercase ${statusColors}`}>
+        <div className="flex flex-col items-end gap-1.5 shrink-0 max-w-[40%]">
+          <span className={`pill text-[9px] font-bold uppercase whitespace-normal text-right leading-tight ${statusColors}`}>
             {getGoalStatusLabel(goal.status)}
           </span>
           {showTrust && (
-            <span className={`pill text-[9px] font-bold uppercase ${trustColors}`}>
+            <span className={`pill text-[9px] font-bold uppercase whitespace-normal text-right leading-tight ${trustColors}`}>
               {getGoalTrustLabel(goal.trustLevel)}
             </span>
           )}
@@ -112,9 +112,9 @@ export function GoalProgressRow({
       </div>
 
       {showAction && goal.actionHref && goal.actionLabel && (
-        <div className="pt-1 flex items-center justify-between border-t border-line/40 text-[11px]">
-          <span className="text-muted-foreground italic truncate max-w-[70%]">{goal.explanation}</span>
-          <Link href={goal.actionHref} className="btn btn-outline btn-xs font-bold leading-none inline-flex items-center gap-1">
+        <div className="pt-1 flex flex-wrap items-center justify-between gap-2 border-t border-line/40 text-[11px]">
+          <span className="text-muted-foreground italic truncate min-w-0 flex-1">{goal.explanation}</span>
+          <Link href={goal.actionHref} className="btn btn-outline btn-xs font-bold leading-none inline-flex shrink-0 items-center gap-1">
             {goal.actionLabel} <ArrowRight className="h-3 w-3" />
           </Link>
         </div>

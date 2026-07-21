@@ -51,13 +51,13 @@ export function RecentJourneyCard({ record }: { record: JourneyRecord }) {
       </div>
 
       <div className="rounded-2xl border border-line/50 p-4 bg-card space-y-3.5">
-        <div className="flex items-start justify-between">
-          <div>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
             <h4 className="font-display text-base font-bold text-foreground">{record.title}</h4>
             <p className="text-xs text-muted-foreground mt-0.5">{record.summary}</p>
           </div>
           {distanceMetric && (
-            <span className="pill bg-brand-soft text-brand font-semibold flex items-center gap-1 text-[11px]">
+            <span className="pill bg-brand-soft text-brand font-semibold flex shrink-0 items-center gap-1 text-[11px]">
               <Footprints className="h-3.5 w-3.5" /> {distanceMetric.value}
             </span>
           )}
@@ -125,16 +125,16 @@ export function ActiveChallengeCard({ challenge }: { challenge: ChallengePreview
 
   return (
     <div className="card card-pad space-y-4 border-line/60 bg-card">
-      <div className="flex items-start justify-between">
-        <div>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
           <span className="eyebrow bg-amber/10 border-amber/20 text-amber text-[10px]">Tantangan Aktif</span>
           <h3 className="font-display text-lg font-bold text-foreground mt-2">{challenge.title}</h3>
         </div>
-        <div className="flex flex-col items-end gap-1.5">
-          <span className="pill bg-secondary text-muted-foreground font-semibold text-[11px]">
+        <div className="flex flex-col items-end gap-1.5 shrink-0 max-w-[42%]">
+          <span className="pill bg-secondary text-muted-foreground font-semibold whitespace-normal text-right leading-tight text-[11px]">
             {challenge.status === "in-progress" ? "Sedang Berjalan" : challenge.status}
           </span>
-          <span className="pill bg-brand-soft text-brand text-[9px] font-bold uppercase">
+          <span className="pill bg-brand-soft text-brand text-[9px] font-bold uppercase whitespace-normal text-right leading-tight">
             Progress Otomatis
           </span>
         </div>

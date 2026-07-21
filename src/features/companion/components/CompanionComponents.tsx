@@ -74,17 +74,17 @@ export function CompanionCard({
   // Reflection Layout (Editorial Card inset, no chat bubbles)
   if (isReflection) {
     return (
-      <div className={`card bg-gradient-to-br from-secondary/50 to-card border-l-4 border-brand p-5 space-y-3 ${className}`}>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+      <div className={`card min-w-0 bg-gradient-to-br from-secondary/50 to-card border-l-4 border-brand p-4 sm:p-5 space-y-3 ${className}`}>
+        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-center gap-2">
             <CompanionPresence size="sm" />
-            <div>
+            <div className="min-w-0">
               <span className="text-[10px] font-bold text-brand uppercase tracking-wider">{companionName}</span>
-              <h4 className="font-display text-sm font-bold text-foreground mt-0.5">{insight.title}</h4>
+              <h4 className="font-display text-sm font-bold text-foreground mt-0.5 break-words">{insight.title}</h4>
             </div>
           </div>
           {showSourceLabels && insight.sourceReference && (
-            <span className="text-[10px] text-muted-foreground font-mono">
+            <span className="max-w-full break-all text-[10px] text-muted-foreground font-mono sm:text-right">
               {getCompanionSourceLabels(insight)}
             </span>
           )}
@@ -132,13 +132,13 @@ export function CompanionCard({
 
   // Hero Layout
   return (
-    <div className={`card border-brand/20 bg-gradient-to-br from-brand/5 to-lime/5 p-6 relative overflow-hidden shadow-soft ${className}`}>
+    <div className={`card relative min-w-0 overflow-hidden border-brand/20 bg-gradient-to-br from-brand/5 to-lime/5 p-4 shadow-soft sm:p-6 ${className}`}>
       <div aria-hidden className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-brand/10 blur-2xl" />
-      <div className="flex items-start gap-4">
+      <div className="flex min-w-0 items-start gap-3 sm:gap-4">
         <CompanionPresence size="md" />
-        <div className="flex-1 space-y-3.5">
+        <div className="min-w-0 flex-1 space-y-3.5">
           <div>
-            <div className="flex items-center justify-between">
+            <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
               <span className="font-display text-xs font-bold uppercase tracking-wider text-brand">
                 {companionName} Companion
               </span>
@@ -167,7 +167,7 @@ export function CompanionCard({
             )}
 
             {showExplanation && (
-              <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
+              <span className="inline-flex max-w-full items-start gap-1 text-[10px] text-muted-foreground">
                 <HelpCircle className="h-3.5 w-3.5 text-muted-foreground" /> Simulated guidance based on Day 148 logs
               </span>
             )}
@@ -186,12 +186,12 @@ export function CompanionWeeklyLetterPreview({ letter }: { readonly letter: Comp
 
   return (
     <div className="card card-pad bg-gradient-to-br from-card to-secondary/35 border-line/60 space-y-4">
-      <div className="flex items-start justify-between border-b border-line/45 pb-3">
+      <div className="flex flex-col gap-2 border-b border-line/45 pb-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1">
           <span className="pill bg-brand-soft text-brand text-[9px] font-bold uppercase tracking-wider">Surat Mingguan</span>
           <h3 className="font-display text-base font-bold text-foreground mt-1">{letter.title}</h3>
         </div>
-        <span className="pill bg-secondary text-muted-foreground font-semibold text-[10px] flex items-center gap-1">
+        <span className="pill self-start bg-secondary text-muted-foreground font-semibold text-[10px] flex items-center gap-1">
           <Calendar className="h-3 w-3" /> {startStr} - {endStr}
         </span>
       </div>
@@ -237,7 +237,7 @@ export function CompanionInsightFilters({ activeFilter, onFilterChange }: Compan
   ];
 
   return (
-    <div className="flex flex-wrap gap-2 py-1 border-b border-line/20 pb-4 overflow-x-auto">
+    <div className="flex min-w-0 flex-wrap gap-2 border-b border-line/20 py-1 pb-4">
       {filters.map((f) => (
         <button
           key={f.id}

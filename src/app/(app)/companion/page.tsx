@@ -138,12 +138,12 @@ function ChatSection() {
   }
 
   return (
-    <div className="card card-pad border-line bg-card space-y-4">
+    <div className="card card-pad min-w-0 space-y-4 border-line bg-card">
       <div className="flex items-center gap-2 border-b border-line/45 pb-3">
         <span className="grid h-9 w-9 place-items-center rounded-xl bg-brand-soft text-brand">
           <MessageSquare className="h-5 w-5" />
         </span>
-        <div>
+        <div className="min-w-0">
           <h2 className="font-display text-base font-bold text-foreground">Percakapan dengan {displayName}</h2>
           <p className="text-xs text-muted-foreground">Tanyakan hal tentang aktivitas, nutrisi, pemulihan, Challenge, atau progres Journey-mu.</p>
         </div>
@@ -237,7 +237,7 @@ function ChatSection() {
       </div>
 
       {/* Message input */}
-      <div className="flex items-end gap-2 pt-1">
+      <div className="flex min-w-0 items-end gap-2 pt-1">
         <textarea 
           rows={1}
           value={input}
@@ -245,7 +245,7 @@ function ChatSection() {
           onKeyDown={handleKeyDown}
           placeholder={`Tanyakan sesuatu kepada ${displayName}… (Shift+Enter untuk baris baru)`}
           disabled={isTyping}
-          className="input flex-1 py-2 text-xs resize-none min-h-[42px] max-h-32"
+          className="input min-h-[42px] min-w-0 flex-1 resize-none py-2 text-xs max-h-32"
           aria-label={`Input pesan ${displayName}`}
         />
         <button 
@@ -273,7 +273,7 @@ export default function CompanionHubPage() {
   const { displayName } = useCompanionName();
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 animate-fade-up-premium">
+    <div className="mx-auto w-full min-w-0 max-w-5xl space-y-6 animate-fade-up-premium">
       {/* Page Header */}
       <div className="border-b border-line/40 pb-5">
         <h1 className="font-display text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">
@@ -284,9 +284,9 @@ export default function CompanionHubPage() {
         </p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid min-w-0 gap-6 lg:grid-cols-3">
         {/* Main Columns: Filters, Insights and typing Chat */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="min-w-0 space-y-6 lg:col-span-2">
           <CompanionHubContainer insights={companionInsights} />
           
           <Suspense fallback={
@@ -299,7 +299,7 @@ export default function CompanionHubPage() {
         </div>
 
         {/* Sidebar widgets */}
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
           {/* Weekly Letter Preview */}
           <CompanionWeeklyLetterPreview letter={currentWeeklyLetter} />
 
