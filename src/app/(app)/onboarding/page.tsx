@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Ruler, Weight, Cake, User, Target, Activity, Info, ArrowRight, Check } from "lucide-react";
+import { Ruler, Weight, Cake, User, Target, Activity, Info, ArrowRight, Check, Sparkles } from "lucide-react";
+import { useCompanionName } from "@/hooks/useCompanionName";
 
 const GENDERS = ["Laki-laki", "Perempuan"];
 const GOALS = ["Menurunkan berat", "Menjaga berat", "Menambah massa", "Lebih bugar"];
@@ -29,6 +30,8 @@ function Choice({ options, value, onChange }: { options: string[]; value: string
 }
 
 export default function OnboardingPage() {
+  const { displayName, setDisplayName, resetToDefault } = useCompanionName();
+  const [companionNameInput, setCompanionNameInput] = useState(displayName || "Nora");
   const [tinggi, setTinggi] = useState("");
   const [berat, setBerat] = useState("");
   const [umur, setUmur] = useState("");
@@ -86,6 +89,34 @@ export default function OnboardingPage() {
         <Field icon={Activity} label="Frekuensi olahraga" why="Mengatur faktor aktivitas pada perhitungan TDEE.">
           <Choice options={FREQ} value={freq} onChange={setFreq} />
         </Field>
+
+        {/* Companion Name Personalization */}
+        <div className="pt-2 border-t border-line/40 space-y-2">
+          <label className="label flex items-center gap-1.5 text-foreground">
+            <Sparkles className="h-4 w-4 text-brand" /> Beri Nama Companion-mu
+          </label>
+          <input 
+            value={companionNameInput} 
+            onChange={(e) => {
+              const val = e.target.value;
+              setCompanionNameInput(val);
+              if (val.trim()) {
+                setDisplayName(val);
+              } else {
+                resetToDefault();
+              }
+            }} 
+            maxLength={24}
+            placeholder="Nora (Default)" 
+            className="input text-sm" 
+          />
+          <p className="text-xs text-muted-foreground">
+            Pilih nama yang membuat pendamping kesehatanmu terasa lebih personal. Kamu dapat menggantinya kapan saja melalui Pengaturan.
+          </p>
+          <div className="rounded-xl border border-brand/20 bg-brand-soft/10 p-2.5 text-xs text-brand italic">
+            &ldquo;Halo, aku {companionNameInput.trim() || "Nora"}. Aku akan menemani Journey sehatmu.&rdquo;
+          </div>
+        </div>
 
         <button onClick={() => setSaved(true)} disabled={!complete} className={`btn w-full ${complete ? "btn-primary" : "btn-outline opacity-60"}`}>
           Simpan &amp; lanjutkan <ArrowRight className="h-[18px] w-[18px]" />

@@ -173,8 +173,8 @@ export function ActivityTracker() {
       {/* activity type */}
       <div className="flex items-center justify-between gap-3">
         <div className="inline-flex rounded-full bg-secondary p-1">
-          {(["run", "bike"] as ActivityKind[]).map((k) => {
-            const Icon = k === "run" ? Footprints : Bike;
+          {(["walk", "run", "bike"] as ActivityKind[]).map((k) => {
+            const Icon = k === "walk" ? Footprints : k === "run" ? Footprints : Bike;
             const on = kind === k;
             return (
               <button
@@ -229,7 +229,7 @@ export function ActivityTracker() {
         <div className="rounded-2xl bg-amber/15 p-3 text-center">
           <Zap className="mx-auto h-4 w-4 text-amber" />
           <p className="stat-num mt-1.5 text-lg text-amber">{xp}</p>
-          <p className="text-[11px] text-muted-foreground">XP {suspicious ? "(ditahan)" : "estimasi"}</p>
+          <p className="text-[11px] text-muted-foreground">Potential XP</p>
         </div>
       </div>
 
@@ -243,21 +243,21 @@ export function ActivityTracker() {
             <div className="flex items-start gap-2 text-amber">
               <TriangleAlert className="mt-0.5 h-5 w-5 shrink-0" />
               <div>
-                <p className="text-sm font-bold">Perlu ditinjau</p>
-                <p className="text-xs text-muted-foreground">{rejected} segmen berkecepatan tidak wajar terdeteksi.</p>
+                <p className="text-sm font-bold">Needs Review</p>
+                <p className="text-xs text-muted-foreground">{rejected} segmen menunjukkan variasi kecepatan berlebih.</p>
               </div>
             </div>
           ) : (
             <div className="flex items-start gap-2 text-brand">
               <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0" />
               <div>
-                <p className="text-sm font-bold">Tervalidasi</p>
-                <p className="text-xs text-muted-foreground">Kecepatan wajar untuk {cfg.label.toLowerCase()}.</p>
+                <p className="text-sm font-bold">Demo Validation Passed</p>
+                <p className="text-xs text-muted-foreground">Kecepatan sesuai parameter {cfg.label.toLowerCase()}.</p>
               </div>
             </div>
           )}
-          <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
-            Anti-cheat: kecepatan di atas {cfg.maxSpeedKmh} km/jam dianggap kendaraan dan tidak dihitung sebagai XP.
+          <p className="mt-1 text-[10px] leading-normal text-muted-foreground">
+            Aktivitas ini memenuhi pemeriksaan demonstrasi saat ini. Verifikasi produksi memerlukan pemrosesan server.
           </p>
         </div>
       </div>
@@ -291,7 +291,7 @@ export function ActivityTracker() {
               <span className="btn bg-brand-soft text-brand"><Check className="h-5 w-5" /> Tersimpan (demo)</span>
             ) : (
               <button onClick={() => setSaved(true)} className="btn btn-primary btn-lg" disabled={suspicious}>
-                <Save className="h-5 w-5" /> {suspicious ? "Tidak bisa disimpan" : `Simpan (+${xp} XP)`}
+                <Save className="h-5 w-5" /> {suspicious ? "Needs Review" : `Simpan (Potential +${xp} XP)`}
               </button>
             )}
             <button onClick={reset} className="btn btn-ghost btn-lg"><RotateCcw className="h-5 w-5" /> Aktivitas baru</button>
@@ -300,10 +300,10 @@ export function ActivityTracker() {
       </div>
 
       {status === "finished" && (
-        <p className="mt-4 text-center text-sm text-muted-foreground">
+        <p className="mt-4 text-center text-xs text-muted-foreground leading-normal">
           {suspicious
-            ? "Aktivitas ini ditandai karena pola kecepatan tidak wajar, sehingga XP tidak diberikan."
-            : `Kerja bagus. Kamu menempuh ${km.toFixed(2)} km dan memperoleh ${xp} XP.`}
+            ? "This session contains segments requiring review before contributing to trusted progress."
+            : `Kerja bagus. Kamu menempuh ${km.toFixed(2)} km. Potential XP: ${xp} XP.`}
         </p>
       )}
     </div>

@@ -6,6 +6,7 @@ type ProgressRingProps = {
   from?: string;
   to?: string;
   gradientId?: string;
+  showText?: boolean;
 };
 
 export function ProgressRing({
@@ -16,6 +17,7 @@ export function ProgressRing({
   from = "var(--brand-bright)",
   to = "var(--lime)",
   gradientId = "pr",
+  showText = true,
 }: ProgressRingProps) {
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
@@ -42,10 +44,12 @@ export function ProgressRing({
           strokeDashoffset={c * (1 - value / 100)}
         />
       </svg>
-      <div className="absolute text-center">
-        <p className="stat-num text-3xl leading-none">{value}</p>
-        {label && <p className="mt-0.5 text-[11px] text-muted-foreground">{label}</p>}
-      </div>
+      {showText && (
+        <div className="absolute text-center select-none">
+          <p className="stat-num text-3xl leading-none">{value}</p>
+          {label && <p className="mt-0.5 text-[11px] text-muted-foreground">{label}</p>}
+        </div>
+      )}
     </div>
   );
 }

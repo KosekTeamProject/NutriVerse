@@ -13,26 +13,67 @@ export type Post = {
   id: string;
   name: string;
   time: string;
-  kind: "activity" | "tier" | "badge";
+  kind: "activity" | "consistency" | "reflection";
   text: string;
   detail: string;
   encourages: number;
   comments: number;
+  trustLevel?: string;
 };
 
 export const POSTS: Post[] = [
-  { id: "p1", name: "Dinda Puspita", time: "12 mnt lalu", kind: "activity", text: "Lari pagi menyusuri kampus, target minggu ini hampir tercapai!", detail: "8,0 km · +800 XP", encourages: 24, comments: 5 },
-  { id: "p2", name: "Yoga Adyatma", time: "1 jam lalu", kind: "tier", text: "Akhirnya naik ke tier Peak setelah grind seminggu penuh.", detail: "Naik ke tier Peak", encourages: 41, comments: 12 },
-  { id: "p3", name: "Fatan Mubarak", time: "3 jam lalu", kind: "badge", text: "Dapat badge Hydration Hero, ternyata rajin minum air kebayar juga.", detail: "Badge Hydration Hero", encourages: 18, comments: 3 },
-  { id: "p4", name: "Aulia Rahma", time: "5 jam lalu", kind: "activity", text: "Gowes sore keliling kota, cuaca lagi bagus banget.", detail: "22,0 km · +990 XP", encourages: 30, comments: 7 },
+  { 
+    id: "p1", 
+    name: "Dinda Puspita", 
+    time: "12 mnt lalu", 
+    kind: "activity", 
+    text: "Completed a light cardio segment around the campus trail. Sustainable steps feel much better than heavy strain!", 
+    detail: "1.4 km · Verified Progress", 
+    encourages: 24, 
+    comments: 5,
+    trustLevel: "verified"
+  },
+  { 
+    id: "p2", 
+    name: "Yoga Adyatma", 
+    time: "1 jam lalu", 
+    kind: "consistency", 
+    text: "Hit a seven-day consistency pattern streak. Keeping steps simple and recovery active.", 
+    detail: "7-Day Foundation", 
+    encourages: 41, 
+    comments: 12,
+    trustLevel: "verified"
+  },
+  { 
+    id: "p3", 
+    name: "Fatan Mubarak", 
+    time: "3 jam lalu", 
+    kind: "reflection", 
+    text: "Today's recovery day helped maintain energy. Sometimes rest is the most productive step for wellness consistency.", 
+    detail: "Active Recovery Day", 
+    encourages: 18, 
+    comments: 3,
+    trustLevel: "self-reported"
+  },
+  { 
+    id: "p4", 
+    name: "Aulia Rahma", 
+    time: "5 jam lalu", 
+    kind: "activity", 
+    text: "Accumulated 7.2 km of verified walking for the Light Cardio Journey challenge.", 
+    detail: "72% Challenge Progress", 
+    encourages: 30, 
+    comments: 7,
+    trustLevel: "verified"
+  },
 ];
 
-export type Suggestion = { id: string; name: string; mutual: number };
+export type Suggestion = { id: string; name: string; mutual: number; focus: string };
 
 export const SUGGESTIONS: Suggestion[] = [
-  { id: "u1", name: "Bima Saputra", mutual: 4 },
-  { id: "u2", name: "Sarah Wijaya", mutual: 2 },
-  { id: "u3", name: "Reza Firmansyah", mutual: 6 },
+  { id: "u1", name: "Bima Saputra", mutual: 4, focus: "Active Pacing" },
+  { id: "u2", name: "Sarah Wijaya", mutual: 2, focus: "Recovery Rhythm" },
+  { id: "u3", name: "Reza Firmansyah", mutual: 6, focus: "Balanced Routine" },
 ];
 
 export const COMMUNITY_CHALLENGE = {

@@ -14,10 +14,35 @@ export type Food = Nutrition & {
   portion: string;
 };
 
-/**
- * Basis kecil untuk pencarian/fallback. Pada Fase 5, nilai nutrisi berasal dari
- * Gemini API (dikirim & diproses oleh business logic), bukan tabel statis ini.
- */
+// Upgraded types for trust and analysis
+export type NutritionTrustLevel = "confirmed" | "estimated" | "self-reported" | "simulated" | "missing";
+export type FoodAnalysisStatus = "ready" | "analyzing" | "completed" | "needs-confirmation" | "unavailable" | "error";
+export type MealType = "breakfast" | "lunch" | "dinner" | "snack";
+export type NutritionSourceMode = "image-upload" | "camera" | "manual-entry" | "deterministic-demo" | "legacy-local" | "server-analysis";
+export type NutritionPrivacy = "private" | "circle" | "public-summary";
+
+export interface UpgradedFoodEntry {
+  readonly id: string;
+  readonly title: string;
+  readonly foods: readonly string[];
+  readonly mealType: MealType;
+  readonly status: FoodAnalysisStatus;
+  readonly sourceMode: NutritionSourceMode;
+  readonly trustLevel: NutritionTrustLevel;
+  readonly nutrition: Nutrition;
+  readonly burn: { run: number; bike: number; walk: number };
+  readonly activityRec: string;
+  readonly insight: string;
+  readonly hydrationContext?: string;
+  readonly summary: string;
+  readonly limitation: string;
+  readonly privacy: NutritionPrivacy;
+  readonly date: string;
+  readonly portion: string;
+  readonly isMock?: boolean;
+  readonly version?: string;
+}
+
 export const FOODS: Food[] = [
   { name: "Nasi Goreng", kcal: 333, protein: 9, carbs: 44, fat: 12, fiber: 2, sugar: 3, sodium: 640, vitamins: "B1, B3", portion: "1 piring" },
   { name: "Ayam Geprek + Nasi", kcal: 620, protein: 34, carbs: 58, fat: 28, fiber: 3, sugar: 4, sodium: 980, vitamins: "B6, B12", portion: "1 porsi" },
@@ -65,11 +90,6 @@ export type FoodAnalysis = {
   insight: string;
 };
 
-/**
- * SIMULASI keluaran AI Food Analysis. Pada Fase 5, business logic mengirim
- * foto/nama + porsi ke Gemini API, lalu memproses respons ini. Struktur dibuat
- * sama agar penggantian ke Gemini nanti minim perubahan.
- */
 export function analyze(food: Food, portion: number): FoodAnalysis {
   const scale = (n: number) => Math.round(n * portion);
   const nutrition: Nutrition = {

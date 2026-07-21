@@ -158,9 +158,14 @@
 
   --shadow-soft: 0 1px 2px rgb(16 24 20 / 0.04), 0 8px 24px -12px rgb(16 24 20 / 0.12);
   --shadow-lift: 0 2px 4px rgb(16 24 20 / 0.05), 0 24px 48px -20px rgb(16 24 20 / 0.22);
+  --shadow-premium: 0 0 0 1px rgb(16 24 20 / 0.03), 0 2px 4px rgb(16 24 20 / 0.02), 0 12px 24px -4px rgb(16 24 20 / 0.08), 0 32px 64px -16px rgb(16 24 20 / 0.16);
 
   --animate-fade-up: fade-up .5s cubic-bezier(.22,1,.36,1) both;
   --animate-scale-in: scale-in .3s cubic-bezier(.22,1,.36,1) both;
+  --animate-fade-up-premium: fade-up-premium 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-slide-down-nav: slide-down-nav 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-float: float 8s ease-in-out infinite;
+  --animate-breathe: breathe 3s ease-in-out infinite;
 
   @keyframes fade-up {
     0% { opacity: 0; transform: translateY(8px); }
@@ -169,6 +174,22 @@
   @keyframes scale-in {
     0% { opacity: 0; transform: scale(.96); }
     100% { opacity: 1; transform: scale(1); }
+  }
+  @keyframes fade-up-premium {
+    0% { opacity: 0; transform: translateY(16px); filter: blur(4px); }
+    100% { opacity: 1; transform: translateY(0); filter: blur(0); }
+  }
+  @keyframes slide-down-nav {
+    0% { opacity: 0; transform: translateY(-16px); filter: blur(2px); }
+    100% { opacity: 1; transform: translateY(0); filter: blur(0); }
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-4px); }
+  }
+  @keyframes breathe {
+    0%, 100% { filter: drop-shadow(0 0 2px rgba(16,185,129,0.2)); }
+    50% { filter: drop-shadow(0 0 8px rgba(16,185,129,0.6)); }
   }
 }
 
@@ -183,37 +204,48 @@
 @layer components {
   .container-app { @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8; }
 
-  .card { @apply rounded-2xl border bg-card text-card-foreground; box-shadow: var(--shadow-soft); }
+  .card { @apply rounded-2xl border bg-card text-card-foreground; box-shadow: var(--shadow-soft); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s ease, border-color 0.4s ease; }
   .card-pad { @apply p-5 sm:p-6; }
-  .card-hover { @apply transition duration-300; }
-  .card-hover:hover { transform: translateY(-2px); box-shadow: var(--shadow-lift); }
+  .card-hover { @apply transition; }
+  .card-hover:hover { transform: translateY(-3px); border-color: color-mix(in srgb, var(--brand) 25%, var(--border)); box-shadow: var(--shadow-premium); }
 
   .btn {
-    @apply inline-flex select-none items-center justify-center gap-2 rounded-full text-sm font-semibold leading-none transition disabled:pointer-events-none disabled:opacity-50;
-    padding: 0.7rem 1.15rem;
+    @apply inline-flex select-none items-center justify-center gap-2 rounded-full text-sm font-bold leading-none disabled:pointer-events-none disabled:opacity-50;
+    padding: 0.75rem 1.3rem;
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease, background-color 0.2s ease, border-color 0.2s ease;
   }
-  .btn-sm { padding: 0.5rem 0.85rem; @apply text-xs; }
-  .btn-lg { padding: 0.9rem 1.5rem; @apply text-base; }
-  .btn-primary { @apply bg-primary text-primary-foreground; box-shadow: 0 0 0 1px color-mix(in srgb, var(--brand) 15%, transparent), 0 12px 32px -12px color-mix(in srgb, var(--brand) 45%, transparent); }
-  .btn-primary:hover { @apply bg-brand-bright; }
-  .btn-primary:active { transform: scale(.98); }
+  .btn:hover { transform: translateY(-1.5px); }
+  .btn:active { transform: translateY(0) scale(0.97); }
+  .btn-sm { padding: 0.5rem 0.95rem; @apply text-xs; }
+  .btn-lg { padding: 0.95rem 1.7rem; @apply text-base; }
+  .btn-primary { @apply bg-primary text-primary-foreground; box-shadow: 0 0 0 1px color-mix(in srgb, var(--brand) 15%, transparent), 0 8px 24px -8px color-mix(in srgb, var(--brand) 45%, transparent); }
+  .btn-primary:hover { @apply bg-brand-bright; box-shadow: 0 0 0 1px color-mix(in srgb, var(--brand) 20%, transparent), 0 12px 28px -6px color-mix(in srgb, var(--brand) 55%, transparent); }
   .btn-ghost { @apply bg-secondary text-foreground; }
   .btn-ghost:hover { background: color-mix(in srgb, var(--line) 60%, transparent); }
-  .btn-outline { @apply border bg-transparent text-foreground; }
-  .btn-outline:hover { @apply bg-secondary; }
+  .btn-outline { @apply border bg-transparent text-foreground border-line; }
+  .btn-outline:hover { @apply bg-secondary; border-color: color-mix(in srgb, var(--brand) 20%, var(--border)); }
   .btn-lime { color: var(--lime); background: color-mix(in srgb, var(--lime) 15%, transparent); }
 
   .chip { @apply inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold; color: var(--brand); background: var(--brand-soft); }
-  .eyebrow { @apply inline-flex items-center gap-2 rounded-full border bg-card px-3 py-1 text-xs font-bold uppercase tracking-wider; color: var(--brand); }
-  .pill { @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold; }
+  .eyebrow { @apply inline-flex items-center gap-2 rounded-full border bg-card px-3 py-1 text-xs font-bold uppercase tracking-wider; color: var(--brand); border-color: color-mix(in srgb, var(--brand) 15%, var(--border)); }
+  .pill { @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold border border-transparent; }
 
-  .input { @apply w-full rounded-xl border bg-card px-4 py-2.5 text-sm text-foreground transition; }
-  .input:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand) 30%, transparent); }
-  .label { @apply mb-1.5 block text-sm font-medium text-foreground; }
+  .input { @apply w-full rounded-xl border bg-card px-4 py-2.5 text-sm text-foreground; transition: border-color 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1); }
+  .input:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 25%, transparent); }
+  .label { @apply mb-1.5 block text-xs font-bold uppercase text-muted-foreground tracking-wider; }
 
   .stat-num { @apply font-display font-extrabold tracking-tight; font-variant-numeric: tabular-nums; }
 }
 
 @layer utilities {
   .grid-dots { background-image: radial-gradient(color-mix(in srgb, var(--muted-foreground) 15%, transparent) 1px, transparent 1px); background-size: 22px 22px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

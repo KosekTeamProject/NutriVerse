@@ -1,15 +1,21 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTheme } from "@/hooks/useTheme";
 import {
   LayoutDashboard, ScanLine, Activity, Trophy, Users, Gift, Settings,
-  Menu, X, Sun, Moon, Bell, Search, Flame, Leaf, UsersRound,
+  Menu, X, Sun, Moon, Bell, Search, Flame, Leaf, UsersRound, Compass, Heart,
+  CalendarCheck, Sparkles,
 } from "lucide-react";
 
 const NAV = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/todays-journey", label: "Today", icon: CalendarCheck },
+  { href: "/health-pulse", label: "Health Pulse", icon: Heart },
+  { href: "/journey", label: "Journey", icon: Compass },
+  { href: "/companion", label: "Companion", icon: Sparkles },
   { href: "/scan", label: "Scan Makanan", icon: ScanLine },
   { href: "/aktivitas", label: "Aktivitas", icon: Activity },
   { href: "/challenge", label: "Challenge", icon: Trophy },
@@ -64,21 +70,7 @@ function SidebarContent({ pathname, onNavigate }: { pathname: string; onNavigate
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [dark, setDark] = useState(false);
-
-  useEffect(() => {
-    setDark(document.documentElement.classList.contains("dark"));
-  }, []);
-
-  const toggleTheme = () => {
-    const el = document.documentElement;
-    const next = !el.classList.contains("dark");
-    el.classList.toggle("dark", next);
-    try {
-      localStorage.setItem("nv-theme", next ? "dark" : "light");
-    } catch {}
-    setDark(next);
-  };
+  const { dark, toggleTheme } = useTheme();
 
   return (
     <div className="min-h-screen bg-background">
@@ -119,8 +111,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
 
             <div className="ml-auto flex items-center gap-2">
-              <span className="pill hidden bg-amber/15 text-amber sm:inline-flex"><Flame className="h-3.5 w-3.5" /> 12.450 XP</span>
-              <span className="pill hidden bg-brand-soft text-brand sm:inline-flex">3.280 HP</span>
+              <span className="pill hidden bg-amber/15 text-amber sm:inline-flex" title="Saldo XP Simulasi Demo" aria-label="Saldo 12450 XP Demo"><Flame className="h-3.5 w-3.5" /> 12.450 XP <span className="text-[9px] opacity-75 font-normal ml-0.5">Demo</span></span>
+              <span className="pill hidden bg-brand-soft text-brand sm:inline-flex" title="Saldo HP Simulasi Demo" aria-label="Saldo 3280 HP Demo">3.280 HP <span className="text-[9px] opacity-75 font-normal ml-0.5">Demo</span></span>
               <button onClick={toggleTheme} className="grid h-9 w-9 place-items-center rounded-lg text-muted-foreground hover:bg-secondary" aria-label="Ganti tema">
                 {dark ? <Sun className="h-[18px] w-[18px]" /> : <Moon className="h-[18px] w-[18px]" />}
               </button>
@@ -128,7 +120,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <Bell className="h-[18px] w-[18px]" />
                 <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-destructive" />
               </button>
-              <Link href="/profil" className="grid h-9 w-9 place-items-center rounded-full bg-gradient-to-br from-brand to-lime text-sm font-bold text-white transition hover:opacity-90">RA</Link>
+              <Link href="/profil" className="grid h-9 w-9 place-items-center rounded-full bg-gradient-to-br from-brand to-lime text-sm font-bold text-white transition hover:opacity-90">FM</Link>
             </div>
           </div>
         </header>

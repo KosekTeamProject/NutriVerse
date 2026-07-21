@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import {
   Droplets, Footprints, Bike, Moon, Salad, Flame, Target, Trophy,
   Zap, Heart, Check, CheckCircle2, Sparkles, Activity, Dumbbell, Info, Plus,
@@ -40,51 +41,82 @@ function ChallengeCard({ c, now, onMark }: { c: Challenge; now: number; onMark: 
   const done = now >= c.goal;
   const auto = c.source === "gps";
 
+  const trustLabel = auto ? "Verified" : "Self-Reported";
+  const sourceLabel = auto ? "Automatic Progress" : "Self-Reported";
+
   return (
-    <div className="card card-pad card-hover">
-      <div className="flex items-start gap-4">
-        <span className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl ${TIER_STYLE[c.tier]}`}>
-          <Icon className="h-6 w-6" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className="truncate font-display text-base font-bold">{c.title}</h3>
-            <span className={`pill ${TIER_STYLE[c.tier]}`}>{c.tier}</span>
+    <div className="card card-pad card-hover flex flex-col justify-between">
+      <div className="space-y-4">
+        <div className="flex items-start gap-4">
+          <span className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl ${TIER_STYLE[c.tier]}`}>
+            <Icon className="h-6 w-6" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <Link href={`/challenge/${c.id}`} className="hover:text-brand transition flex-1 min-w-0">
+                <h3 className="truncate font-display text-base font-bold">{c.title}</h3>
+              </Link>
+              <span className={`pill text-[10px] uppercase font-bold ${TIER_STYLE[c.tier]}`}>{c.tier}</span>
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground leading-normal">{c.desc}</p>
+            <div className="mt-2.5 flex flex-wrap gap-2">
+              <CategoryChip category={c.category} />
+              <span className="pill bg-secondary text-muted-foreground text-[9px] font-bold uppercase">{trustLabel}</span>
+            </div>
           </div>
-          <p className="mt-0.5 text-sm text-muted-foreground">{c.desc}</p>
-          <div className="mt-2"><CategoryChip category={c.category} /></div>
+        </div>
+
+        {/* Progress Tracker */}
+        <div>
+          <div className="flex items-center justify-between text-xs font-semibold text-muted-foreground">
+            <span className="capitalize">{c.period}</span>
+            <span>{now % 1 === 0 ? now : now.toFixed(1)} / {c.goal} {c.unit} ({pct}%)</span>
+          </div>
+          <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-secondary">
+            <div 
+              className={`h-full rounded-full transition-all duration-500 ${done ? "bg-brand" : "bg-gradient-to-r from-brand to-lime"}`} 
+              style={{ width: `${pct}%` }} 
+            />
+          </div>
         </div>
       </div>
 
-      <div className="mt-4">
-        <div className="flex items-center justify-between text-xs">
-          <span className="font-medium capitalize text-muted-foreground">{c.period}</span>
-          <span className="stat-num text-muted-foreground">{now % 1 === 0 ? now : now.toFixed(1)}/{c.goal} {c.unit}</span>
-        </div>
-        <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-secondary">
-          <div className={`h-full rounded-full ${done ? "bg-brand" : "bg-gradient-to-r from-brand to-brand-bright"}`} style={{ width: `${pct}%` }} />
-        </div>
-      </div>
+      <div className="mt-4 border-t border-line/40 pt-4 space-y-3">
+        {/* Source info notice */}
+        <p className="text-[10px] text-muted-foreground italic leading-normal">
+          {auto 
+            ? "Only trusted walking or running activity contributes to this Challenge."
+            : "This Challenge uses Traveler confirmation as supportive wellness data."
+          }
+        </p>
 
-      <div className="mt-4 flex items-center justify-between gap-2">
-        <div className="flex flex-wrap gap-2">
-          {c.xp > 0 && <span className="pill bg-amber/15 text-amber"><Zap className="h-3.5 w-3.5" /> +{c.xp} XP</span>}
-          <span className="pill bg-brand-soft text-brand"><Heart className="h-3.5 w-3.5" /> +{c.hp} HP</span>
-        </div>
+        <div className="flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap">
+          {/* Potential Reward Previews */}
+          <div className="flex flex-wrap gap-2 text-[10px]">
+            {c.xp > 0 && (
+              <span className="pill bg-amber/10 text-amber font-bold flex items-center gap-1">
+                <Zap className="h-3.5 w-3.5" /> +{c.xp} Potential XP
+              </span>
+            )}
+            <span className="pill bg-brand-soft text-brand font-bold flex items-center gap-1">
+              <Heart className="h-3.5 w-3.5" /> +{c.hp} Potential HP
+            </span>
+          </div>
 
-        {done ? (
-          <span className="pill bg-brand-soft text-brand">
-            <CheckCircle2 className="h-3.5 w-3.5" /> {auto ? "Tercapai otomatis" : "Selesai"}
-          </span>
-        ) : auto ? (
-          <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
-            <Activity className="h-3.5 w-3.5 text-brand" /> Otomatis dari aktivitas
-          </span>
-        ) : (
-          <button onClick={() => onMark(c.id)} className="btn btn-primary btn-sm">
-            <Check className="h-3.5 w-3.5" /> Tandai selesai
-          </button>
-        )}
+          {done ? (
+            <span className="pill bg-brand-soft text-brand font-bold flex items-center gap-1 text-[11px] self-end sm:self-center">
+              <CheckCircle2 className="h-3.5 w-3.5" /> {auto ? "Tercapai otomatis" : "Selesai"}
+            </span>
+          ) : auto ? (
+            <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground font-semibold self-end sm:self-center">
+              <Activity className="h-3.5 w-3.5 text-brand" /> {sourceLabel}
+            </span>
+          ) : (
+            <button onClick={() => onMark(c.id)} className="btn btn-primary btn-xs font-bold self-end sm:self-center">
+              <Check className="h-3.5 w-3.5" /> Tandai selesai
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -108,7 +140,7 @@ export function ChallengeHub() {
   return (
     <div className="space-y-6">
       {/* ringkasan misi harian */}
-      <div className="card card-pad bg-gradient-to-br from-brand to-lime text-white">
+      <div className="card card-pad bg-gradient-to-br from-brand to-lime text-white shadow-soft">
         <div className="flex items-center gap-3">
           <span className="grid h-11 w-11 place-items-center rounded-2xl bg-white/20"><Sparkles className="h-6 w-6" /></span>
           <div className="flex-1">
@@ -117,28 +149,32 @@ export function ChallengeHub() {
           </div>
         </div>
         <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/25">
-          <div className="h-full rounded-full bg-white transition-all" style={{ width: `${(dailyDone / daily.length) * 100}%` }} />
+          <div className="h-full rounded-full bg-white transition-all duration-500" style={{ width: `${(dailyDone / daily.length) * 100}%` }} />
         </div>
       </div>
 
       {/* penjelasan XP vs HP */}
-      <div className="flex items-start gap-2 rounded-2xl border border-sky/20 bg-sky/5 p-4 text-sm text-muted-foreground">
-        <Info className="mt-0.5 h-4 w-4 shrink-0 text-sky" />
-        <p>
-          Kategori <span className="font-semibold text-foreground">Cardio &amp; Mobility</span> (lari/sepeda/jalan) terisi
-          otomatis dari GPS dan memberi <span className="font-semibold text-amber">XP</span>. Kategori lain (Strength,
-          Nutrition, Recovery, Habit) ditandai manual dan memberi <span className="font-semibold text-brand">HP</span> saja.
-        </p>
+      <div className="flex items-start gap-2 rounded-2xl border border-sky/20 bg-sky/5 p-4 text-xs text-muted-foreground">
+        <Info className="mt-0.5 h-4.5 w-4.5 shrink-0 text-sky" />
+        <div>
+          <p className="font-bold text-foreground mb-0.5">Eligible Progress &amp; Reward Preview</p>
+          <p>
+            Kategori <span className="font-semibold text-foreground">Cardio &amp; Mobility</span> (lari/sepeda/jalan) terisi
+            otomatis dari GPS dan memberi <span className="font-semibold text-amber">XP</span>. Kategori lain (Strength,
+            Nutrition, Recovery, Habit) ditandai manual dan memberi <span className="font-semibold text-brand">HP</span> saja. 
+            Semua hadiah di bawah ini bersifat estimasi/preview dan tunduk pada aturan keamanan sistem.
+          </p>
+        </div>
       </div>
 
       {/* filter periode (track record) */}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2 pb-2 border-b border-line/20">
         {FILTERS.map((f) => (
           <button
             key={f.key}
             onClick={() => setFilter(f.key)}
-            className={`rounded-full px-4 py-1.5 text-sm font-semibold transition ${
-              filter === f.key ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground hover:text-foreground"
+            className={`rounded-full px-4.5 py-1.5 text-xs font-bold uppercase tracking-wider transition ${
+              filter === f.key ? "bg-primary text-primary-foreground shadow-sm" : "bg-secondary text-muted-foreground hover:text-foreground"
             }`}
           >
             {f.label}
@@ -155,7 +191,7 @@ export function ChallengeHub() {
 
       {/* challenge opsional (autonomy / SDT) */}
       {optional.length > 0 && (
-        <div className="space-y-4">
+        <div className="space-y-4 pt-4 border-t border-line/30">
           <div>
             <h2 className="font-display text-lg font-bold">Tantangan opsional</h2>
             <p className="text-sm text-muted-foreground">Ingin tantangan ekstra? Ikuti yang kamu mau - sepenuhnya pilihanmu.</p>
@@ -167,16 +203,23 @@ export function ChallengeHub() {
               }
               const Icon = ICONS[c.icon] ?? Target;
               return (
-                <div key={c.id} className="card card-pad flex items-center gap-4">
-                  <span className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl ${TIER_STYLE[c.tier]}`}>
-                    <Icon className="h-6 w-6" />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <h3 className="truncate font-display text-base font-bold">{c.title}</h3>
-                    <p className="mt-0.5 text-sm text-muted-foreground">{c.desc}</p>
-                    <div className="mt-2"><CategoryChip category={c.category} /></div>
+                <div key={c.id} className="card card-pad flex items-center justify-between gap-4 card-hover">
+                  <div className="flex items-center gap-4 min-w-0 flex-1">
+                    <span className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl ${TIER_STYLE[c.tier]}`}>
+                      <Icon className="h-6 w-6" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <Link href={`/challenge/${c.id}`} className="hover:text-brand transition block">
+                        <h3 className="truncate font-display text-base font-bold">{c.title}</h3>
+                      </Link>
+                      <p className="mt-0.5 text-xs text-muted-foreground truncate">{c.desc}</p>
+                      <div className="mt-2 flex gap-2">
+                        <CategoryChip category={c.category} />
+                        <span className="pill bg-secondary text-muted-foreground text-[9px] font-bold uppercase">Optional Selection</span>
+                      </div>
+                    </div>
                   </div>
-                  <button onClick={() => follow(c.id)} className="btn btn-outline btn-sm shrink-0">
+                  <button onClick={() => follow(c.id)} className="btn btn-outline btn-xs font-bold shrink-0">
                     <Plus className="h-3.5 w-3.5" /> Ikuti
                   </button>
                 </div>

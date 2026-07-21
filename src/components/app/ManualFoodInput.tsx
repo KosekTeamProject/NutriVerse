@@ -1,14 +1,17 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Search, Plus, Minus, Check, Sparkles, Info, ArrowLeft } from "lucide-react";
+import { Search, Plus, Minus, Check, Sparkles, Info, ArrowLeft, Globe, Database } from "lucide-react";
 import { searchFoods, analyze, type Food } from "@/lib/food";
 import type { LoggedFood } from "./FoodScanner";
+import { FoodSearchPanel } from "@/features/nutrition/components/FoodSearchPanel";
 
 type Step = "search" | "detail";
+type Mode = "online" | "demo";
 const PORTIONS = [0.5, 1, 1.5, 2];
 
 export function ManualFoodInput({ onAdd }: { onAdd?: (entry: LoggedFood) => void }) {
+  const [mode, setMode] = useState<Mode>("online");
   const [step, setStep] = useState<Step>("search");
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<Food | null>(null);
@@ -26,7 +29,6 @@ export function ManualFoodInput({ onAdd }: { onAdd?: (entry: LoggedFood) => void
 
   function submit() {
     if (!selected) return;
-    // Konfirmasi -> business logic mengirim nama + porsi + jumlah ke Gemini (simulasi).
     const a = analyze(selected, portion * qty);
     onAdd?.({
       name: selected.name,
@@ -34,6 +36,7 @@ export function ManualFoodInput({ onAdd }: { onAdd?: (entry: LoggedFood) => void
       nutrition: a.nutrition,
       activityRec: a.activityRec,
       insight: a.insight,
+      trustLevel: "self-reported"
     });
     setSelected(null);
     setQuery("");
@@ -68,41 +71,78 @@ export function ManualFoodInput({ onAdd }: { onAdd?: (entry: LoggedFood) => void
           <span className="ml-auto text-sm text-muted-foreground">Estimasi <span className="stat-num text-foreground">{preview.nutrition.kcal}</span> kkal</span>
         </div>
 
-        <button onClick={submit} className="btn btn-primary mt-5 w-full"><Sparkles className="h-[18px] w-[18px]" /> Analisis dengan AI &amp; simpan</button>
+        <button onClick={submit} className="btn btn-primary mt-5 w-full"><Sparkles className="h-[18px] w-[18px]" /> Simpan Catatan Makanan</button>
 
         <div className="mt-4 flex items-start gap-2 rounded-xl bg-sky/5 p-3 text-xs text-muted-foreground">
           <Info className="mt-0.5 h-4 w-4 shrink-0 text-sky" />
-          <p>Input manual dipakai saat AI gagal mengenali makanan. Setelah konfirmasi, data dikirim ke AI untuk analisis nutrisi yang lebih akurat.</p>
+          <p>Input manual dipakai saat foto makanan kurang jelas atau untuk mencatat porsi khusus.</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="card card-pad">
-      <div className="relative">
-        <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Ketik nama makanan, mis. nasi goreng" className="input pl-10" />
+    <div className="card card-pad space-y-4">
+      {/* Mode Sub-tabs */}
+      <div className="flex items-center justify-center gap-2 p-1 rounded-xl bg-secondary text-xs">
+        <button
+          onClick={() => setMode("online")}
+          className={`flex-1 py-2 rounded-lg font-bold transition flex items-center justify-center gap-1.5 ${
+            mode === "online" ? "bg-card text-brand shadow-sm" : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <Globe className="h-3.5 w-3.5" /> Cari Online (USDA)
+        </button>
+        <button
+          onClick={() => setMode("demo")}
+          className={`flex-1 py-2 rounded-lg font-bold transition flex items-center justify-center gap-1.5 ${
+            mode === "demo" ? "bg-card text-brand shadow-sm" : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <Database className="h-3.5 w-3.5" /> Contoh Makanan Demo
+        </button>
       </div>
-      <div className="mt-4 max-h-80 space-y-2 overflow-y-auto pr-1">
-        {results.length === 0 ? (
-          <p className="py-6 text-center text-sm text-muted-foreground">Tidak ada makanan yang cocok.</p>
-        ) : (
-          results.map((f) => (
-            <button key={f.name} onClick={() => choose(f)} className="flex w-full items-center gap-3 rounded-2xl border border-line p-3 text-left transition hover:bg-secondary">
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold">{f.name}</p>
-                <p className="text-xs text-muted-foreground">{f.portion} &middot; {f.kcal} kkal</p>
-              </div>
-              <Check className="h-4 w-4 shrink-0 text-muted-foreground" />
-            </button>
-          ))
-        )}
-      </div>
-      <div className="mt-4 flex items-start gap-2 rounded-xl bg-sky/5 p-3 text-xs text-muted-foreground">
-        <Info className="mt-0.5 h-4 w-4 shrink-0 text-sky" />
-        <p>Gunakan input manual bila foto kurang jelas atau makanan tidak terdeteksi AI. Pilih makanan lalu tentukan porsi &amp; jumlah.</p>
-      </div>
+
+      {mode === "online" ? (
+        <FoodSearchPanel
+          onConfirmFood={(summary) => {
+            onAdd?.({
+              name: summary.name,
+              portion: summary.portionLabel,
+              nutrition: summary.scaled.nutrition,
+              activityRec: "Jalan kaki santai 60 menit untuk mengimbangi porsi ini.",
+              insight: `Informasi nutrisi bersumber dari ${summary.sourceLabel} dan disesuaikan porsi.`,
+              trustLevel: "confirmed",
+            });
+          }}
+        />
+      ) : (
+        <div className="space-y-4">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Ketik nama makanan demo, mis. nasi goreng" className="input pl-10 text-sm" />
+          </div>
+          <div className="max-h-80 space-y-2 overflow-y-auto pr-1">
+            {results.length === 0 ? (
+              <p className="py-6 text-center text-xs text-muted-foreground">Tidak ada makanan demo yang cocok.</p>
+            ) : (
+              results.map((f) => (
+                <button key={f.name} onClick={() => choose(f)} className="flex w-full items-center gap-3 rounded-2xl border border-line p-3 text-left transition hover:bg-secondary">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold">{f.name}</p>
+                    <p className="text-xs text-muted-foreground">{f.portion} &middot; {f.kcal} kkal</p>
+                  </div>
+                  <Check className="h-4 w-4 shrink-0 text-muted-foreground" />
+                </button>
+              ))
+            )}
+          </div>
+          <div className="flex items-start gap-2 rounded-xl bg-sky/5 p-3 text-xs text-muted-foreground">
+            <Info className="mt-0.5 h-4 w-4 shrink-0 text-sky" />
+            <p>Pilih makanan dari daftar demo bawaan bila koneksi internet terbatas.</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,6 +1,10 @@
 import { ChallengeHub } from "@/components/app/ChallengeHub";
+import { getPrimaryCompanionInsight } from "@/features/companion/helpers";
+import { CompanionCard } from "@/features/companion/components/CompanionComponents";
 
 export default function ChallengePage() {
+  const challengeInsight = getPrimaryCompanionInsight("challenge");
+
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <div>
@@ -9,6 +13,10 @@ export default function ChallengePage() {
           Tantangan harian, mingguan, dan bulanan dalam satu tempat. Selesaikan untuk meraih XP dan Health Points.
         </p>
       </div>
+
+      {challengeInsight && (
+        <CompanionCard insight={challengeInsight} variant="compact" showPriority={true} />
+      )}
 
       <ChallengeHub />
     </div>

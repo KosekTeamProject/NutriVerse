@@ -5,9 +5,9 @@ export default function LeaderboardPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <div>
-        <h1 className="font-display text-2xl font-extrabold tracking-tight sm:text-3xl">Leaderboard</h1>
+        <h1 className="font-display text-2xl font-extrabold tracking-tight sm:text-3xl">Consistency Leaderboard</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Peringkat berdasarkan XP musim ini. Bersaing secara global, di kampus, atau dengan teman.
+          Peringkat berdasarkan konsistensi harian dan aktivitas terverifikasi. Bersaing secara suportif dan aman bersama rekan perjalanan.
         </p>
       </div>
 
