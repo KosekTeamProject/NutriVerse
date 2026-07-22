@@ -43,14 +43,14 @@ export default async function ChallengeDetailPage({ params }: ChallengeDetailPag
           href="/challenge" 
           className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground hover:text-brand transition"
         >
-          <ArrowLeft className="h-4 w-4" /> Back to Challenge Hub
+          <ArrowLeft className="h-4 w-4" /> Kembali ke Pusat Tantangan
         </Link>
       </div>
 
       {/* Page Header */}
       <div className="border-b border-line/40 pb-5">
         <span className={`pill text-[10px] font-bold uppercase tracking-wider ${TIER_STYLE[challenge.tier]}`}>
-          {challenge.tier} Tier
+          Tier {challenge.tier}
         </span>
         <h1 className="font-display text-3xl font-extrabold tracking-tight text-foreground mt-2">
           {challenge.title}
@@ -63,13 +63,13 @@ export default async function ChallengeDetailPage({ params }: ChallengeDetailPag
       {/* Progress Card */}
       <div className="card card-pad space-y-4">
         <div>
-          <h3 className="font-display text-base font-bold text-foreground">Challenge Progress</h3>
-          <p className="text-xs text-muted-foreground mt-0.5">Tracking status for current cycle</p>
+          <h3 className="font-display text-base font-bold text-foreground">Progres Tantangan</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">Status progres pada periode berjalan.</p>
         </div>
 
         <div className="space-y-2">
           <div className="flex items-center justify-between text-xs font-semibold text-muted-foreground">
-            <span className="capitalize">{challenge.period} Target</span>
+            <span className="capitalize">Target {challenge.period}</span>
             <span>{now} / {challenge.goal} {challenge.unit} ({pct}%)</span>
           </div>
           <div className="h-3 overflow-hidden rounded-full bg-secondary">
@@ -83,14 +83,14 @@ export default async function ChallengeDetailPage({ params }: ChallengeDetailPag
         <div className="flex items-center justify-between border-t border-line/40 pt-4 flex-wrap gap-2 text-xs">
           <div className="flex gap-2 items-center text-muted-foreground">
             <Activity className="h-4 w-4 text-brand" />
-            <span className="font-semibold text-foreground">Source Mode:</span>
-            <span className="capitalize">{challenge.source === "gps" ? "Automatic Progress" : "Self-Reported"}</span>
+            <span className="font-semibold text-foreground">Sumber:</span>
+            <span>{challenge.source === "gps" ? "Progres Otomatis" : "Catatan Mandiri"}</span>
           </div>
 
           <div className="flex gap-2 items-center text-muted-foreground">
             <ShieldCheck className="h-4 w-4 text-brand" />
-            <span className="font-semibold text-foreground">Trust Level:</span>
-            <span className="capitalize">{challenge.source === "gps" ? "Verified" : "Self-Reported"}</span>
+            <span className="font-semibold text-foreground">Tingkat Kepercayaan:</span>
+            <span>{challenge.source === "gps" ? "Terverifikasi" : "Catatan Mandiri"}</span>
           </div>
         </div>
       </div>
@@ -98,21 +98,21 @@ export default async function ChallengeDetailPage({ params }: ChallengeDetailPag
       {/* Eligible Activities info */}
       <div className="card card-pad space-y-3">
         <div>
-          <h3 className="font-display text-sm font-bold text-foreground">Eligible Data Sources</h3>
-          <p className="text-xs text-muted-foreground mt-0.5">Telemetry coordinates accepted for tracking</p>
+          <h3 className="font-display text-sm font-bold text-foreground">Sumber Data yang Memenuhi Syarat</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">Data yang dapat digunakan untuk menghitung progres.</p>
         </div>
 
         <div className="rounded-xl border border-line p-3 flex justify-between items-center text-xs">
-          <span className="font-semibold text-foreground">Activity Mode</span>
+          <span className="font-semibold text-foreground">Mode Aktivitas</span>
           <span className="text-muted-foreground">
-            {challenge.source === "gps" ? "Verified browser GPS metrics" : "Traveler self-logged checklist entries"}
+            {challenge.source === "gps" ? "Metrik GPS yang telah diverifikasi" : "Daftar cek yang dicatat pengguna"}
           </span>
         </div>
 
         <p className="text-xs text-muted-foreground leading-normal">
           {challenge.source === "gps" 
-            ? "Verified walking or running activity may contribute to this Challenge."
-            : "Self-reported entries are useful for logging consistency but do not trigger verified activity status."
+            ? "Aktivitas jalan atau lari terverifikasi dapat menambah progres Tantangan ini."
+            : "Catatan mandiri berguna untuk melihat konsistensi, tetapi tidak memperoleh status aktivitas terverifikasi."
           }
         </p>
       </div>
@@ -121,15 +121,15 @@ export default async function ChallengeDetailPage({ params }: ChallengeDetailPag
       <div className="card card-pad bg-gradient-to-br from-brand/5 to-secondary/35 border-brand/20 space-y-4">
         <div>
           <h4 className="text-xs text-brand font-bold uppercase tracking-wider flex items-center gap-1.5">
-            Potential Reward Preview
+            Pratinjau Hadiah Potensial
           </h4>
-          <p className="text-xs text-muted-foreground mt-1">Estimates granted upon verified server completion</p>
+          <p className="text-xs text-muted-foreground mt-1">Estimasi diberikan setelah penyelesaian divalidasi server.</p>
         </div>
 
         <div className="grid grid-cols-2 gap-3 text-center">
           {challenge.xp > 0 && (
             <div className="rounded-xl border border-line bg-card/65 p-3.5 space-y-1">
-              <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Potential XP</p>
+              <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">XP Potensial</p>
               <p className="text-lg font-extrabold text-foreground flex items-center justify-center gap-1">
                 <Zap className="h-4.5 w-4.5 text-amber" /> +{challenge.xp} XP
               </p>
@@ -137,7 +137,7 @@ export default async function ChallengeDetailPage({ params }: ChallengeDetailPag
           )}
 
           <div className="rounded-xl border border-line bg-card/65 p-3.5 space-y-1 col-span-2 sm:col-span-1">
-            <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Potential HP Gain</p>
+            <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">HP Potensial</p>
             <p className="text-lg font-extrabold text-brand flex items-center justify-center gap-1">
               <Heart className="h-4.5 w-4.5 text-brand" /> +{challenge.hp} HP
             </p>
@@ -145,7 +145,7 @@ export default async function ChallengeDetailPage({ params }: ChallengeDetailPag
         </div>
 
         <p className="text-[11px] text-muted-foreground italic leading-normal bg-secondary/40 rounded-xl p-2.5 border border-line/20">
-          * Potential XP/HP after validated completion. Only trusted activity contributes.
+          * XP/HP diberikan setelah penyelesaian tervalidasi. Hanya aktivitas tepercaya yang dihitung.
         </p>
       </div>
 
@@ -157,30 +157,30 @@ export default async function ChallengeDetailPage({ params }: ChallengeDetailPag
       {/* Fair Progress Section */}
       <div className="card card-pad bg-secondary/35 border-line/65 space-y-4">
         <div>
-          <h3 className="font-display text-base font-bold text-foreground">Fair Progress</h3>
-          <p className="text-xs text-muted-foreground mt-0.5">Ensuring balanced and trusted consistency metrics</p>
+          <h3 className="font-display text-base font-bold text-foreground">Progres yang Adil</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">Menjaga metrik konsistensi tetap seimbang dan tepercaya.</p>
         </div>
 
         <ul className="space-y-2.5 text-xs text-muted-foreground leading-relaxed">
           <li className="flex items-start gap-2">
             <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-brand" />
-            <span>GPS-based Challenge progress should use trusted, validated activity data.</span>
+            <span>Progres Tantangan berbasis GPS harus menggunakan data aktivitas yang tervalidasi.</span>
           </li>
           <li className="flex items-start gap-2">
             <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-brand" />
-            <span>Manual Challenges remain clearly labeled as self-reported to protect data integrity.</span>
+            <span>Tantangan manual diberi label catatan mandiri untuk menjaga integritas data.</span>
           </li>
           <li className="flex items-start gap-2">
             <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-brand" />
-            <span>Self-reported data is useful but does not become verified automatically.</span>
+            <span>Data mandiri tetap berguna, tetapi tidak otomatis menjadi data terverifikasi.</span>
           </li>
           <li className="flex items-start gap-2">
             <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-brand" />
-            <span>Recovery and rest days are valid healthy progress; missing data is treated neutrally.</span>
+            <span>Pemulihan dan istirahat adalah progres sehat; data kosong diperlakukan netral.</span>
           </li>
           <li className="flex items-start gap-2">
             <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-brand" />
-            <span>Rewards require trusted server-side validation processing in the final production release.</span>
+            <span>Hadiah memerlukan validasi server tepercaya pada versi produksi.</span>
           </li>
         </ul>
       </div>
@@ -189,20 +189,20 @@ export default async function ChallengeDetailPage({ params }: ChallengeDetailPag
       <div className="card card-pad space-y-4">
         <div>
           <h3 className="font-display text-base font-bold text-foreground flex items-center gap-1.5">
-            <Lock className="h-5 w-5 text-brand" /> Privacy &amp; Visibility
+            <Lock className="h-5 w-5 text-brand" /> Privasi &amp; Visibilitas
           </h3>
-          <p className="text-xs text-muted-foreground mt-0.5">Control how your wellness details are logged</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Kendalikan bagaimana detail kesehatan Anda dicatat.</p>
         </div>
 
         <p className="text-xs text-muted-foreground leading-normal">
-          Activity Challenge summaries may be set to public-safe, while nutrition, hydration, and recovery details remain strictly private by default. Raw GPS tracking coordinates are never exposed in public Challenge presentations.
+          Ringkasan Tantangan dapat dibuat aman untuk publik, sedangkan detail nutrisi, hidrasi, dan pemulihan tetap privat. Koordinat GPS mentah tidak pernah ditampilkan kepada publik.
         </p>
       </div>
 
       {/* Navigation CTA */}
       <div className="pt-2">
         <Link href="/todays-journey" className="btn btn-primary w-full py-3 flex items-center justify-center gap-2">
-          <Compass className="h-5 w-5" /> View Today’s Journey
+          <Compass className="h-5 w-5" /> Lihat Perjalanan Hari Ini
         </Link>
       </div>
 
@@ -210,7 +210,7 @@ export default async function ChallengeDetailPage({ params }: ChallengeDetailPag
       <div className="flex items-start gap-2.5 rounded-2xl bg-secondary/50 p-4 text-[10px] text-muted-foreground border border-line/30">
         <AlertTriangle className="h-4 w-4 shrink-0 text-muted-foreground mt-0.5" />
         <p>
-          Some goals in this competition MVP use deterministic simulated data to demonstrate the intended Behavior Engine experience.
+          Sejumlah target pada MVP ini memakai data simulasi deterministik untuk memperagakan sistem kebiasaan yang direncanakan.
         </p>
       </div>
     </div>

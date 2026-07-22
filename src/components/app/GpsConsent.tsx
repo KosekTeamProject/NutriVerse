@@ -1,14 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { MapPin, ShieldCheck, Clock, Database, EyeOff, Check, ChevronDown } from "lucide-react";
+import { MapPin, ShieldCheck, Clock, Database, EyeOff, Check, ChevronDown, Trash2 } from "lucide-react";
 
 const POINTS = [
   { icon: MapPin, title: "Mengapa GPS diperlukan", text: "Untuk menghitung jarak dan pace aktivitas - satu-satunya sumber XP yang terverifikasi." },
   { icon: Clock, title: "Kapan GPS aktif", text: "Hanya selama sesi tracking berjalan dan halaman terbuka." },
   { icon: EyeOff, title: "Kapan GPS berhenti", text: "Segera setelah kamu menghentikan atau menyelesaikan aktivitas." },
-  { icon: Database, title: "Data yang disimpan", text: "Ringkasan jarak, durasi, pace, dan XP - bukan pelacakan lokasi terus-menerus." },
-  { icon: ShieldCheck, title: "Privasi", text: "Lokasi tidak dibagikan publik. Kamu bisa mencabut izin kapan saja lewat pengaturan." },
+  { icon: Database, title: "Data yang digunakan", text: "Sampel rute dipakai selama sesi untuk validasi; ringkasan jarak, durasi, pace, dan status verifikasi dapat disimpan." },
+  { icon: EyeOff, title: "Yang tidak pernah ditampilkan", text: "Rute mentah dan koordinat presisi tidak tampil di leaderboard, komunitas, atau profil publik." },
+  { icon: Trash2, title: "Retensi & penghapusan", text: "MVP browser tidak mengunggah rute. Kebijakan retensi dan penghapusan server wajib ditetapkan sebelum produksi." },
+  { icon: ShieldCheck, title: "Kontrolmu", text: "Kamu dapat menghentikan tracking atau mencabut izin lokasi kapan saja lewat pengaturan browser." },
 ];
 
 export function GpsConsent() {

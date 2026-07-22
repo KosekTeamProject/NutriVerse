@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, AlertTriangle, Compass, Info } from "lucide-react";
+import { ArrowLeft, AlertTriangle, Info } from "lucide-react";
 import Link from "next/link";
 import { currentWeeklyLetter } from "@/features/companion/data";
 import { useCompanionName } from "@/hooks/useCompanionName";
@@ -18,7 +18,7 @@ export default function WeeklyLetterPage() {
           href="/companion" 
           className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground hover:text-brand transition"
         >
-          <ArrowLeft className="h-4 w-4" /> Back to Companion Hub
+          <ArrowLeft className="h-4 w-4" /> Kembali ke Nora
         </Link>
       </div>
 
@@ -26,7 +26,7 @@ export default function WeeklyLetterPage() {
       <div className="border-b border-line/40 pb-5 space-y-2">
         <div className="flex items-center gap-2">
           <span className="pill bg-brand-soft text-brand text-[10px] font-bold uppercase tracking-wider">
-            Cycle Report
+            Laporan Mingguan
           </span>
           <span className="text-xs text-muted-foreground font-mono">
             {startStr} &mdash; {endStr}
@@ -36,7 +36,7 @@ export default function WeeklyLetterPage() {
           {currentWeeklyLetter.title}
         </h1>
         <p className="text-muted-foreground text-sm font-medium">
-          A calm reflection on the wellness patterns shaping your week.
+          Refleksi tenang mengenai pola kesehatan yang terbentuk sepanjang minggu Anda.
         </p>
       </div>
 
@@ -54,22 +54,22 @@ export default function WeeklyLetterPage() {
 
         {/* Weekly Metrics Dashboard Summary Grid */}
         <div className="border-t border-b border-line/45 py-4 space-y-3">
-          <h3 className="font-display text-xs font-bold text-brand uppercase tracking-wider">Cycle Summary Coordinates</h3>
+          <h3 className="font-display text-xs font-bold text-brand uppercase tracking-wider">Ringkasan Mingguan</h3>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <div className="rounded-xl border border-line bg-card p-3 text-center">
-              <p className="text-[9px] text-muted-foreground font-semibold">PULSE RANGE</p>
+              <p className="text-[9px] text-muted-foreground font-semibold">RENTANG PULSE</p>
               <p className="text-xs font-bold text-foreground mt-1">76.8 &rarr; 78.0</p>
             </div>
             <div className="rounded-xl border border-line bg-card p-3 text-center">
-              <p className="text-[9px] text-muted-foreground font-semibold">STREAK PATTERN</p>
-              <p className="text-xs font-bold text-brand mt-1">7 Days</p>
+              <p className="text-[9px] text-muted-foreground font-semibold">POLA STREAK</p>
+              <p className="text-xs font-bold text-brand mt-1">7 Hari</p>
             </div>
             <div className="rounded-xl border border-line bg-card p-3 text-center">
-              <p className="text-[9px] text-muted-foreground font-semibold">PRIMARY LOG</p>
-              <p className="text-xs font-bold text-foreground mt-1">1.4 km walk</p>
+              <p className="text-[9px] text-muted-foreground font-semibold">CATATAN UTAMA</p>
+              <p className="text-xs font-bold text-foreground mt-1">Jalan 1,4 km</p>
             </div>
             <div className="rounded-xl border border-line bg-card p-3 text-center">
-              <p className="text-[9px] text-muted-foreground font-semibold">TODAY JOURNAL</p>
+              <p className="text-[9px] text-muted-foreground font-semibold">JURNAL HARI INI</p>
               <p className="text-xs font-bold text-brand mt-1">64%</p>
             </div>
           </div>
@@ -77,7 +77,7 @@ export default function WeeklyLetterPage() {
 
         {/* Highlights */}
         <div className="space-y-3">
-          <h3 className="font-display text-xs font-bold text-brand uppercase tracking-wider">Weekly Highlights</h3>
+          <h3 className="font-display text-xs font-bold text-brand uppercase tracking-wider">Sorotan Mingguan</h3>
           <ul className="space-y-2">
             {currentWeeklyLetter.highlights.map((hl, idx) => (
               <li key={idx} className="flex items-start gap-2.5 text-xs text-foreground leading-normal">
@@ -92,7 +92,7 @@ export default function WeeklyLetterPage() {
 
         {/* Growth Area */}
         <div className="space-y-2">
-          <h3 className="font-display text-xs font-bold text-brand uppercase tracking-wider">Area for Growth</h3>
+          <h3 className="font-display text-xs font-bold text-brand uppercase tracking-wider">Hal yang Dapat Ditingkatkan</h3>
           <div className="rounded-xl border border-line bg-card/50 p-3.5 text-xs text-muted-foreground leading-relaxed">
             {currentWeeklyLetter.growthArea}
           </div>
@@ -100,7 +100,7 @@ export default function WeeklyLetterPage() {
 
         {/* Next Week's Focus */}
         <div className="space-y-2">
-          <h3 className="font-display text-xs font-bold text-brand uppercase tracking-wider">Next Week Focus</h3>
+          <h3 className="font-display text-xs font-bold text-brand uppercase tracking-wider">Fokus Minggu Depan</h3>
           <p className="text-xs text-foreground font-semibold bg-brand-soft/20 rounded-xl p-3 border border-brand/10 leading-relaxed">
             {currentWeeklyLetter.nextWeekFocus}
           </p>
@@ -112,16 +112,9 @@ export default function WeeklyLetterPage() {
             {currentWeeklyLetter.closing}
           </p>
           <p className="text-xs font-bold text-foreground mt-2">
-            {displayName}, NutriVerse Companion
+            {displayName}, Pendamping NutriVerse
           </p>
         </div>
-      </div>
-
-      {/* Action Button */}
-      <div className="pt-2">
-        <Link href="/journey" className="btn btn-primary w-full text-center py-3 flex items-center justify-center gap-2">
-          <Compass className="h-5 w-5" /> Continue Your Journey
-        </Link>
       </div>
 
       {/* Informational disclaimers */}
@@ -129,14 +122,14 @@ export default function WeeklyLetterPage() {
         <div className="flex items-start gap-2.5 rounded-2xl bg-secondary/50 p-4 text-xs text-muted-foreground border border-line/30">
           <Info className="h-4.5 w-4.5 shrink-0 text-muted-foreground mt-0.5" />
           <p>
-            This Weekly Letter reflects patterns in your wellness data and does not provide medical diagnosis or treatment advice.
+            Surat mingguan ini merangkum pola data kebiasaan dan tidak memberikan diagnosis atau saran pengobatan.
           </p>
         </div>
 
         <div className="flex items-start gap-2.5 rounded-2xl border border-line p-4 text-[10px] text-muted-foreground/80 bg-card">
           <AlertTriangle className="h-4 w-4 shrink-0 text-muted-foreground mt-0.5" />
           <p>
-            This competition MVP uses deterministic Companion content to demonstrate the intended Weekly Letter experience.
+            Konten pendamping pada MVP masih berupa simulasi terstruktur untuk memperagakan pengalaman yang direncanakan.
           </p>
         </div>
       </div>

@@ -95,7 +95,7 @@ export function GoalProgressRow({
 
       <div className="space-y-1.5">
         <div className="flex items-center justify-between text-[11px] font-semibold">
-          <span className="text-muted-foreground">Progress ({goal.progressPercent}%)</span>
+          <span className="text-muted-foreground">Progres ({goal.progressPercent}%)</span>
           <span className="text-foreground">
             {goal.currentValue} / {goal.targetValue} <span className="text-muted-foreground">{goal.unit}</span>
           </span>
@@ -132,7 +132,7 @@ export function HealthyDaySummaryCard({ summary }: { readonly summary: HealthyDa
       <div className="flex items-center justify-between border-b border-line/45 pb-3">
         <div>
           <span className="pill bg-brand-soft text-brand text-[9px] font-bold uppercase tracking-wider">Alignment Indicator</span>
-          <h3 className="font-display text-base font-bold text-foreground mt-1.5">Healthy Day Summary</h3>
+          <h3 className="font-display text-base font-bold text-foreground mt-1.5">Ringkasan Hari Sehat</h3>
         </div>
         <span className="pill bg-brand-soft text-brand font-bold capitalize">
           {getHealthyDayStatusLabel(summary.status)}
@@ -207,7 +207,7 @@ export function StreakSummaryCard({ summary }: { readonly summary: StreakSummary
         )}
         {summary.recoveryProtected && (
           <span className="pill bg-secondary/80 border border-line flex items-center gap-1">
-            💤 Recovery Protected Active
+            Pemulihan Terlindungi Aktif
           </span>
         )}
       </div>
@@ -221,7 +221,7 @@ export function ChallengePreviewCard({ summary }: { readonly summary: ChallengeS
     <div className="card card-pad space-y-4 border-line bg-card">
       <div className="flex items-start justify-between border-b border-line/45 pb-3">
         <div className="space-y-1">
-          <span className="pill bg-amber/10 text-amber text-[9px] font-bold uppercase tracking-wider">Challenge Tracker</span>
+          <span className="pill bg-amber/10 text-amber text-[9px] font-bold uppercase tracking-wider">Pelacak Tantangan</span>
           <h3 className="font-display text-base font-bold text-foreground mt-1">{summary.title}</h3>
         </div>
         <span className="pill bg-secondary text-muted-foreground font-semibold text-[10px]">
@@ -231,7 +231,7 @@ export function ChallengePreviewCard({ summary }: { readonly summary: ChallengeS
 
       <div className="space-y-2">
         <div className="flex items-center justify-between text-[11px] font-semibold text-muted-foreground">
-          <span>Accumulated Challenge Progress</span>
+          <span>Akumulasi Progres Tantangan</span>
           <span className="stat-num text-foreground">{summary.currentValue} / {summary.targetValue} {summary.unit} ({summary.progressPercent}%)</span>
         </div>
         <div className="h-2 overflow-hidden rounded-full bg-secondary">
@@ -263,19 +263,19 @@ export function RewardPreviewCard({ reward }: { readonly reward: GoalRewardPrevi
     <div className="card card-pad bg-gradient-to-br from-brand/5 to-secondary/35 border-brand/20 space-y-4">
       <div>
         <h4 className="text-xs text-brand font-bold uppercase tracking-wider flex items-center gap-1.5">
-          <Trophy className="h-4.5 w-4.5 text-brand" /> Potential reward after verified completion
+          <Trophy className="h-4.5 w-4.5 text-brand" /> Hadiah potensial setelah penyelesaian terverifikasi
         </h4>
         <p className="text-xs text-muted-foreground mt-1">Estimates based on current consistency targets</p>
       </div>
 
       <div className="grid grid-cols-2 gap-3 text-center">
         <div className="rounded-xl border border-line bg-card/65 p-3.5 space-y-1">
-          <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Potential XP</p>
+          <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">XP Potensial</p>
           <p className="text-lg font-extrabold text-foreground">+{reward.progressXp} XP</p>
         </div>
 
         <div className="rounded-xl border border-line bg-card/65 p-3.5 space-y-1">
-          <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Potential HP Gain</p>
+          <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">HP Potensial</p>
           <p className="text-lg font-extrabold text-brand">+{reward.hp} HP</p>
         </div>
       </div>
@@ -364,8 +364,8 @@ export function HealthyDayHeatmap({ history }: HealthyDayHeatmapProps) {
             <div className="flex items-center gap-2">
               <span className="h-4 w-4 rounded bg-sky shrink-0" />
               <div>
-                <p className="font-bold text-foreground">Recovery Day</p>
-                <p className="text-[10px] text-muted-foreground">Recovery qualified and rest targets met</p>
+                <p className="font-bold text-foreground">Hari Pemulihan</p>
+                <p className="text-[10px] text-muted-foreground">Pemulihan dan target istirahat terpenuhi</p>
               </div>
             </div>
 
@@ -425,7 +425,7 @@ export function TodayJourneyCard({
       <div className={`card card-pad space-y-4 ${className}`}>
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="font-display text-lg font-bold">Today’s Journey</h3>
+            <h3 className="font-display text-lg font-bold">Perjalanan Hari Ini</h3>
             <p className="text-xs text-muted-foreground mt-0.5">{journey.summary}</p>
           </div>
           <span className="stat-num text-xl font-extrabold text-brand">
@@ -480,7 +480,7 @@ export function TodayJourneyCard({
 
         <div className="pt-2 flex flex-col gap-2 sm:flex-row">
           <Link href="/todays-journey" className="btn btn-outline flex-1 text-center text-sm font-semibold justify-center">
-            Lanjutkan Journey
+            Lanjutkan Hari Ini
           </Link>
         </div>
       </div>
@@ -491,7 +491,7 @@ export function TodayJourneyCard({
     return (
       <div className={`card card-pad flex flex-col justify-between space-y-4 ${className}`}>
         <div className="flex items-center justify-between">
-          <h3 className="font-display text-base font-bold">Today’s Pacing</h3>
+          <h3 className="font-display text-base font-bold">Ritme Hari Ini</h3>
           <span className="stat-num text-sm text-brand font-bold">{journey.completedGoalCount} / {journey.totalGoalCount} Completed</span>
         </div>
 
@@ -520,7 +520,7 @@ export function TodayJourneyCard({
       <div className="card card-pad space-y-5">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="font-display text-lg font-bold">Progress Dashboard</h3>
+            <h3 className="font-display text-lg font-bold">Dasbor Progres</h3>
             <p className="text-xs text-muted-foreground mt-0.5">{journey.summary}</p>
           </div>
           <span className="stat-num text-2xl font-extrabold text-brand">

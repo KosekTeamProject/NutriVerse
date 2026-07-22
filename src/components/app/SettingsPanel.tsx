@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { 
   User, 
@@ -15,10 +15,18 @@ import {
   Info, 
   Lock, 
   Activity, 
-  HelpCircle 
+  HelpCircle,
+  TimerReset,
+  StretchHorizontal
 } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
 import { useCompanionName } from "@/hooks/useCompanionName";
+import {
+  BREAK_REMINDER_EVENT,
+  BREAK_REMINDER_KEY,
+  BREAK_REMINDER_PREVIEW_EVENT,
+  type BreakReminderPreference,
+} from "@/components/app/WellbeingReminder";
 
 function Switch({ on, onToggle, ariaLabel }: { readonly on: boolean; readonly onToggle: () => void; readonly ariaLabel: string }) {
   return (
@@ -117,6 +125,25 @@ export function SettingsPanel() {
     gpsSimEnabled: true,
     foodSimEnabled: true
   });
+  const [breakReminder, setBreakReminder] = useState<BreakReminderPreference>({ enabled: false, intervalMinutes: 60 });
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      try {
+        const saved = window.localStorage.getItem(BREAK_REMINDER_KEY);
+        if (saved) setBreakReminder((current) => ({ ...current, ...JSON.parse(saved) }));
+      } catch {
+        // Preferensi rusak diabaikan dan kembali ke nilai aman.
+      }
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  function updateBreakReminder(next: BreakReminderPreference) {
+    setBreakReminder(next);
+    window.localStorage.setItem(BREAK_REMINDER_KEY, JSON.stringify(next));
+    window.dispatchEvent(new Event(BREAK_REMINDER_EVENT));
+  }
 
   return (
     <div className="space-y-6">
@@ -133,7 +160,7 @@ export function SettingsPanel() {
           </div>
           <div className="sm:col-span-2">
             <label className="label text-xs font-bold uppercase text-muted-foreground">Bio</label>
-            <input className="input mt-1.5" defaultValue="Building sustainable healthy habits through small, consistent actions." />
+            <input className="input mt-1.5" defaultValue="Membangun kebiasaan sehat melalui langkah kecil yang konsisten." />
           </div>
         </div>
         <SaveButton />
@@ -142,9 +169,9 @@ export function SettingsPanel() {
       {/* 2. Target harian section */}
       <SectionCard icon={Target} title="Target Harian">
         <div className="grid gap-4 sm:grid-cols-4 text-xs">
-          <div><label className="label text-xs font-bold uppercase text-muted-foreground">Protein Target (g)</label><input className="input mt-1.5" defaultValue="80" /></div>
-          <div><label className="label text-xs font-bold uppercase text-muted-foreground">Air Target (L)</label><input className="input mt-1.5" defaultValue="2.0" /></div>
-          <div><label className="label text-xs font-bold uppercase text-muted-foreground">Langkah Target</label><input className="input mt-1.5" defaultValue="10000" /></div>
+          <div><label className="label text-xs font-bold uppercase text-muted-foreground">Target Protein (g)</label><input className="input mt-1.5" defaultValue="80" /></div>
+          <div><label className="label text-xs font-bold uppercase text-muted-foreground">Target Air (L)</label><input className="input mt-1.5" defaultValue="2.0" /></div>
+          <div><label className="label text-xs font-bold uppercase text-muted-foreground">Target Langkah</label><input className="input mt-1.5" defaultValue="10000" /></div>
           <div><label className="label text-xs font-bold uppercase text-muted-foreground">Tidur (jam)</label><input className="input mt-1.5" defaultValue="8" /></div>
         </div>
         <SaveButton />
@@ -167,10 +194,10 @@ export function SettingsPanel() {
       <SectionCard icon={Shield} title="Privasi">
         <div className="divide-y divide-line/35">
           <ToggleRow label="Profil Publik" desc="Izinkan orang lain mencari dan melihat profilmu" on={privasi.publik} onToggle={() => setPrivasi((s) => ({ ...s, publik: !s.publik }))} />
-          <ToggleRow label="Tampil di Leaderboard" desc="Sertakan aku di peringkat konsistensi publik" on={privasi.leaderboard} onToggle={() => setPrivasi((s) => ({ ...s, leaderboard: !s.leaderboard }))} />
-          <ToggleRow label="Bagi Health Pulse Score" desc="Izinkan Circle melihat nilai Pulse kesehatanmu" on={privasi.pulsePublic} onToggle={() => setPrivasi((s) => ({ ...s, pulsePublic: !s.pulsePublic }))} />
-          <ToggleRow label="Bagi Ringkasan Aktivitas" desc="Tampilkan jarak tempuh fisik di feed Circle" on={privasi.activityPublic} onToggle={() => setPrivasi((s) => ({ ...s, activityPublic: !s.activityPublic }))} />
-          <ToggleRow label="Tampilkan Progress Challenge" desc="Perlihatkan keaktifan tantangan mingguan" on={privasi.challengePublic} onToggle={() => setPrivasi((s) => ({ ...s, challengePublic: !s.challengePublic }))} />
+          <ToggleRow label="Tampil di Peringkat" desc="Sertakan aku di peringkat konsistensi publik" on={privasi.leaderboard} onToggle={() => setPrivasi((s) => ({ ...s, leaderboard: !s.leaderboard }))} />
+          <ToggleRow label="Bagikan Nilai Health Pulse" desc="Izinkan Lingkaran Sehat melihat nilai Pulse-mu" on={privasi.pulsePublic} onToggle={() => setPrivasi((s) => ({ ...s, pulsePublic: !s.pulsePublic }))} />
+          <ToggleRow label="Bagikan Ringkasan Aktivitas" desc="Tampilkan jarak tempuh di aktivitas komunitas" on={privasi.activityPublic} onToggle={() => setPrivasi((s) => ({ ...s, activityPublic: !s.activityPublic }))} />
+          <ToggleRow label="Tampilkan Progres Tantangan" desc="Perlihatkan keaktifan tantangan mingguan" on={privasi.challengePublic} onToggle={() => setPrivasi((s) => ({ ...s, challengePublic: !s.challengePublic }))} />
           
           <div className="flex items-center justify-between py-3">
             <div>
@@ -184,21 +211,21 @@ export function SettingsPanel() {
       </SectionCard>
 
       {/* 5. Companion settings */}
-      <SectionCard icon={Sparkles} title={`${companionName.displayName} Companion`}>
+      <SectionCard icon={Sparkles} title={`Pendamping ${companionName.displayName}`}>
         <div className="divide-y divide-line/35">
           {/* Display Name Edit Row */}
           <div className="py-3.5 space-y-2 border-b border-line/35">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-semibold text-foreground">Nama Tampilan Companion</p>
-                <p className="text-xs text-muted-foreground">Nama ini digunakan pada Morning Brief, chat, refleksi, dan insight Companion.</p>
+                <p className="text-sm font-semibold text-foreground">Nama pendamping</p>
+                <p className="text-xs text-muted-foreground">Nama ini digunakan pada ringkasan pagi, percakapan, refleksi, dan saran.</p>
               </div>
               {!isEditingName && (
                 <button
                   onClick={() => { setIsEditingName(true); setNameInput(companionName.displayName); }}
                   className="btn btn-outline btn-xs font-bold shrink-0"
                 >
-                  Edit Nama
+                  Ubah Nama
                 </button>
               )}
             </div>
@@ -257,10 +284,10 @@ export function SettingsPanel() {
             )}
           </div>
 
-          <ToggleRow label={`${companionName.displayName} Contextual Insights`} desc={`Tampilkan kartu refleksi dan masukan dari ${companionName.displayName}`} on={companion.insights} onToggle={() => setCompanion((s) => ({ ...s, insights: !s.insights }))} />
-          <ToggleRow label="Morning Brief" desc={`Aktifkan ringkasan pagi ${companionName.displayName} di halaman utama`} on={companion.morningBrief} onToggle={() => setCompanion((s) => ({ ...s, morningBrief: !s.morningBrief }))} />
-          <ToggleRow label="Weekly Letter Preview" desc={`Sertakan evaluasi siklus mingguan ${companionName.displayName}`} on={companion.weeklyLetter} onToggle={() => setCompanion((s) => ({ ...s, weeklyLetter: !s.weeklyLetter }))} />
-          <ToggleRow label="Safety Reminders" desc="Ingatkan batas latihan fisik dan disclaimer klinis" on={companion.safetyNotes} onToggle={() => setCompanion((s) => ({ ...s, safetyNotes: !s.safetyNotes }))} />
+          <ToggleRow label={`Saran kontekstual ${companionName.displayName}`} desc={`Tampilkan kartu refleksi dan masukan dari ${companionName.displayName}`} on={companion.insights} onToggle={() => setCompanion((s) => ({ ...s, insights: !s.insights }))} />
+          <ToggleRow label="Ringkasan Pagi" desc={`Aktifkan ringkasan pagi ${companionName.displayName} di halaman utama`} on={companion.morningBrief} onToggle={() => setCompanion((s) => ({ ...s, morningBrief: !s.morningBrief }))} />
+          <ToggleRow label="Surat Mingguan" desc={`Sertakan evaluasi siklus mingguan ${companionName.displayName}`} on={companion.weeklyLetter} onToggle={() => setCompanion((s) => ({ ...s, weeklyLetter: !s.weeklyLetter }))} />
+          <ToggleRow label="Pengingat Keamanan" desc="Ingatkan batas latihan fisik dan batas panduan nonmedis" on={companion.safetyNotes} onToggle={() => setCompanion((s) => ({ ...s, safetyNotes: !s.safetyNotes }))} />
         </div>
         <div className="mt-3 flex items-start gap-2 text-[10px] text-muted-foreground bg-secondary/30 rounded-xl p-3 border border-line/20">
           <Info className="h-4 w-4 shrink-0 text-muted-foreground mt-0.5" />
@@ -274,15 +301,15 @@ export function SettingsPanel() {
         <div className="space-y-4 text-xs text-muted-foreground">
           <div className="flex justify-between items-center border border-line p-3.5 rounded-xl bg-secondary/15">
             <div>
-              <p className="font-bold text-foreground">Location Permission for Activity</p>
-              <p className="mt-0.5 text-[11px]">NutriVerse uses location data only during active sessions to measure distance and pace.</p>
+              <p className="font-bold text-foreground">Izin Lokasi untuk Aktivitas</p>
+              <p className="mt-0.5 text-[11px]">NutriVerse memakai lokasi hanya selama sesi aktif untuk mengukur jarak dan pace.</p>
             </div>
             <Link href="/aktivitas/kepercayaan" className="btn btn-outline btn-xs shrink-0 font-bold flex items-center gap-1">
-              Trust &amp; Safety <HelpCircle className="h-3.5 w-3.5" />
+              Kepercayaan &amp; Keamanan <HelpCircle className="h-3.5 w-3.5" />
             </Link>
           </div>
           <p className="italic text-[10px]">
-            * Background tracking and coordinate export are not supported to protect your location privacy.
+            * Pelacakan latar belakang dan ekspor koordinat tidak tersedia untuk melindungi privasi lokasi.
           </p>
         </div>
       </SectionCard>
@@ -290,36 +317,68 @@ export function SettingsPanel() {
       {/* 7. Demo & Simulation settings */}
       <SectionCard icon={HelpCircle} title="Demo &amp; Simulasi">
         <div className="divide-y divide-line/35">
-          <ToggleRow label="Gunakan Data Deterministic" desc="Muat dataset demo default untuk simulasi perjalanan" on={simulation.useDemoData} onToggle={() => setSimulation((s) => ({ ...s, useDemoData: !s.useDemoData }))} />
-          <ToggleRow label="Tampilkan Label Simulasi" desc="Perlihatkan tanda Simulated pada panel data non-aktif" on={simulation.showSimLabels} onToggle={() => setSimulation((s) => ({ ...s, showSimLabels: !s.showSimLabels }))} />
+          <ToggleRow label="Gunakan Data Demo Tetap" desc="Muat dataset bawaan untuk simulasi perjalanan" on={simulation.useDemoData} onToggle={() => setSimulation((s) => ({ ...s, useDemoData: !s.useDemoData }))} />
+          <ToggleRow label="Tampilkan Label Simulasi" desc="Perlihatkan tanda Simulasi pada panel data demo" on={simulation.showSimLabels} onToggle={() => setSimulation((s) => ({ ...s, showSimLabels: !s.showSimLabels }))} />
           <ToggleRow label="Simulasi GPS Lokasi" desc="Izinkan mode simulator lokasi di tracker latihan" on={simulation.gpsSimEnabled} onToggle={() => setSimulation((s) => ({ ...s, gpsSimEnabled: !s.gpsSimEnabled }))} />
           <ToggleRow label="Simulasi Foto Makanan" desc="Gunakan daftar demo makanan di scanner AI" on={simulation.foodSimEnabled} onToggle={() => setSimulation((s) => ({ ...s, foodSimEnabled: !s.foodSimEnabled }))} />
         </div>
         <SaveButton />
       </SectionCard>
 
-      {/* 8. Notification settings */}
+      {/* 8. Break reminder settings */}
+      <SectionCard icon={TimerReset} title="Pengingat Jeda">
+        <div className="space-y-4">
+          <ToggleRow
+            label="Ingatkan untuk bergerak"
+            desc="Nora mengingatkan secara halus saat aplikasi terbuka. Fitur ini nonaktif secara bawaan."
+            on={breakReminder.enabled}
+            onToggle={() => updateBreakReminder({ ...breakReminder, enabled: !breakReminder.enabled })}
+          />
+          <div className="flex flex-col gap-3 rounded-2xl border border-line bg-secondary/25 p-4 sm:flex-row sm:items-end sm:justify-between">
+            <div className="min-w-0 flex-1">
+              <label htmlFor="break-interval" className="text-xs font-bold text-foreground">Jarak antar-pengingat</label>
+              <p className="mt-0.5 text-[11px] text-muted-foreground">Tidak mendeteksi posisi duduk; pengingat hanya mengikuti waktu ketika aplikasi aktif.</p>
+              <select
+                id="break-interval"
+                value={breakReminder.intervalMinutes}
+                onChange={(event) => updateBreakReminder({ ...breakReminder, intervalMinutes: Number(event.target.value) })}
+                className="input mt-2 max-w-48 text-sm"
+                disabled={!breakReminder.enabled}
+              >
+                <option value={60}>Setiap 1 jam</option>
+                <option value={90}>Setiap 1,5 jam</option>
+                <option value={120}>Setiap 2 jam</option>
+              </select>
+            </div>
+            <button onClick={() => window.dispatchEvent(new Event(BREAK_REMINDER_PREVIEW_EVENT))} className="btn btn-outline btn-sm" type="button">
+              <StretchHorizontal className="h-4 w-4" /> Lihat Contoh
+            </button>
+          </div>
+        </div>
+      </SectionCard>
+
+      {/* 9. Notification settings */}
       <SectionCard icon={Bell} title="Notifikasi">
         <div className="divide-y divide-line/35">
           <ToggleRow label="Pengingat Aktivitas" desc="Ingatkan untuk bergerak dan mencatat hidrasi" on={notif.aktivitas} onToggle={() => setNotif((s) => ({ ...s, aktivitas: !s.aktivitas }))} />
-          <ToggleRow label="Update Leaderboard" desc="Beri tahu saat peringkat mingguan diperbarui" on={notif.leaderboard} onToggle={() => setNotif((s) => ({ ...s, leaderboard: !s.leaderboard }))} />
+          <ToggleRow label="Pembaruan Peringkat" desc="Beri tahu saat peringkat mingguan diperbarui" on={notif.leaderboard} onToggle={() => setNotif((s) => ({ ...s, leaderboard: !s.leaderboard }))} />
           <ToggleRow label="Semangat &amp; Dukungan" desc="Notifikasi saat anggota Circle memberi dorongan semangat" on={notif.sosial} onToggle={() => setNotif((s) => ({ ...s, sosial: !s.sosial }))} />
         </div>
         <SaveButton />
       </SectionCard>
 
-      {/* 9. Data and Export */}
+      {/* 10. Data and Export */}
       <div className="card card-pad bg-secondary/20 border-line space-y-4">
         <div>
-          <h3 className="font-display text-base font-bold text-foreground">Data Control</h3>
-          <p className="text-xs text-muted-foreground mt-0.5">Preferences and locally cached files are stored on this browser only.</p>
+          <h3 className="font-display text-base font-bold text-foreground">Kontrol Data</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">Preferensi dan berkas sementara hanya disimpan di browser ini.</p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
-          <button className="btn btn-outline text-destructive flex-1" onClick={() => alert("Simulated clear complete.")}>
-            Clear Local Cache
+          <button className="btn btn-outline text-destructive flex-1" onClick={() => alert("Simulasi pembersihan data lokal selesai.")}>
+            Bersihkan Data Lokal
           </button>
           <button className="btn btn-ghost flex-1 text-muted-foreground font-semibold">
-            Logout (Demo)
+            Keluar (Demo)
           </button>
         </div>
       </div>

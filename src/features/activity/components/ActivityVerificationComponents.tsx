@@ -8,7 +8,7 @@ import {
   Info, 
   Compass
 } from "lucide-react";
-import { ActivityVerificationResult, ActivityRiskSignal } from "@/lib/activity";
+import { ActivityVerificationResult } from "@/lib/activity";
 import { getVerificationStatusLabel, getRiskSignalLabel } from "@/features/activity/helpers";
 
 
@@ -39,7 +39,7 @@ export function ActivityVerificationCard({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="pill bg-secondary text-muted-foreground font-mono text-[9px] font-bold uppercase tracking-wider">
-              Verification Check
+              Pemeriksaan Verifikasi
             </span>
           </div>
           <span className={`pill text-[10px] font-bold uppercase ${statusColors}`}>
@@ -52,15 +52,15 @@ export function ActivityVerificationCard({
           <div className="text-xs text-muted-foreground leading-normal">
             <p className="font-bold text-foreground">{result.eligibility.reason}</p>
             <p className="mt-1">
-              Personal Record Status: <span className="font-semibold text-foreground">Allowed</span>
+              Status catatan pribadi: <span className="font-semibold text-foreground">Diizinkan</span>
             </p>
           </div>
         </div>
 
         <div className="pt-2 border-t border-line/45 flex items-center justify-between text-[10px] text-muted-foreground">
-          <span>Target System: Journey &amp; Pulse</span>
+          <span>Sistem Tujuan: Perjalanan &amp; Pulse</span>
           <Link href="/aktivitas/kepercayaan" className="hover:text-brand transition font-bold uppercase tracking-wider inline-flex items-center gap-0.5">
-            Learn More <Compass className="h-3 w-3" />
+            Pelajari <Compass className="h-3 w-3" />
           </Link>
         </div>
       </div>
@@ -73,8 +73,8 @@ export function ActivityVerificationCard({
       {/* Title Header */}
       <div className="flex items-start justify-between border-b border-line/45 pb-3">
         <div>
-          <span className="pill bg-secondary text-muted-foreground font-mono text-[9px] font-bold uppercase tracking-wider">Verification Engine Detail</span>
-          <h3 className="font-display text-base font-bold text-foreground mt-1.5">Telemetry Analysis</h3>
+          <span className="pill bg-secondary text-muted-foreground font-mono text-[9px] font-bold uppercase tracking-wider">Detail Mesin Verifikasi</span>
+          <h3 className="font-display text-base font-bold text-foreground mt-1.5">Analisis Telemetri</h3>
         </div>
         <span className={`pill text-[10px] font-bold uppercase ${statusColors}`}>
           {getVerificationStatusLabel(result.status)}
@@ -87,7 +87,7 @@ export function ActivityVerificationCard({
         <div className="text-xs space-y-1">
           <p className="font-bold text-foreground leading-normal">{result.eligibility.reason}</p>
           <p className="text-muted-foreground">
-            Recommendation: <span className="font-bold text-foreground capitalize">{result.recommendation.replace("-", " ")}</span>
+            Rekomendasi: <span className="font-bold text-foreground capitalize">{result.recommendation.replace("-", " ")}</span>
           </p>
           <p className="text-[10px] text-muted-foreground italic mt-1">{result.explanation}</p>
         </div>
@@ -96,7 +96,7 @@ export function ActivityVerificationCard({
       {/* Risk Signals if present */}
       {result.signals.length > 0 && (
         <div className="space-y-2">
-          <h4 className="font-display text-xs font-bold text-brand uppercase tracking-wider">Unusual Data Signals</h4>
+          <h4 className="font-display text-xs font-bold text-brand uppercase tracking-wider">Sinyal Data Tidak Wajar</h4>
           <div className="flex flex-wrap gap-2">
             {result.signals.map((sig) => (
               <span key={sig} className="pill bg-amber/10 text-amber border border-amber/15 text-[10px] font-bold">
@@ -109,76 +109,76 @@ export function ActivityVerificationCard({
 
       {/* Sample Quality Summary Metrics Grid */}
       <div className="space-y-2.5">
-        <h4 className="font-display text-xs font-bold text-brand uppercase tracking-wider">Sample Quality Summary</h4>
+        <h4 className="font-display text-xs font-bold text-brand uppercase tracking-wider">Ringkasan Kualitas Sampel</h4>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 text-xs">
           <div className="rounded-xl border border-line bg-card p-3">
-            <p className="text-[9px] text-muted-foreground font-semibold uppercase tracking-wider">Total Samples</p>
+            <p className="text-[9px] text-muted-foreground font-semibold uppercase tracking-wider">Total Sampel</p>
             <p className="text-sm font-extrabold text-foreground mt-0.5">{result.samples.sampleCount}</p>
           </div>
           <div className="rounded-xl border border-line bg-card p-3">
-            <p className="text-[9px] text-muted-foreground font-semibold uppercase tracking-wider">Accepted Samples</p>
+            <p className="text-[9px] text-muted-foreground font-semibold uppercase tracking-wider">Sampel Diterima</p>
             <p className="text-sm font-extrabold text-brand mt-0.5">{result.samples.acceptedSampleCount}</p>
           </div>
           <div className="rounded-xl border border-line bg-card p-3">
-            <p className="text-[9px] text-muted-foreground font-semibold uppercase tracking-wider">Avg GPS Accuracy</p>
+            <p className="text-[9px] text-muted-foreground font-semibold uppercase tracking-wider">Akurasi GPS Rata-rata</p>
             <p className="text-sm font-extrabold text-foreground mt-0.5">{result.samples.averageAccuracyMeters.toFixed(1)} m</p>
           </div>
           <div className="rounded-xl border border-line bg-card p-3">
-            <p className="text-[9px] text-muted-foreground font-semibold uppercase tracking-wider">Active Duration</p>
+            <p className="text-[9px] text-muted-foreground font-semibold uppercase tracking-wider">Durasi Aktif</p>
             <p className="text-sm font-extrabold text-foreground mt-0.5">{Math.round(result.samples.activeDurationSeconds / 60)} min</p>
           </div>
           <div className="rounded-xl border border-line bg-card p-3">
-            <p className="text-[9px] text-muted-foreground font-semibold uppercase tracking-wider">Largest Signal Gap</p>
+            <p className="text-[9px] text-muted-foreground font-semibold uppercase tracking-wider">Jeda Sinyal Terbesar</p>
             <p className="text-sm font-extrabold text-foreground mt-0.5">{result.samples.largestSampleGapSeconds} s</p>
           </div>
           <div className="rounded-xl border border-line bg-card p-3">
-            <p className="text-[9px] text-muted-foreground font-semibold uppercase tracking-wider">Coordinates Rec</p>
-            <p className="text-sm font-extrabold text-foreground mt-0.5">{result.samples.locationDataAvailable ? "Yes" : "No"}</p>
+            <p className="text-[9px] text-muted-foreground font-semibold uppercase tracking-wider">Koordinat Terekam</p>
+            <p className="text-sm font-extrabold text-foreground mt-0.5">{result.samples.locationDataAvailable ? "Ya" : "Tidak"}</p>
           </div>
         </div>
       </div>
 
       {/* Downstream System Eligibility checks */}
       <div className="space-y-2.5">
-        <h4 className="font-display text-xs font-bold text-brand uppercase tracking-wider">System Integration Eligibility</h4>
+        <h4 className="font-display text-xs font-bold text-brand uppercase tracking-wider">Kelayakan Integrasi Sistem</h4>
         <div className="grid gap-2 sm:grid-cols-2 text-xs">
           <div className="flex items-center justify-between border border-line bg-card p-3 rounded-xl">
-            <span className="text-muted-foreground font-semibold">Traveler Personal Record</span>
-            <span className="pill bg-brand-soft text-brand font-bold">Allowed</span>
+            <span className="text-muted-foreground font-semibold">Catatan Pribadi Pengguna</span>
+            <span className="pill bg-brand-soft text-brand font-bold">Diizinkan</span>
           </div>
 
           <div className="flex items-center justify-between border border-line bg-card p-3 rounded-xl">
-            <span className="text-muted-foreground font-semibold">XP Reward Preview</span>
+            <span className="text-muted-foreground font-semibold">Pratinjau XP</span>
             <span className={`pill font-bold ${result.eligibility.xpEligible ? "bg-brand-soft text-brand" : "bg-secondary text-muted-foreground/60"}`}>
-              {result.eligibility.xpEligible ? "Eligible" : "Blocked"}
+              {result.eligibility.xpEligible ? "Memenuhi" : "Diblokir"}
             </span>
           </div>
 
           <div className="flex items-center justify-between border border-line bg-card p-3 rounded-xl">
-            <span className="text-muted-foreground font-semibold">Challenge Advancement</span>
+            <span className="text-muted-foreground font-semibold">Progres Tantangan</span>
             <span className={`pill font-bold ${result.eligibility.challengeEligible ? "bg-brand-soft text-brand" : "bg-secondary text-muted-foreground/60"}`}>
-              {result.eligibility.challengeEligible ? "Eligible" : "Blocked"}
+              {result.eligibility.challengeEligible ? "Memenuhi" : "Diblokir"}
             </span>
           </div>
 
           <div className="flex items-center justify-between border border-line bg-card p-3 rounded-xl">
-            <span className="text-muted-foreground font-semibold">Today’s Journey Goals</span>
+            <span className="text-muted-foreground font-semibold">Target Perjalanan Hari Ini</span>
             <span className={`pill font-bold ${result.eligibility.journeyEligible ? "bg-brand-soft text-brand" : "bg-secondary text-muted-foreground/60"}`}>
-              {result.eligibility.journeyEligible ? "Eligible" : "Blocked"}
+              {result.eligibility.journeyEligible ? "Memenuhi" : "Diblokir"}
             </span>
           </div>
 
           <div className="flex items-center justify-between border border-line bg-card p-3 rounded-xl">
-            <span className="text-muted-foreground font-semibold">Healthy Day Contribution</span>
+            <span className="text-muted-foreground font-semibold">Kontribusi Hari Sehat</span>
             <span className={`pill font-bold ${result.eligibility.healthyDayEligible ? "bg-brand-soft text-brand" : "bg-secondary text-muted-foreground/60"}`}>
-              {result.eligibility.healthyDayEligible ? "Eligible" : "Blocked"}
+              {result.eligibility.healthyDayEligible ? "Memenuhi" : "Diblokir"}
             </span>
           </div>
 
           <div className="flex items-center justify-between border border-line bg-card p-3 rounded-xl">
-            <span className="text-muted-foreground font-semibold">Health Pulse Evolution</span>
+            <span className="text-muted-foreground font-semibold">Perkembangan Health Pulse</span>
             <span className={`pill font-bold ${result.eligibility.healthPulseEligible ? "bg-brand-soft text-brand" : "bg-secondary text-muted-foreground/60"}`}>
-              {result.eligibility.healthPulseEligible ? "Eligible" : "Blocked"}
+              {result.eligibility.healthPulseEligible ? "Memenuhi" : "Diblokir"}
             </span>
           </div>
         </div>

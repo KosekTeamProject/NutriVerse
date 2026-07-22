@@ -43,7 +43,7 @@ export default async function JourneyDetailPage({ params }: JourneyDetailPagePro
           href="/journey" 
           className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground hover:text-brand transition"
         >
-          <ArrowLeft className="h-4 w-4" /> Back to Journey
+          <ArrowLeft className="h-4 w-4" /> Kembali ke Perjalanan
         </Link>
       </div>
 
@@ -78,7 +78,7 @@ export default async function JourneyDetailPage({ params }: JourneyDetailPagePro
         <div className="min-w-0 space-y-6 lg:col-span-2">
           <div className="card card-pad space-y-5">
             <div>
-              <h3 className="font-display text-base font-bold text-foreground">Journey Details</h3>
+              <h3 className="font-display text-base font-bold text-foreground">Detail Perjalanan</h3>
               <p className="text-sm text-muted-foreground mt-1">{record.summary}</p>
             </div>
 
@@ -86,7 +86,7 @@ export default async function JourneyDetailPage({ params }: JourneyDetailPagePro
             {record.healthPulseAfter !== undefined && record.healthPulseBefore !== undefined && (
               <div className="rounded-2xl border border-line/60 bg-secondary/30 p-4 space-y-3">
                 <div className="flex flex-col gap-2 text-sm min-[360px]:flex-row min-[360px]:items-center min-[360px]:justify-between">
-                  <span className="text-muted-foreground font-semibold">Pulse Progression</span>
+                  <span className="text-muted-foreground font-semibold">Perubahan Pulse</span>
                   <span className="font-extrabold text-foreground flex items-center gap-2">
                     <span className="text-muted-foreground font-normal line-through">{record.healthPulseBefore.toFixed(1)}</span>
                     <span className="text-brand">&rarr;</span>
@@ -132,9 +132,9 @@ export default async function JourneyDetailPage({ params }: JourneyDetailPagePro
             <div className="flex items-start gap-2.5 rounded-2xl bg-secondary/50 p-4 text-xs text-muted-foreground border border-line/30">
               <Info className="h-4.5 w-4.5 shrink-0 text-muted-foreground mt-0.5" />
               <div>
-                <p className="font-bold text-foreground">Privacy Policy Guidelines</p>
+                <p className="font-bold text-foreground">Panduan Privasi</p>
                 <p className="mt-1">
-                  This Journey is set to <span className="font-bold uppercase text-foreground">{record.visibility}</span>.{" "}
+                  Catatan ini memiliki visibilitas <span className="font-bold uppercase text-foreground">{record.visibility}</span>.{" "}
                   {getJourneyVisibilityDescription(record.visibility)}
                 </p>
               </div>
@@ -155,17 +155,17 @@ export default async function JourneyDetailPage({ params }: JourneyDetailPagePro
             <div className="card card-pad space-y-4 border-line/60 bg-card">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0">
-                  <span className="pill bg-amber/10 text-amber text-[9px] font-bold uppercase tracking-wider">Challenge Contribution</span>
-                  <h3 className="font-display text-base font-bold text-foreground mt-1">Light Cardio Journey</h3>
+                  <span className="pill bg-amber/10 text-amber text-[9px] font-bold uppercase tracking-wider">Kontribusi Tantangan</span>
+                  <h3 className="font-display text-base font-bold text-foreground mt-1">Perjalanan Kardio Ringan</h3>
                 </div>
                 <span className="pill self-start bg-brand-soft text-brand text-[9px] font-bold uppercase sm:max-w-[45%]">
-                  Automatic Activity Progress
+                  Progres Aktivitas Otomatis
                 </span>
               </div>
 
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between text-xs font-semibold text-muted-foreground">
-                  <span>Progress</span>
+                  <span>Progres</span>
                   <span className="text-foreground">7.2 / 10.0 km (72%)</span>
                 </div>
                 <div className="h-2 overflow-hidden rounded-full bg-secondary">
@@ -174,12 +174,12 @@ export default async function JourneyDetailPage({ params }: JourneyDetailPagePro
               </div>
 
               <p className="text-[10px] text-muted-foreground italic leading-normal">
-                * Only trusted walking or running activity contributes to this Challenge.
+                * Hanya aktivitas jalan atau lari tepercaya yang berkontribusi pada tantangan ini.
               </p>
 
               <div className="pt-1">
                 <Link href="/challenge/challenge-light-cardio" className="btn btn-outline btn-sm w-full text-center font-semibold justify-center">
-                  View Challenge
+                  Lihat Tantangan
                 </Link>
               </div>
             </div>

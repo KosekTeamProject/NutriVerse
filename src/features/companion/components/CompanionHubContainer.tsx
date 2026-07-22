@@ -27,14 +27,16 @@ export function CompanionHubContainer({ insights }: CompanionHubContainerProps) 
       return ins.type === "morning-brief";
     }
     return ins.type === activeFilter;
-  });
+  }).slice(0, 3);
 
   return (
     <div className="min-w-0 space-y-6">
       {/* Featured Hero Insight */}
       {primaryInsight && activeFilter === "all" && (
         <div className="space-y-3">
-          <h3 className="font-display text-xs font-bold text-muted-foreground uppercase tracking-wider">Featured Brief</h3>
+          <div>
+            <h2 className="font-display text-sm font-bold text-foreground">Saran Utama</h2>
+          </div>
           <CompanionCard 
             insight={primaryInsight} 
             variant="hero" 
@@ -46,7 +48,9 @@ export function CompanionHubContainer({ insights }: CompanionHubContainerProps) 
 
       {/* Filter Tabs */}
       <div className="space-y-3 pt-2">
-        <h3 className="font-display text-xs font-bold text-muted-foreground uppercase tracking-wider">Explore Insight Streams</h3>
+        <div>
+          <h2 className="font-display text-sm font-bold text-foreground">Saran Lainnya</h2>
+        </div>
         <CompanionInsightFilters activeFilter={activeFilter} onFilterChange={setActiveFilter} />
       </div>
 
@@ -67,7 +71,7 @@ export function CompanionHubContainer({ insights }: CompanionHubContainerProps) 
           })
         ) : (
           <div className="card card-pad text-center py-10 border-dashed border-line">
-            <p className="text-sm text-muted-foreground">No recent insights match this active stream filter.</p>
+            <p className="text-sm text-muted-foreground">Belum ada saran terbaru untuk kategori ini.</p>
           </div>
         )}
       </div>

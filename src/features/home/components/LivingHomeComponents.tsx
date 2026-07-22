@@ -24,7 +24,7 @@ export function LivingHomeHeader({ traveler }: { traveler: DemoTraveler }) {
           Halo, {traveler.name}!
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Tindakan kecil mulai menjadi bagian dari Journey Anda.
+          Tindakan kecil mulai menjadi bagian dari perjalanan Anda.
         </p>
       </div>
       <div className="flex items-center gap-2.5 self-start md:self-center">
@@ -46,7 +46,7 @@ export function RecentJourneyCard({ record }: { record: JourneyRecord }) {
   return (
     <div className="card card-pad space-y-4">
       <div>
-        <h3 className="font-display text-lg font-bold">Journey Terbaru</h3>
+        <h3 className="font-display text-lg font-bold">Perjalanan Terbaru</h3>
         <p className="text-xs text-muted-foreground mt-1">Segmen aktivitas fisik terakhirmu</p>
       </div>
 
@@ -79,17 +79,6 @@ export function RecentJourneyCard({ record }: { record: JourneyRecord }) {
         </div>
       </div>
 
-      <div className="flex flex-col gap-2 sm:flex-row">
-        <Link href="/journey" className="btn btn-outline flex-1 text-center text-sm font-semibold justify-center">
-          Lihat Semua Journey
-        </Link>
-        <Link 
-          href={`/journey/${record.id}`} 
-          className="btn btn-ghost text-xs text-muted-foreground font-semibold justify-center sm:w-auto flex items-center"
-        >
-          Lihat Detail
-        </Link>
-      </div>
     </div>
   );
 }
@@ -135,7 +124,7 @@ export function ActiveChallengeCard({ challenge }: { challenge: ChallengePreview
             {challenge.status === "in-progress" ? "Sedang Berjalan" : challenge.status}
           </span>
           <span className="pill bg-brand-soft text-brand text-[9px] font-bold uppercase whitespace-normal text-right leading-tight">
-            Progress Otomatis
+            Progres Otomatis
           </span>
         </div>
       </div>
@@ -155,19 +144,19 @@ export function ActiveChallengeCard({ challenge }: { challenge: ChallengePreview
 
       <div className="rounded-xl border border-line/50 p-3 bg-secondary/20 space-y-2">
         <div className="flex items-center justify-between text-xs">
-          <span className="text-muted-foreground font-medium">Estimasi Reward Penukaran</span>
+          <span className="text-muted-foreground font-medium">Estimasi Hadiah</span>
           <span className="font-bold text-amber text-xs">
-            +{challenge.potentialReward.xp} Potential XP &middot; +{challenge.potentialReward.hp} Potential HP
+            +{challenge.potentialReward.xp} XP Potensial &middot; +{challenge.potentialReward.hp} HP Potensial
           </span>
         </div>
         <p className="text-[10px] text-muted-foreground leading-tight italic">
-          * Reward potensial setelah penyelesaian tervalidasi. Hanya aktivitas terpercaya yang berkontribusi pada tantangan ini.
+          * Hadiah potensial diberikan setelah penyelesaian tervalidasi. Hanya aktivitas tepercaya yang berkontribusi.
         </p>
       </div>
 
       <div className="pt-1">
         <Link href="/challenge/challenge-light-cardio" className="btn btn-outline w-full text-center text-sm font-semibold justify-center">
-          Lihat Challenge
+          Lihat Tantangan
         </Link>
       </div>
     </div>

@@ -18,7 +18,7 @@ export default function TodaysJourneyDetailPage() {
       {/* 1. Page Header */}
       <div className="border-b border-line/40 pb-5">
         <h1 className="font-display text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">
-          Today’s Journey
+          Perjalanan Hari Ini
         </h1>
         <p className="mt-1.5 text-muted-foreground text-sm font-medium">
           Tampilan jelas mengenai tindakan sehat yang membentuk progres Anda hari ini.
@@ -53,40 +53,40 @@ export default function TodaysJourneyDetailPage() {
       {/* 4. Trust Explanation Section */}
       <div className="card card-pad space-y-4">
         <div>
-          <h3 className="font-display text-base font-bold text-foreground">Goal Trust System</h3>
-          <p className="text-xs text-muted-foreground mt-0.5">How we verify and protect your wellness accomplishments</p>
+          <h3 className="font-display text-base font-bold text-foreground">Sistem Kepercayaan Target</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">Cara kami memverifikasi dan melindungi pencapaian sehat Anda.</p>
         </div>
 
         <div className="grid gap-3 text-xs">
           <div className="rounded-xl border border-line p-3 flex gap-2.5">
-            <span className="pill bg-brand-soft text-brand text-[9px] font-bold uppercase py-0 h-5 shrink-0">Verified</span>
+            <span className="pill bg-brand-soft text-brand text-[9px] font-bold uppercase py-0 h-5 shrink-0">Terverifikasi</span>
             <div>
-              <p className="font-bold text-foreground">Activity &amp; Workout</p>
-              <p className="text-muted-foreground mt-0.5 leading-relaxed">Based on trusted, validated activity data.</p>
+              <p className="font-bold text-foreground">Aktivitas &amp; Olahraga</p>
+              <p className="text-muted-foreground mt-0.5 leading-relaxed">Berdasarkan data aktivitas tepercaya yang telah divalidasi.</p>
             </div>
           </div>
 
           <div className="rounded-xl border border-line p-3 flex gap-2.5">
-            <span className="pill bg-sky/15 text-sky text-[9px] font-bold uppercase py-0 h-5 shrink-0">Partially Verified</span>
+            <span className="pill bg-sky/15 text-sky text-[9px] font-bold uppercase py-0 h-5 shrink-0">Sebagian Terverifikasi</span>
             <div>
-              <p className="font-bold text-foreground">Nutrition &amp; Logs</p>
-              <p className="text-muted-foreground mt-0.5 leading-relaxed">Based on structured data that may include Traveler confirmation.</p>
+              <p className="font-bold text-foreground">Nutrisi &amp; Catatan</p>
+              <p className="text-muted-foreground mt-0.5 leading-relaxed">Berdasarkan data terstruktur yang dapat mencakup konfirmasi pengguna.</p>
             </div>
           </div>
 
           <div className="rounded-xl border border-line p-3 flex gap-2.5">
-            <span className="pill bg-secondary text-muted-foreground text-[9px] font-bold uppercase py-0 h-5 shrink-0">Self-Reported</span>
+            <span className="pill bg-secondary text-muted-foreground text-[9px] font-bold uppercase py-0 h-5 shrink-0">Catatan Mandiri</span>
             <div>
-              <p className="font-bold text-foreground">Hydration &amp; Rest</p>
-              <p className="text-muted-foreground mt-0.5 leading-relaxed">Provided directly by the Traveler as supportive wellness information.</p>
+              <p className="font-bold text-foreground">Hidrasi &amp; Istirahat</p>
+              <p className="text-muted-foreground mt-0.5 leading-relaxed">Dicatat langsung oleh pengguna sebagai informasi pendukung kesehatan.</p>
             </div>
           </div>
 
           <div className="rounded-xl border border-line/50 p-3 border-dashed flex gap-2.5">
-            <span className="pill bg-secondary text-muted-foreground text-[9px] font-bold uppercase py-0 h-5 shrink-0">Simulated</span>
+            <span className="pill bg-secondary text-muted-foreground text-[9px] font-bold uppercase py-0 h-5 shrink-0">Simulasi</span>
             <div>
-              <p className="font-bold text-foreground">Developer Test Data</p>
-              <p className="text-muted-foreground mt-0.5 leading-relaxed">Used in this competition MVP to demonstrate the intended experience.</p>
+              <p className="font-bold text-foreground">Data Uji Pengembangan</p>
+              <p className="text-muted-foreground mt-0.5 leading-relaxed">Digunakan pada MVP untuk memperagakan pengalaman yang direncanakan.</p>
             </div>
           </div>
         </div>
@@ -96,19 +96,19 @@ export default function TodaysJourneyDetailPage() {
       <div className="grid gap-6 sm:grid-cols-2">
         <div className="card card-pad bg-secondary/35 border-line/65 space-y-3">
           <h3 className="font-display text-sm font-bold text-foreground flex items-center gap-1.5">
-            <ShieldCheck className="h-4.5 w-4.5 text-brand" /> Healthy Day Standards
+            <ShieldCheck className="h-4.5 w-4.5 text-brand" /> Standar Hari Sehat
           </h3>
           <p className="text-xs text-muted-foreground leading-relaxed leading-normal">
-            A Healthy Day can be built through activity, nutrition, hydration, recovery, or other meaningful healthy actions. Recovery days can also qualify.
+            Hari Sehat dapat dibentuk dari aktivitas, nutrisi, hidrasi, pemulihan, atau tindakan sehat bermakna lainnya. Hari pemulihan juga dapat memenuhi standar.
           </p>
         </div>
 
         <div className="card card-pad bg-secondary/35 border-line/65 space-y-3">
           <h3 className="font-display text-sm font-bold text-foreground flex items-center gap-1.5">
-            <Flame className="h-4.5 w-4.5 text-brand" /> Streak Logic
+            <Flame className="h-4.5 w-4.5 text-brand" /> Logika Streak
           </h3>
           <p className="text-xs text-muted-foreground leading-relaxed leading-normal">
-            Consistency rewards meaningful healthy patterns. Missing data is not automatically treated as a broken streak.
+            Konsistensi menghargai pola sehat yang bermakna. Data yang tidak tercatat tidak otomatis memutus streak.
           </p>
         </div>
       </div>
@@ -117,23 +117,23 @@ export default function TodaysJourneyDetailPage() {
       <div className="card card-pad space-y-4">
         <div>
           <h3 className="font-display text-base font-bold text-foreground flex items-center gap-1.5">
-            <Lock className="h-5 w-5 text-brand" /> Privacy Rules &amp; Data minimization
+            <Lock className="h-5 w-5 text-brand" /> Privasi &amp; Minimalisasi Data
           </h3>
-          <p className="text-xs text-muted-foreground mt-0.5">Your personal logging boundaries are fully protected</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Batas pencatatan pribadi Anda tetap dilindungi.</p>
         </div>
 
         <ul className="space-y-2 text-xs text-muted-foreground">
           <li className="flex items-start gap-2">
             <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-brand" />
-            <span>Activity may use verified GPS data, while hydration and recovery remain private self-reported fields.</span>
+            <span>Aktivitas dapat menggunakan GPS terverifikasi, sedangkan hidrasi dan pemulihan tetap menjadi catatan pribadi.</span>
           </li>
           <li className="flex items-start gap-2">
             <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-brand" />
-            <span>Sensitive nutrition logs remain completely private by default.</span>
+            <span>Catatan nutrisi sensitif bersifat privat secara bawaan.</span>
           </li>
           <li className="flex items-start gap-2">
             <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-brand" />
-            <span>Missing log items are treated neutrally and never penalized as failure days.</span>
+            <span>Catatan yang kosong diperlakukan netral dan tidak dianggap sebagai hari gagal.</span>
           </li>
         </ul>
       </div>
@@ -141,7 +141,7 @@ export default function TodaysJourneyDetailPage() {
       {/* 7. Primary Navigation CTA */}
       <div className="pt-2 flex flex-col gap-3">
         <Link href="/healthy-days" className="btn btn-primary w-full py-3 flex items-center justify-center gap-2">
-          View Healthy Day History <ArrowRight className="h-5 w-5" />
+          Lihat Riwayat Hari Sehat <ArrowRight className="h-5 w-5" />
         </Link>
       </div>
 
@@ -149,7 +149,7 @@ export default function TodaysJourneyDetailPage() {
       <div className="flex items-start gap-2.5 rounded-2xl bg-secondary/50 p-4 text-[10px] text-muted-foreground border border-line/30">
         <AlertTriangle className="h-4 w-4 shrink-0 text-muted-foreground mt-0.5" />
         <p>
-          Some goals in this competition MVP use deterministic simulated data to demonstrate the intended Behavior Engine experience.
+          Sejumlah target pada MVP ini memakai data simulasi deterministik untuk memperagakan pengalaman sistem kebiasaan yang direncanakan.
         </p>
       </div>
     </div>

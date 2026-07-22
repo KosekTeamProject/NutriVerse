@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronUp, ChevronDown, Minus, Crown, Flame, ShieldCheck } from "lucide-react";
+import { ChevronUp, ChevronDown, Minus, Crown, Flame, ShieldCheck, CalendarDays, MapPinOff } from "lucide-react";
 import { RankCrest } from "@/components/brand/RankCrest";
 import { tierBySlug, tierForXp, nextTier } from "@/lib/tiers";
 
@@ -15,22 +15,19 @@ type Entry = {
   consistencyDays: number;
   healthyDays: number;
 };
-type Scope = "global" | "kampus" | "teman";
+type Scope = "liga" | "teman" | "lokal";
 
 const DATA: Record<Scope, Entry[]> = {
-  global: [
-    { rank: 1, name: "Bima Saputra", xp: 52400, tier: "legend", delta: 0, consistencyDays: 28, healthyDays: 24 },
-    { rank: 2, name: "Nadia Pramesti", xp: 41200, tier: "apex", delta: 1, consistencyDays: 14, healthyDays: 12 },
-    { rank: 3, name: "Reza Firmansyah", xp: 33800, tier: "elite", delta: -1, consistencyDays: 10, healthyDays: 9 },
-    { rank: 4, name: "Dinda Puspita", xp: 28500, tier: "elite", delta: 2, consistencyDays: 8, healthyDays: 7 },
-    { rank: 5, name: "Yoga Adyatma", xp: 21900, tier: "peak", delta: 0, consistencyDays: 12, healthyDays: 10 },
-    { rank: 6, name: "Sarah Wijaya", xp: 18300, tier: "peak", delta: -2, consistencyDays: 6, healthyDays: 5 },
-    { rank: 7, name: "Fathan Mubarak", xp: 12450, tier: "radiant", delta: 3, you: true, consistencyDays: 7, healthyDays: 4 },
-    { rank: 8, name: "Ilham Razaq", xp: 11870, tier: "radiant", delta: 1, consistencyDays: 5, healthyDays: 4 },
-    { rank: 9, name: "Putri Maharani", xp: 9200, tier: "vital", delta: -1, consistencyDays: 3, healthyDays: 2 },
-    { rank: 10, name: "Rafi Adiputra", xp: 8100, tier: "vital", delta: 0, consistencyDays: 2, healthyDays: 1 },
+  liga: [
+    { rank: 1, name: "Dinda Puspita", xp: 14280, tier: "radiant", delta: 1, consistencyDays: 8, healthyDays: 6 },
+    { rank: 2, name: "Nadia Pramesti", xp: 13740, tier: "radiant", delta: 0, consistencyDays: 6, healthyDays: 5 },
+    { rank: 3, name: "Fathan Mubarak", xp: 12450, tier: "radiant", delta: 2, you: true, consistencyDays: 7, healthyDays: 4 },
+    { rank: 4, name: "Ilham Razaq", xp: 11870, tier: "radiant", delta: -1, consistencyDays: 5, healthyDays: 4 },
+    { rank: 5, name: "Putri Maharani", xp: 10920, tier: "radiant", delta: 1, consistencyDays: 4, healthyDays: 3 },
+    { rank: 6, name: "Rafi Adiputra", xp: 10100, tier: "radiant", delta: -1, consistencyDays: 3, healthyDays: 3 },
+    { rank: 7, name: "Aulia Rahma", xp: 9640, tier: "vital", delta: 0, consistencyDays: 4, healthyDays: 3 },
   ],
-  kampus: [
+  lokal: [
     { rank: 1, name: "Dinda Puspita", xp: 28500, tier: "elite", delta: 0, consistencyDays: 8, healthyDays: 7 },
     { rank: 2, name: "Yoga Adyatma", xp: 21900, tier: "peak", delta: 1, consistencyDays: 12, healthyDays: 10 },
     { rank: 3, name: "Fathan Mubarak", xp: 12450, tier: "radiant", delta: 2, you: true, consistencyDays: 7, healthyDays: 4 },
@@ -48,9 +45,9 @@ const DATA: Record<Scope, Entry[]> = {
 };
 
 const SCOPES: { key: Scope; label: string }[] = [
-  { key: "global", label: "Global" },
-  { key: "kampus", label: "Kampus" },
+  { key: "liga", label: "Liga" },
   { key: "teman", label: "Teman" },
+  { key: "lokal", label: "Lokal" },
 ];
 
 function initials(name: string) {
@@ -87,7 +84,7 @@ function Podium({ e, place }: { readonly e: Entry; readonly place: 1 | 2 | 3 }) 
 }
 
 export function LeaderboardView() {
-  const [scope, setScope] = useState<Scope>("global");
+  const [scope, setScope] = useState<Scope>("liga");
   const list = DATA[scope];
   const top3 = list.slice(0, 3);
   const rest = list.slice(3);
@@ -97,13 +94,33 @@ export function LeaderboardView() {
 
   return (
     <div className="space-y-6">
+      <div className="card card-pad border-brand/20 bg-gradient-to-br from-brand-soft to-sky/10">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="h-5 w-5 text-brand" />
+              <p className="font-display text-base font-bold text-foreground">Kompetisi yang setara</p>
+            </div>
+            <p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted-foreground">
+              Kamu dipasangkan dengan traveler pada rentang progres serupa. Aktivitas tervalidasi dan konsistensi mingguan membentuk posisi musim ini.
+            </p>
+          </div>
+          <span className="pill border border-brand/20 bg-card text-[10px] font-bold text-brand">LIGA RADIANT</span>
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2 text-[10px] font-semibold text-muted-foreground">
+          <span className="pill bg-card"><CalendarDays className="h-3.5 w-3.5" /> Musim 03 · 5 hari tersisa</span>
+          <span className="pill bg-card"><ShieldCheck className="h-3.5 w-3.5" /> Hanya aktivitas tervalidasi</span>
+          <span className="pill bg-card"><MapPinOff className="h-3.5 w-3.5" /> Tanpa rute presisi</span>
+        </div>
+      </div>
+
       {/* scope tabs */}
-      <div className="inline-flex rounded-full bg-secondary p-1">
+      <div className="flex w-full overflow-x-auto rounded-full bg-secondary p-1 sm:inline-flex sm:w-auto">
         {SCOPES.map((s) => (
           <button
             key={s.key}
             onClick={() => setScope(s.key)}
-            className={`rounded-full px-5 py-1.5 text-xs font-bold uppercase tracking-wider transition ${
+            className={`min-w-[6rem] flex-1 rounded-full px-5 py-1.5 text-xs font-bold uppercase tracking-wider transition sm:flex-none ${
               scope === s.key ? "bg-card text-brand shadow-soft" : "text-muted-foreground"
             }`}
           >
@@ -173,10 +190,10 @@ export function LeaderboardView() {
       {/* Fair and Supportive Ranking disclaimer */}
       <div className="card card-pad bg-secondary/35 border-line/65 space-y-3">
         <h3 className="font-display text-sm font-bold text-foreground flex items-center gap-1.5">
-          <ShieldCheck className="h-4.5 w-4.5 text-brand" /> Fair and Supportive Ranking
+          <ShieldCheck className="h-4.5 w-4.5 text-brand" /> Peringkat yang adil dan suportif
         </h3>
         <p className="text-xs text-muted-foreground leading-relaxed leading-normal">
-          Leaderboard rankings reflect general traveler consistency metrics (such as active streaks and verified exercise segments). Self-reported logs are logged for personal history tracking and do not contribute to competitive leaderboard points. Rankings do not represent health diagnosis or personal worth. Production database synchronization is deferred.
+          Catatan mandiri tetap tersimpan sebagai riwayat pribadi, tetapi tidak memberi poin kompetitif. Peringkat bukan diagnosis kesehatan atau ukuran nilai diri. Data dan musim pada MVP ini masih simulasi; sinkronisasi serta segmentasi produksi memerlukan server.
         </p>
       </div>
     </div>

@@ -5,28 +5,42 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "@/hooks/useTheme";
 import {
-  LayoutDashboard, ScanLine, Activity, Trophy, Users, Gift, Settings,
-  Menu, X, Sun, Moon, Bell, Search, Flame, Leaf, UsersRound, Compass, Heart,
+  LayoutDashboard, ScanLine, Activity, Trophy, Gift, Settings,
+  Menu, X, Sun, Moon, Bell, Search, Flame, Leaf, UsersRound, Heart,
   CalendarCheck, Sparkles,
 } from "lucide-react";
+import { WellbeingReminder } from "@/components/app/WellbeingReminder";
 
-const NAV = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/todays-journey", label: "Today", icon: CalendarCheck },
-  { href: "/health-pulse", label: "Health Pulse", icon: Heart },
-  { href: "/journey", label: "Journey", icon: Compass },
-  { href: "/companion", label: "Companion", icon: Sparkles },
-  { href: "/scan", label: "Scan Makanan", icon: ScanLine },
-  { href: "/aktivitas", label: "Aktivitas", icon: Activity },
-  { href: "/challenge", label: "Challenge", icon: Trophy },
-  { href: "/leaderboard", label: "Leaderboard", icon: Users },
-  { href: "/komunitas", label: "Komunitas", icon: UsersRound },
-  { href: "/reward", label: "Reward", icon: Gift },
+const NAV_GROUPS = [
+  {
+    label: "Utama",
+    items: [
+      { href: "/dashboard", label: "Dasbor", icon: LayoutDashboard },
+      { href: "/todays-journey", label: "Hari Ini", icon: CalendarCheck },
+      { href: "/health-pulse", label: "Health Pulse", icon: Heart },
+      { href: "/companion", label: "Nora", icon: Sparkles },
+    ],
+  },
+  {
+    label: "Aktivitas",
+    items: [
+      { href: "/scan", label: "Pindai Makanan", icon: ScanLine },
+      { href: "/aktivitas", label: "Aktivitas GPS", icon: Activity },
+    ],
+  },
+  {
+    label: "Komunitas",
+    items: [
+      { href: "/challenge", label: "Tantangan", icon: Trophy },
+      { href: "/komunitas", label: "Komunitas & Peringkat", icon: UsersRound },
+      { href: "/reward", label: "Hadiah", icon: Gift },
+    ],
+  },
 ];
 
 function SidebarContent({ pathname, onNavigate }: { pathname: string; onNavigate?: () => void }) {
   return (
-    <div className="flex h-full flex-col gap-6 p-4">
+    <div className="flex h-full min-h-0 flex-col gap-4 p-4">
       <Link href="/" className="flex items-center gap-2.5 px-2" onClick={onNavigate}>
         <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-brand to-lime text-white shadow-lg shadow-brand/30">
           <Leaf className="h-5 w-5" strokeWidth={2.5} />
@@ -36,24 +50,31 @@ function SidebarContent({ pathname, onNavigate }: { pathname: string; onNavigate
         </span>
       </Link>
 
-      <nav className="flex flex-1 flex-col gap-1">
-        {NAV.map((item) => {
-          const active = pathname === item.href;
-          const Icon = item.icon;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={onNavigate}
-              className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
-                active ? "bg-brand-soft text-brand" : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-              }`}
-            >
-              <Icon className="h-[18px] w-[18px]" />
-              {item.label}
-            </Link>
-          );
-        })}
+      <nav className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1">
+        {NAV_GROUPS.map((group) => (
+          <div key={group.label} className="space-y-1">
+            <p className="px-3 pb-0.5 text-[9px] font-extrabold uppercase tracking-[0.16em] text-muted-foreground/70">
+              {group.label}
+            </p>
+            {group.items.map((item) => {
+              const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={onNavigate}
+                  className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition ${
+                    active ? "bg-brand-soft text-brand" : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                  }`}
+                >
+                  <Icon className="h-[18px] w-[18px]" />
+                  {item.label}
+                </Link>
+              );
+            })}
+          </div>
+        ))}
       </nav>
 
       <Link
@@ -74,6 +95,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-background">
+      <WellbeingReminder />
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 border-r border-line bg-sidebar lg:block">
         <SidebarContent pathname={pathname} />
       </aside>

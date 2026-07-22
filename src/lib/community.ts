@@ -27,8 +27,8 @@ export const POSTS: Post[] = [
     name: "Dinda Puspita", 
     time: "12 mnt lalu", 
     kind: "activity", 
-    text: "Completed a light cardio segment around the campus trail. Sustainable steps feel much better than heavy strain!", 
-    detail: "1.4 km · Verified Progress", 
+    text: "Selesai kardio ringan mengelilingi jalur kampus. Langkah yang berkelanjutan terasa lebih nyaman daripada memaksakan tubuh.",
+    detail: "1,4 km · Progres Terverifikasi",
     encourages: 24, 
     comments: 5,
     trustLevel: "verified"
@@ -38,8 +38,8 @@ export const POSTS: Post[] = [
     name: "Yoga Adyatma", 
     time: "1 jam lalu", 
     kind: "consistency", 
-    text: "Hit a seven-day consistency pattern streak. Keeping steps simple and recovery active.", 
-    detail: "7-Day Foundation", 
+    text: "Berhasil menjaga pola konsistensi selama tujuh hari dengan langkah sederhana dan pemulihan aktif.",
+    detail: "Fondasi 7 Hari",
     encourages: 41, 
     comments: 12,
     trustLevel: "verified"
@@ -49,8 +49,8 @@ export const POSTS: Post[] = [
     name: "Fatan Mubarak", 
     time: "3 jam lalu", 
     kind: "reflection", 
-    text: "Today's recovery day helped maintain energy. Sometimes rest is the most productive step for wellness consistency.", 
-    detail: "Active Recovery Day", 
+    text: "Hari pemulihan membantu menjaga energi. Terkadang istirahat adalah langkah paling produktif untuk konsistensi.",
+    detail: "Hari Pemulihan Aktif",
     encourages: 18, 
     comments: 3,
     trustLevel: "self-reported"
@@ -60,8 +60,8 @@ export const POSTS: Post[] = [
     name: "Aulia Rahma", 
     time: "5 jam lalu", 
     kind: "activity", 
-    text: "Accumulated 7.2 km of verified walking for the Light Cardio Journey challenge.", 
-    detail: "72% Challenge Progress", 
+    text: "Mengumpulkan 7,2 km jalan kaki terverifikasi untuk tantangan Kardio Ringan.",
+    detail: "72% Progres Tantangan",
     encourages: 30, 
     comments: 7,
     trustLevel: "verified"
@@ -71,9 +71,9 @@ export const POSTS: Post[] = [
 export type Suggestion = { id: string; name: string; mutual: number; focus: string };
 
 export const SUGGESTIONS: Suggestion[] = [
-  { id: "u1", name: "Bima Saputra", mutual: 4, focus: "Active Pacing" },
-  { id: "u2", name: "Sarah Wijaya", mutual: 2, focus: "Recovery Rhythm" },
-  { id: "u3", name: "Reza Firmansyah", mutual: 6, focus: "Balanced Routine" },
+  { id: "u1", name: "Bima Saputra", mutual: 4, focus: "Pace Aktif" },
+  { id: "u2", name: "Sarah Wijaya", mutual: 2, focus: "Ritme Pemulihan" },
+  { id: "u3", name: "Reza Firmansyah", mutual: 6, focus: "Rutinitas Seimbang" },
 ];
 
 export const COMMUNITY_CHALLENGE = {

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   Camera, Upload, Loader2, RotateCcw, Footprints, Bike,
-  Flame, Sparkles, Check, X, HelpCircle, Plus, Leaf, Edit2
+  Flame, Sparkles, Check, X, HelpCircle, Plus, Leaf, Edit2, ArrowRight, HeartPulse
 } from "lucide-react";
 import { analyze, verdict, type Food, type Nutrition, type NutritionTrustLevel } from "@/lib/food";
 import { deterministicFoodEntries } from "@/features/nutrition/data";
@@ -173,7 +173,7 @@ export function FoodScanner({ onAdd }: { onAdd?: (entry: LoggedFood) => void }) 
           <div className="flex h-64 w-full flex-col items-center justify-center bg-brand/5 text-brand p-4 text-center">
             <Leaf className="h-10 w-10 mb-2" />
             <p className="text-sm font-extrabold text-foreground">{currentFood.name}</p>
-            <p className="text-xs text-muted-foreground mt-1">Demo Mode: Simulated meal layout loaded</p>
+            <p className="text-xs text-muted-foreground mt-1">Mode Demo: contoh susunan makanan dimuat</p>
           </div>
         ) : (
           <button onClick={() => fileRef.current?.click()} className="flex h-64 w-full flex-col items-center justify-center gap-3 text-muted-foreground transition hover:bg-secondary">
@@ -192,7 +192,7 @@ export function FoodScanner({ onAdd }: { onAdd?: (entry: LoggedFood) => void }) 
 
       {/* Upload Privacy Note */}
       <p className="text-[10px] text-muted-foreground leading-normal bg-secondary/45 rounded-xl p-3 border border-line/30">
-        Meal images are used only for the current analysis experience. This MVP does not provide production image storage or medical nutrition assessment.
+        Foto makanan hanya digunakan untuk analisis saat ini. MVP belum menyediakan penyimpanan foto produksi atau penilaian gizi medis.
       </p>
 
       {/* Controls */}
@@ -282,11 +282,12 @@ export function FoodScanner({ onAdd }: { onAdd?: (entry: LoggedFood) => void }) 
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line/45 pb-3">
             <div>
               <h3 className="font-display text-lg font-extrabold text-foreground">{currentFood.name}</h3>
-              <p className="text-xs text-muted-foreground mt-0.5">Porsi: {portion}x {currentFood.portion} &middot; estimasi AI log</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Porsi: {portion}x {currentFood.portion} &middot; estimasi catatan AI</p>
             </div>
             <div className="flex flex-col items-end gap-1.5">
               <span className={`pill text-[10px] font-bold uppercase ${toneClass[v.tone]}`}><Flame className="h-3.5 w-3.5" /> {v.label}</span>
               <NutritionTrustBadge trust={confirmedIdentity ? "confirmed" : "simulated"} />
+              <span className="pill border border-line bg-secondary text-[10px] font-bold text-muted-foreground">SCAN MAKANAN · 0 XP</span>
             </div>
           </div>
 
@@ -308,26 +309,41 @@ export function FoodScanner({ onAdd }: { onAdd?: (entry: LoggedFood) => void }) 
 
           <div className="flex items-center gap-2 rounded-xl bg-secondary p-2.5 text-xs text-muted-foreground">
             <Leaf className="h-4 w-4 text-brand shrink-0" /> 
-            <span>Vitamins: <span className="font-semibold text-foreground">{result.nutrition.vitamins}</span></span>
+            <span>Vitamin: <span className="font-semibold text-foreground">{result.nutrition.vitamins}</span></span>
           </div>
 
-          {/* Activity Burn Rec */}
-          <div className="rounded-2xl border border-line p-4 space-y-3 bg-card">
-            <div>
-              <p className="text-xs font-bold text-foreground uppercase tracking-wider text-brand">Rekomendasi Aktivitas Pembakaran</p>
-              <p className="mt-1 text-xs text-muted-foreground leading-normal">{result.activityRec}</p>
+          {/* Supportive movement options */}
+          <div className="rounded-2xl border border-brand/20 bg-brand-soft/45 p-4 space-y-3">
+            <div className="flex items-start gap-3">
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-card text-brand"><HeartPulse className="h-5 w-5" /></span>
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-brand">Pilihan gerak ringan · opsional</p>
+                <p className="mt-1 text-sm font-bold text-foreground">Mulai dengan jalan santai 10–15 menit</p>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                  Tidak perlu “membayar” makanan dengan olahraga. Pilih gerak yang terasa realistis untuk kondisi tubuhmu hari ini.
+                </p>
+              </div>
             </div>
-            <div className="grid grid-cols-3 gap-2">
-              <div className="flex items-center gap-2 rounded-xl bg-secondary p-2.5"><Footprints className="h-4 w-4 text-brand" /><div><p className="stat-num text-xs font-bold text-foreground leading-none">{result.burn.run}m</p><p className="text-[9px] text-muted-foreground mt-0.5">Lari</p></div></div>
-              <div className="flex items-center gap-2 rounded-xl bg-secondary p-2.5"><Bike className="h-4 w-4 text-sky" /><div><p className="stat-num text-xs font-bold text-foreground leading-none">{result.burn.bike}m</p><p className="text-[9px] text-muted-foreground mt-0.5">Sepeda</p></div></div>
-              <div className="flex items-center gap-2 rounded-xl bg-secondary p-2.5"><Footprints className="h-4 w-4 text-amber" /><div><p className="stat-num text-xs font-bold text-foreground leading-none">{result.burn.walk}m</p><p className="text-[9px] text-muted-foreground mt-0.5">Jalan</p></div></div>
-            </div>
+            <Link href="/aktivitas?source=food-scan" className="btn btn-primary w-full sm:w-auto">
+              Lihat aktivitas ringan <ArrowRight className="h-4 w-4" />
+            </Link>
+            <details className="rounded-xl border border-line bg-card p-3">
+              <summary className="cursor-pointer text-xs font-bold text-foreground">Lihat estimasi ekuivalen energi</summary>
+              <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+                Angka berikut hanya estimasi informatif, bukan target wajib atau kompensasi atas makanan.
+              </p>
+              <div className="mt-3 grid grid-cols-1 gap-2 min-[420px]:grid-cols-3">
+                <div className="flex items-center gap-2 rounded-xl bg-secondary p-2.5"><Footprints className="h-4 w-4 text-brand" /><div><p className="stat-num text-xs font-bold text-foreground leading-none">{result.burn.run}m</p><p className="text-[9px] text-muted-foreground mt-0.5">Lari</p></div></div>
+                <div className="flex items-center gap-2 rounded-xl bg-secondary p-2.5"><Bike className="h-4 w-4 text-sky" /><div><p className="stat-num text-xs font-bold text-foreground leading-none">{result.burn.bike}m</p><p className="text-[9px] text-muted-foreground mt-0.5">Sepeda</p></div></div>
+                <div className="flex items-center gap-2 rounded-xl bg-secondary p-2.5"><Footprints className="h-4 w-4 text-amber" /><div><p className="stat-num text-xs font-bold text-foreground leading-none">{result.burn.walk}m</p><p className="text-[9px] text-muted-foreground mt-0.5">Jalan</p></div></div>
+              </div>
+            </details>
           </div>
 
           {/* Companion Nutrition Insight */}
           {noraInsight && (
             <div className="space-y-2.5 pt-2 border-t border-line/35">
-              <h4 className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">{displayName} Nutrition Feedback</h4>
+              <h4 className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Masukan Gizi dari {displayName}</h4>
               <CompanionCard 
                 insight={noraInsight} 
                 variant="compact" 

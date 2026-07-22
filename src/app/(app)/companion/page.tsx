@@ -1,10 +1,8 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useState, useRef } from "react";
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { 
-  Compass, 
   AlertTriangle, 
   Send, 
   Sparkles, 
@@ -23,11 +21,9 @@ type Msg = { role: "user" | "ai"; text: string; time: string };
 
 const SUGGESTIONS = [
   "Mengapa Health Pulse-ku berubah?",
-  "Bagaimana melanjutkan target jalan pagi?",
-  "Apakah progres proteinku sudah cukup baik?",
   "Apa aktivitas pemulihan yang ringan?",
-  "Bagaimana Challenge-ku dihitung?",
-  "Jelaskan hasil scan makanan terakhirku."
+  "Bagaimana target jalan pagiku?",
+  "Jelaskan hasil pindai makanan terakhir."
 ];
 
 function simulatedReply(question: string): string {
@@ -45,53 +41,58 @@ function simulatedReply(question: string): string {
   }
 
   if (q.includes("pulse") || q.includes("kesehatan") || q.includes("mengapa")) {
-    return "Health Pulse-mu saat ini berada di 78.0 (Flourishing). Nilai ini dihitung berdasarkan lima dimensi: Nutrisi (30%), Aktivitas (25%), Tidur (20%), Hidrasi (15%), dan Manajemen Berat (10%). Skor naik +1.2 karena konsistensi aktivitas mingguanmu!";
+    return "Health Pulse-mu naik menjadi 78 karena aktivitas mingguan lebih konsisten. Nutrisi, tidur, hidrasi, dan pengelolaan berat tetap ikut membentuk nilainya.";
   }
 
   if (q.includes("jalan") || q.includes("walk") || q.includes("aktivitas") || q.includes("target")) {
-    return "Hari ini kamu telah menyelesaikan 1.4 km dari target 2.0 km Morning Walk (Demo Validation Passed). Selesaikan sisa 0.6 km untuk mengamankan XP harianmu.";
+    return "Hari ini kamu telah berjalan 1,4 km dari target 2 km. Jika tubuhmu nyaman, sisa 600 meter dapat diselesaikan dengan pace ringan.";
   }
 
   if (q.includes("protein") || q.includes("gizi") || q.includes("nutrisi") || q.includes("progres")) {
-    return "Asupan protein tercatat mencapai 56g dari target harian 80g. Menu makan siangmu memberikan dorongan protein kompleks yang sangat baik untuk pemulihan.";
+    return "Protein tercatat 56 g dari target 80 g. Kamu dapat melengkapinya lewat pilihan makanan yang sesuai kebutuhanmu.";
   }
 
   if (q.includes("pemulihan") || q.includes("recovery") || q.includes("istirahat") || q.includes("ringan")) {
-    return "Aktivitas pemulihan yang ringan seperti peregangan mandiri selama 10 menit atau tidur berkualitas 7.5 jam membantu menurunkan tingkat kelelahan otot.";
+    return "Coba peregangan ringan 1–10 menit atau berjalan santai. Berhenti jika terasa sakit, pusing, atau tidak nyaman.";
   }
 
   if (q.includes("challenge") || q.includes("tantangan") || q.includes("hitung")) {
-    return "Tantangan aktifmu adalah Light Cardio Journey (progres 72%). Setiap langkah jalan pagi terekam GPS berkontribusi secara otomatis ke target mingguan.";
+    return "Tantangan kardio ringanmu sudah 72%. Hanya aktivitas GPS yang lolos validasi yang menambah progres.";
   }
 
   if (q.includes("scan") || q.includes("makanan") || q.includes("sarapan") || q.includes("breakfast") || q.includes("hasil")) {
-    return "Hasil scan makanan pagi ini (Balanced Breakfast) adalah 430 kkal dengan 24g protein dan 49g karbohidrat. Rekomendasi aktivitas pembakarannya adalah jalan kaki santai 108 menit.";
+    return "Hasil pindai sarapan memperkirakan 430 kkal, 24 g protein, dan 49 g karbohidrat. Jika ingin bergerak, jalan santai 10–15 menit dapat menjadi pilihan—bukan kewajiban atau kompensasi makanan.";
   }
 
-  return "Halo! Sebagai Companion-mu, aku menganjurkan kamu untuk fokus pada rutinitas hidrasi dan menjaga konsistensi tidur 7.5 jam malam ini. Konsistensi harian lebih penting daripada latihan berlebih.";
+  return "Fokus pada satu langkah kecil hari ini: cukup minum, bergerak ringan, atau menyiapkan waktu tidur. Konsistensi lebih penting daripada latihan berlebihan.";
 }
 
 function ChatSection() {
   const searchParams = useSearchParams();
   const analysisId = searchParams.get("analysis");
+  const journeyId = searchParams.get("journey");
+  const journeyTitle = searchParams.get("journeyTitle");
+  const suggestedPrompt = searchParams.get("prompt");
   const { displayName } = useCompanionName();
 
   const [messages, setMessages] = useState<Msg[]>(() => [
-    { role: "ai", text: `Halo Fathan! Aku ${displayName}, pendamping kesehatanmu. Ada yang ingin kamu tanyakan mengenai aktivitas, nutrisi, atau target Journey hari ini?`, time: "Baru saja" }
+    { role: "ai", text: `Halo Fathan, aku ${displayName}. Apa yang ingin kamu pahami hari ini?`, time: "Baru saja" }
   ]);
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState(() => suggestedPrompt ?? "");
   const [isTyping, setIsTyping] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [lastQuestion, setLastQuestion] = useState("");
   const reducedMotion = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const contextLabel: string | null = useMemo(() => {
+    if (journeyId) return `Konteks Journey: ${journeyTitle || "Catatan Journey terpilih"}`;
     if (!analysisId) return null;
-    if (analysisId.includes("breakfast")) return "Konteks: Sarapan Seimbang (Balanced Breakfast) \u00b7 430 kkal";
-    if (analysisId.includes("chicken")) return "Konteks: Grilled Chicken Rice Bowl \u00b7 520 kkal";
-    if (analysisId.includes("soup")) return "Konteks: Vegetable Soup \u00b7 220 kkal";
+    if (analysisId.includes("breakfast")) return "Konteks: Sarapan Seimbang \u00b7 430 kkal";
+    if (analysisId.includes("chicken")) return "Konteks: Nasi Ayam Panggang \u00b7 520 kkal";
+    if (analysisId.includes("soup")) return "Konteks: Sup Sayur \u00b7 220 kkal";
     return "Konteks: Hasil Analisis Makanan Terakhir";
-  }, [analysisId]);
+  }, [analysisId, journeyId, journeyTitle]);
   const [contextDismissed, setContextDismissed] = useState(false);
+  const [chatOpen, setChatOpen] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
 
 
@@ -137,32 +138,45 @@ function ChatSection() {
     }
   }
 
+  if (!chatOpen) {
+    return (
+      <div id="chat" className="card card-pad flex flex-wrap items-center justify-between gap-3 border-brand/20 bg-brand-soft/20">
+        <div className="flex items-center gap-3">
+          <span className="grid h-9 w-9 place-items-center rounded-xl bg-brand-soft text-brand"><MessageSquare className="h-5 w-5" /></span>
+          <div>
+            <p className="text-sm font-bold text-foreground">Percakapan ditutup</p>
+            <p className="text-xs text-muted-foreground">Pesan tetap tersimpan selama halaman ini terbuka.</p>
+          </div>
+        </div>
+        <button onClick={() => setChatOpen(true)} className="btn btn-primary btn-sm">Buka Percakapan</button>
+      </div>
+    );
+  }
+
   return (
-    <div className="card card-pad min-w-0 space-y-4 border-line bg-card">
+    <div id="chat" className="card card-pad min-w-0 scroll-mt-24 space-y-4 border-line bg-card">
       <div className="flex items-center gap-2 border-b border-line/45 pb-3">
         <span className="grid h-9 w-9 place-items-center rounded-xl bg-brand-soft text-brand">
           <MessageSquare className="h-5 w-5" />
         </span>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <h2 className="font-display text-base font-bold text-foreground">Percakapan dengan {displayName}</h2>
-          <p className="text-xs text-muted-foreground">Tanyakan hal tentang aktivitas, nutrisi, pemulihan, Challenge, atau progres Journey-mu.</p>
+          <p className="text-xs text-muted-foreground">Tanyakan aktivitas, nutrisi, atau pemulihan.</p>
         </div>
+        <button onClick={() => setChatOpen(false)} className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-muted-foreground hover:bg-secondary hover:text-foreground" aria-label="Tutup percakapan cepat">
+          <X className="h-4.5 w-4.5" />
+        </button>
       </div>
 
       {/* Safety boundaries banner */}
-      <div className="flex items-start gap-2.5 rounded-2xl border border-line p-3.5 bg-secondary/35 text-[11px] text-muted-foreground">
+      <div className="flex items-center gap-2.5 rounded-xl border border-line bg-secondary/35 px-3 py-2 text-[10px] text-muted-foreground">
         <ShieldAlert className="mt-0.5 h-4.5 w-4.5 shrink-0 text-brand" />
-        <div>
-          <p className="font-bold text-foreground">Batas Percakapan {displayName}</p>
-          <p className="mt-0.5 leading-normal">
-            {displayName} dapat memberikan panduan kebugaran harian, namun tidak menghitung Health Pulse secara manual, memverifikasi segmen GPS, atau mendiagnosis masalah klinis.
-          </p>
-        </div>
+        <p><span className="font-bold text-foreground">Batas panduan:</span> {displayName} tidak mendiagnosis penyakit atau memverifikasi GPS.</p>
       </div>
 
       {/* Context preview tag */}
       {contextLabel && !contextDismissed && (
-        <div className="flex items-center justify-between rounded-xl bg-brand/5 border border-brand/10 px-3 py-2 text-xs">
+        <div className="flex items-center justify-between rounded-xl border border-brand/15 bg-brand/5 px-3 py-2 text-xs">
           <span className="text-brand font-semibold flex items-center gap-1.5 min-w-0">
             <Sparkles className="h-3.5 w-3.5 shrink-0" />
             <span className="truncate">{contextLabel}</span>
@@ -258,13 +272,7 @@ function ChatSection() {
         </button>
       </div>
 
-      {/* Disclosures info */}
-      <div className="flex items-start gap-2 rounded-xl bg-secondary/50 p-3 text-[10px] text-muted-foreground border border-line/30">
-        <Info className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-        <div className="space-y-1">
-          <p>Percakapan {displayName} pada MVP ini menggunakan respons kontekstual terstruktur untuk mendemonstrasikan pengalaman yang direncanakan.</p>
-        </div>
-      </div>
+      <p className="flex items-center gap-1.5 text-[10px] text-muted-foreground"><Info className="h-3.5 w-3.5" /> Respons pada MVP masih berupa simulasi terstruktur.</p>
     </div>
   );
 }
@@ -276,19 +284,18 @@ export default function CompanionHubPage() {
     <div className="mx-auto w-full min-w-0 max-w-5xl space-y-6 animate-fade-up-premium">
       {/* Page Header */}
       <div className="border-b border-line/40 pb-5">
+        <span className="eyebrow mb-3">Pendamping Kesehatan</span>
         <h1 className="font-display text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">
-          {displayName} Companion
+          {displayName}, Teman Sehatmu
         </h1>
         <p className="mt-1.5 text-muted-foreground text-sm font-medium">
-          Panduan kontekstual dan refleksi dari seluruh perjalanan NutriVerse-mu.
+          Tanyakan hal sederhana dan dapatkan satu langkah yang relevan.
         </p>
       </div>
 
       <div className="grid min-w-0 gap-6 lg:grid-cols-3">
-        {/* Main Columns: Filters, Insights and typing Chat */}
+        {/* Main column: chat first, concise supporting insights second. */}
         <div className="min-w-0 space-y-6 lg:col-span-2">
-          <CompanionHubContainer insights={companionInsights} />
-          
           <Suspense fallback={
             <div className="card card-pad flex flex-col items-center justify-center py-10">
               <Loader2 className="h-6 w-6 animate-spin text-brand" />
@@ -296,6 +303,8 @@ export default function CompanionHubPage() {
           }>
             <ChatSection />
           </Suspense>
+
+          <CompanionHubContainer insights={companionInsights} />
         </div>
 
         {/* Sidebar widgets */}
@@ -305,42 +314,6 @@ export default function CompanionHubPage() {
 
           {/* Safety Reminder */}
           <CompanionSafetyNote />
-
-          {/* How Companion Helps card */}
-          <div className="card card-pad space-y-3.5">
-            <div>
-              <h3 className="font-display text-sm font-bold text-foreground">Bagaimana {displayName} Membantu</h3>
-              <p className="text-xs text-muted-foreground mt-0.5">Memahami asisten kebugaran Anda</p>
-            </div>
-            
-            <ul className="space-y-2.5 text-xs text-muted-foreground">
-              <li className="flex items-start gap-2">
-                <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-brand" />
-                <span>Menerjemahkan catatan aktivitas &amp; nutrisi.</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-brand" />
-                <span>Merefleksikan pola konsistensi mingguan.</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-brand" />
-                <span>Menyarankan langkah pemulihan untuk esok hari.</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-brand" />
-                <span>Menghargai hari istirahat tanpa merusak streak.</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-brand/50" />
-                <span className="italic">Tidak mendiagnosis penyakit secara klinis.</span>
-              </li>
-            </ul>
-          </div>
-
-          {/* Global CTA */}
-          <Link href="/journey" className="btn btn-primary w-full text-center py-3 flex items-center justify-center gap-2 text-xs">
-            <Compass className="h-4.5 w-4.5" /> Lanjutkan Journey
-          </Link>
 
           {/* MVP Transparency */}
           <div className="flex items-start gap-2.5 rounded-2xl bg-secondary/50 p-4 text-[10px] text-muted-foreground border border-line/30">

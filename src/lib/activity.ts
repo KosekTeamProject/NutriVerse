@@ -123,6 +123,43 @@ export function computeXp(distanceM: number, kind: ActivityKind): number {
   return Math.floor((distanceM / 1000) * ACTIVITY[kind].xpPerKm);
 }
 
+/**
+ * Guardrail proposal for the browser demo. The server remains the authority for
+ * production XP and may tune these values after product and safety evaluation.
+ */
+export const XP_SAFETY_POLICY = {
+  dailyCap: 300,
+  fullRateUntil: 180,
+  reducedRate: 0.5,
+} as const;
+
+export type DailyXpResult = {
+  readonly awarded: number;
+  readonly base: number;
+  readonly remainingToday: number;
+  readonly reducedBy: number;
+  readonly capped: boolean;
+};
+
+export function applyDailyXpPolicy(baseXp: number, earnedToday: number): DailyXpResult {
+  const safeBase = Math.max(0, Math.floor(baseXp));
+  const safeEarned = Math.max(0, Math.floor(earnedToday));
+  const remainingToday = Math.max(0, XP_SAFETY_POLICY.dailyCap - safeEarned);
+  const fullRateRoom = Math.max(0, XP_SAFETY_POLICY.fullRateUntil - safeEarned);
+  const fullRateXp = Math.min(safeBase, fullRateRoom);
+  const reducedBase = Math.max(0, safeBase - fullRateXp);
+  const adjusted = fullRateXp + Math.floor(reducedBase * XP_SAFETY_POLICY.reducedRate);
+  const awarded = Math.min(adjusted, remainingToday);
+
+  return {
+    awarded,
+    base: safeBase,
+    remainingToday,
+    reducedBy: safeBase - awarded,
+    capped: adjusted > remainingToday,
+  };
+}
+
 // 2. Deterministic Verification Examples
 export const verifiedMorningWalk: UpgradedActivitySummary = {
   id: "journey-morning-walk",

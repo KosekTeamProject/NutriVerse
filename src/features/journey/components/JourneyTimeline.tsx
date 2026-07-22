@@ -7,7 +7,8 @@ import {
   Globe2, 
   ShieldCheck, 
   ArrowRight,
-  TrendingUp
+  TrendingUp,
+  Sparkles
 } from "lucide-react";
 import { JourneyRecord } from "../types";
 import { 
@@ -25,7 +26,7 @@ export function JourneyTimeline({ records }: JourneyTimelineProps) {
   if (records.length === 0) {
     return (
       <div className="card card-pad text-center py-12">
-        <p className="text-muted-foreground text-sm">No Journey records found matching the active category.</p>
+        <p className="text-muted-foreground text-sm">Tidak ada catatan perjalanan pada kategori ini.</p>
       </div>
     );
   }
@@ -96,7 +97,7 @@ export function JourneyTimeline({ records }: JourneyTimelineProps) {
                   
                   {r.healthPulseAfter !== undefined && r.healthPulseChange !== undefined && (
                     <span className="pill bg-brand-soft/20 text-brand font-semibold text-xs flex items-center gap-1">
-                      <TrendingUp className="h-3.5 w-3.5" /> Health Pulse: +{r.healthPulseChange.toFixed(1)}
+                      <TrendingUp className="h-3.5 w-3.5" /> Perubahan Health Pulse: +{r.healthPulseChange.toFixed(1)}
                     </span>
                   )}
                 </div>
@@ -109,17 +110,33 @@ export function JourneyTimeline({ records }: JourneyTimelineProps) {
                 </div>
               )}
 
-              {/* Bottom Actions link to Journey Details */}
+              {/* Bottom Actions connect the record to detail and Companion context */}
               <div className="flex flex-col items-start gap-3 border-t border-line/50 pt-3 sm:flex-row sm:items-center sm:justify-between">
                 <span className="text-[11px] italic text-muted-foreground sm:max-w-[70%] sm:truncate">
                   {r.meaning}
                 </span>
-                <Link 
-                  href={`/journey/${r.id}`} 
-                  className="btn btn-outline btn-sm inline-flex items-center gap-1 text-xs font-bold leading-none shrink-0"
-                >
-                  View Details <ArrowRight className="h-3.5 w-3.5" />
-                </Link>
+                <div className="flex w-full flex-col gap-2 min-[420px]:w-auto min-[420px]:flex-row">
+                  <Link
+                    href={{
+                      pathname: "/companion",
+                      query: {
+                        journey: r.id,
+                        journeyTitle: r.title,
+                        prompt: `Apa langkah terbaik setelah ${r.title} ini?`,
+                      },
+                      hash: "chat",
+                    }}
+                    className="btn btn-ghost btn-sm inline-flex items-center gap-1 text-xs font-bold leading-none"
+                  >
+                    <Sparkles className="h-3.5 w-3.5" /> Tanya Nora
+                  </Link>
+                  <Link
+                    href={`/journey/${r.id}`}
+                    className="btn btn-outline btn-sm inline-flex items-center gap-1 text-xs font-bold leading-none"
+                  >
+                    Lihat Detail <ArrowRight className="h-3.5 w-3.5" />
+                  </Link>
+                </div>
               </div>
             </div>
           </div>

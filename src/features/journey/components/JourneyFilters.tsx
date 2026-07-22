@@ -21,7 +21,7 @@ export function JourneyFilters({ activeFilter, onFilterChange, categories }: Jou
             : "bg-secondary text-muted-foreground hover:text-foreground"
         }`}
       >
-        All Journeys
+        Semua Perjalanan
       </button>
       {categories.map((cat) => (
         <button

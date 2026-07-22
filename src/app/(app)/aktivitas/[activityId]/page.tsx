@@ -50,7 +50,7 @@ export default async function ActivityDetailPage({ params }: ActivityDetailPageP
       <div className="border-b border-line/40 pb-5">
         <div className="flex items-center gap-2">
           <span className="pill bg-brand-soft text-brand text-[9px] font-bold uppercase tracking-wider">
-            {cfg.label} Summary
+            Ringkasan {cfg.label}
           </span>
           <span className="text-xs text-muted-foreground font-mono">
             {dateStr}
@@ -60,15 +60,15 @@ export default async function ActivityDetailPage({ params }: ActivityDetailPageP
           {activity.title}
         </h1>
         <p className="text-muted-foreground text-sm font-medium">
-          Detailed telemetry statistics and quality verification checks.
+          Statistik telemetri dan pemeriksaan kualitas verifikasi aktivitas.
         </p>
       </div>
 
       {/* Core Stats Card */}
       <div className="card card-pad space-y-6">
         <div>
-          <h3 className="font-display text-base font-bold text-foreground">Session Metrics</h3>
-          <p className="text-xs text-muted-foreground mt-0.5">Calculated distance and movement coordinates</p>
+          <h3 className="font-display text-base font-bold text-foreground">Metrik Sesi</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">Jarak dan pergerakan yang dihitung dari data aktivitas.</p>
         </div>
 
         <div className="text-center">
@@ -97,7 +97,7 @@ export default async function ActivityDetailPage({ params }: ActivityDetailPageP
           <div className="rounded-xl border border-line bg-brand-soft/20 p-3.5 text-center">
             <Zap className="mx-auto h-4 w-4 text-brand" />
             <p className="stat-num mt-1.5 text-base font-bold text-brand">+{computeXp(activity.distanceKm * 1000, activity.type)}</p>
-            <p className="text-[10px] text-muted-foreground">Potential XP</p>
+            <p className="text-[10px] text-muted-foreground">XP Potensial</p>
           </div>
         </div>
       </div>
@@ -115,10 +115,10 @@ export default async function ActivityDetailPage({ params }: ActivityDetailPageP
       {/* Navigation actions */}
       <div className="pt-2 flex flex-col gap-3 sm:flex-row">
         <Link href="/aktivitas/kepercayaan" className="btn btn-outline flex-1 text-center py-3 flex items-center justify-center gap-2">
-          Learn About Verification
+          Pelajari Verifikasi
         </Link>
         <Link href="/todays-journey" className="btn btn-primary flex-1 text-center py-3 flex items-center justify-center gap-2">
-          <Compass className="h-5 w-5" /> View Today’s Journey
+          <Compass className="h-5 w-5" /> Lihat Perjalanan Hari Ini
         </Link>
       </div>
 
@@ -126,7 +126,7 @@ export default async function ActivityDetailPage({ params }: ActivityDetailPageP
       <div className="flex items-start gap-2.5 rounded-2xl bg-secondary/50 p-4 text-[10px] text-muted-foreground border border-line/30">
         <AlertTriangle className="h-4 w-4 shrink-0 text-muted-foreground mt-0.5" />
         <p>
-          Activity verification results in this competition MVP are deterministic simulations that demonstrate the intended Trust and Safety experience.
+          Hasil verifikasi aktivitas pada MVP ini merupakan simulasi deterministik untuk memperagakan pengalaman keamanan yang direncanakan.
         </p>
       </div>
     </div>

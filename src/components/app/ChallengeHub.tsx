@@ -41,8 +41,8 @@ function ChallengeCard({ c, now, onMark }: { c: Challenge; now: number; onMark: 
   const done = now >= c.goal;
   const auto = c.source === "gps";
 
-  const trustLabel = auto ? "Verified" : "Self-Reported";
-  const sourceLabel = auto ? "Automatic Progress" : "Self-Reported";
+  const trustLabel = auto ? "Terverifikasi" : "Catatan Mandiri";
+  const sourceLabel = auto ? "Progres Otomatis" : "Catatan Mandiri";
 
   return (
     <div className="card card-pad card-hover flex flex-col justify-between">
@@ -85,8 +85,8 @@ function ChallengeCard({ c, now, onMark }: { c: Challenge; now: number; onMark: 
         {/* Source info notice */}
         <p className="text-[10px] text-muted-foreground italic leading-normal">
           {auto 
-            ? "Only trusted walking or running activity contributes to this Challenge."
-            : "This Challenge uses Traveler confirmation as supportive wellness data."
+            ? "Hanya aktivitas jalan atau lari tepercaya yang berkontribusi pada tantangan ini."
+            : "Tantangan ini menggunakan konfirmasi pengguna sebagai data kebiasaan suportif."
           }
         </p>
 
@@ -95,11 +95,11 @@ function ChallengeCard({ c, now, onMark }: { c: Challenge; now: number; onMark: 
           <div className="flex flex-wrap gap-2 text-[10px]">
             {c.xp > 0 && (
               <span className="pill bg-amber/10 text-amber font-bold flex items-center gap-1">
-                <Zap className="h-3.5 w-3.5" /> +{c.xp} Potential XP
+                <Zap className="h-3.5 w-3.5" /> +{c.xp} XP Potensial
               </span>
             )}
             <span className="pill bg-brand-soft text-brand font-bold flex items-center gap-1">
-              <Heart className="h-3.5 w-3.5" /> +{c.hp} Potential HP
+              <Heart className="h-3.5 w-3.5" /> +{c.hp} HP Potensial
             </span>
           </div>
 
@@ -157,11 +157,11 @@ export function ChallengeHub() {
       <div className="flex items-start gap-2 rounded-2xl border border-sky/20 bg-sky/5 p-4 text-xs text-muted-foreground">
         <Info className="mt-0.5 h-4.5 w-4.5 shrink-0 text-sky" />
         <div>
-          <p className="font-bold text-foreground mb-0.5">Eligible Progress &amp; Reward Preview</p>
+          <p className="font-bold text-foreground mb-0.5">Progres yang Memenuhi Syarat &amp; Pratinjau Hadiah</p>
           <p>
             Kategori <span className="font-semibold text-foreground">Cardio &amp; Mobility</span> (lari/sepeda/jalan) terisi
             otomatis dari GPS dan memberi <span className="font-semibold text-amber">XP</span>. Kategori lain (Strength,
-            Nutrition, Recovery, Habit) ditandai manual dan memberi <span className="font-semibold text-brand">HP</span> saja. 
+            Nutrisi, Pemulihan, Kebiasaan) ditandai manual dan hanya memberi <span className="font-semibold text-brand">HP</span>.
             Semua hadiah di bawah ini bersifat estimasi/preview dan tunduk pada aturan keamanan sistem.
           </p>
         </div>

@@ -3,15 +3,15 @@ import { journeyRecords } from "./data";
 
 export function getJourneyCategoryLabel(cat: JourneyCategory): string {
   switch (cat) {
-    case "activity": return "Cardio & Mobility";
-    case "nutrition": return "Nutrition & Eating";
-    case "recovery": return "Recovery & Sleep";
-    case "consistency": return "Consistency Streak";
-    case "challenge": return "Active Challenge";
+    case "activity": return "Kardio & Mobilitas";
+    case "nutrition": return "Nutrisi & Pola Makan";
+    case "recovery": return "Pemulihan & Tidur";
+    case "consistency": return "Streak Konsistensi";
+    case "challenge": return "Tantangan Aktif";
     case "health-pulse": return "Health Pulse";
-    case "reflection": return "Personal Reflection";
-    case "lifestyle": return "Healthy Habit";
-    default: return "Other";
+    case "reflection": return "Refleksi Pribadi";
+    case "lifestyle": return "Kebiasaan Sehat";
+    default: return "Lainnya";
   }
 }
 
@@ -29,7 +29,7 @@ export function getJourneyTrustLabel(trust: string): string {
 export function getJourneyVisibilityLabel(visibility: string): string {
   switch (visibility) {
     case "private": return "Privat";
-    case "circle": return "Healthy Circle";
+    case "circle": return "Lingkaran Sehat";
     case "public": return "Aman Publik";
     default: return visibility;
   }
@@ -37,9 +37,9 @@ export function getJourneyVisibilityLabel(visibility: string): string {
 
 export function getJourneyVisibilityDescription(visibility: string): string {
   switch (visibility) {
-    case "private": return "Hanya Anda yang dapat melihat catatan Journey ini.";
-    case "circle": return "Bagikan ke anggota Healthy Circle Anda menggunakan rincian yang aman.";
-    case "public": return "Layak dibagikan sebagai format Health Story publik.";
+    case "private": return "Hanya Anda yang dapat melihat catatan Perjalanan ini.";
+    case "circle": return "Dapat dibagikan kepada anggota Lingkaran Sehat dengan rincian yang aman.";
+    case "public": return "Dapat dibagikan menggunakan template progres publik.";
     default: return "";
   }
 }
@@ -73,10 +73,10 @@ export function sortJourneyRecordsNewestFirst(records: readonly JourneyRecord[])
 export function getHealthStoryEligibility(record: JourneyRecord): HealthStoryEligibility {
   const reasons: string[] = [];
   if (record.visibility === "private") {
-    reasons.push("Private records cannot be shared publicly.");
+    reasons.push("Catatan privat tidak dapat dibagikan kepada publik.");
   }
   if (!record.shareEligible) {
-    reasons.push("This record category is restricted from public sharing.");
+    reasons.push("Kategori catatan ini tidak boleh dibagikan kepada publik.");
   }
   return {
     eligible: reasons.length === 0,
@@ -102,7 +102,7 @@ export function toHealthStoryDisplayData(record: JourneyRecord, travelerName: st
     healthPulseAfter: record.healthPulseAfter,
     healthPulseChange: record.healthPulseChange,
     safeReflection: record.reflection,
-    consistencyLabel: "Day 148",
+    consistencyLabel: "Hari ke-148",
     travelerDisplayName: travelerName,
     visibility: record.visibility,
     shareEligible: eligibility.eligible,

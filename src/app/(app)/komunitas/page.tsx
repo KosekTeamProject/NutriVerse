@@ -1,4 +1,4 @@
-import { CommunityFeed } from "@/components/app/CommunityFeed";
+import { CommunityHub } from "@/components/app/CommunityFeed";
 
 export default function KomunitasPage() {
   return (
@@ -6,11 +6,11 @@ export default function KomunitasPage() {
       <div>
         <h1 className="font-display text-2xl font-extrabold tracking-tight sm:text-3xl">Komunitas</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Bagikan progres, beri semangat ke teman, dan ikut tantangan komunitas bersama.
+          Ikuti event, dukung teman, dan lihat peringkat dalam satu ruang bersama.
         </p>
       </div>
 
-      <CommunityFeed />
+      <CommunityHub />
     </div>
   );
 }

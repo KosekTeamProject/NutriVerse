@@ -15,6 +15,7 @@ import {
   WeeklyReflectionCard, 
   ActiveChallengeCard 
 } from "@/features/home/components/LivingHomeComponents";
+import { HealthyHabitSummary } from "@/components/app/DashboardWidgets";
 
 export default function DashboardPage() {
   const morningWalkRecord = getJourneyById("journey-morning-walk");
@@ -25,6 +26,9 @@ export default function DashboardPage() {
     <div className="mx-auto max-w-5xl space-y-6 animate-fade-up">
       {/* 1. Greeting and Journey Day */}
       <LivingHomeHeader traveler={demoTraveler} />
+
+      {/* Healthy outcomes are more important than total XP. */}
+      <HealthyHabitSummary />
 
       {/* 2. Nora Morning Brief */}
       {morningBriefInsight && (

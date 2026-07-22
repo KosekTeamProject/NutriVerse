@@ -3,14 +3,18 @@
 import { useEffect, useRef, useState } from "react";
 import {
   Play, Pause, Square, RotateCcw, Footprints, Bike, Timer, Gauge, Zap,
-  TriangleAlert, ShieldCheck, MapPin, Save, Check,
+  TriangleAlert, ShieldCheck, MapPin, Save, Check, Navigation, Radio,
+  Car, ClockAlert, Scale, Accessibility, MoonStar, MessageSquareText,
 } from "lucide-react";
 import {
   ACTIVITY, haversine, formatTime, paceMinPerKm, speedKmh, computeXp,
-  type ActivityKind, type LatLng,
+  applyDailyXpPolicy, XP_SAFETY_POLICY, type ActivityKind, type LatLng,
 } from "@/lib/activity";
 
 type Status = "idle" | "tracking" | "paused" | "finished";
+
+const DEMO_XP_EARNED_TODAY = 120;
+const MAX_SESSION_SECONDS = 4 * 60 * 60;
 
 function RoutePath({ points }: { points: LatLng[] }) {
   if (points.length < 2) {
@@ -57,8 +61,13 @@ export function ActivityTracker() {
   const [elapsed, setElapsed] = useState(0);
   const [route, setRoute] = useState<LatLng[]>([]);
   const [rejected, setRejected] = useState(0);
+  const [locationJumps, setLocationJumps] = useState(0);
+  const [gpsQualityRejected, setGpsQualityRejected] = useState(0);
+  const [sampleGaps, setSampleGaps] = useState(0);
+  const [timestampIssues, setTimestampIssues] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [reviewRequested, setReviewRequested] = useState(false);
 
   const watchId = useRef<number | null>(null);
   const timerId = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -80,14 +89,35 @@ export function ActivityTracker() {
     if (simId.current) { clearInterval(simId.current); simId.current = null; }
   }
 
-  function ingest(p: LatLng, ts: number) {
+  function ingest(p: LatLng, ts: number, accuracy?: number) {
     const cfg = ACTIVITY[kindRef.current];
     const prev = lastPoint.current;
+
+    if (typeof accuracy === "number" && accuracy > 35) {
+      setGpsQualityRejected((n) => n + 1);
+      return;
+    }
+
     if (prev && lastTs.current !== null) {
+      const rawDt = (ts - lastTs.current) / 1000;
+      if (rawDt <= 0) {
+        setTimestampIssues((n) => n + 1);
+        return;
+      }
+      if (rawDt > 120) {
+        setSampleGaps((n) => n + 1);
+        lastPoint.current = p;
+        lastTs.current = ts;
+        setRoute((r) => (r.length > 400 ? r : [...r, p]));
+        return;
+      }
+
       const seg = haversine(prev, p);
-      const dt = Math.max(0.001, (ts - lastTs.current) / 1000);
+      const dt = Math.max(0.001, rawDt);
       const segKmh = seg / 1000 / (dt / 3600);
-      if (seg > 1 && segKmh <= cfg.maxSpeedKmh) {
+      if (dt < 2 && segKmh > 150) {
+        setLocationJumps((n) => n + 1);
+      } else if (seg > 1 && segKmh <= cfg.maxSpeedKmh) {
         setDistance((d) => d + seg);
         setRoute((r) => (r.length > 400 ? r : [...r, p]));
       } else if (segKmh > cfg.maxSpeedKmh) {
@@ -110,7 +140,11 @@ export function ActivityTracker() {
       return false;
     }
     watchId.current = navigator.geolocation.watchPosition(
-      (pos) => ingest({ lat: pos.coords.latitude, lng: pos.coords.longitude }, pos.timestamp),
+      (pos) => ingest(
+        { lat: pos.coords.latitude, lng: pos.coords.longitude },
+        pos.timestamp,
+        pos.coords.accuracy
+      ),
       (err) => {
         if (err.code === err.PERMISSION_DENIED)
           setError("Izin lokasi ditolak. Aktifkan izin lokasi di browser untuk melacak aktivitas, atau gunakan Mode simulasi.");
@@ -129,13 +163,15 @@ export function ActivityTracker() {
       s.heading += (Math.random() - 0.5) * 0.4;
       s.lat += (mps * Math.cos(s.heading)) / 111320;
       s.lng += (mps * Math.sin(s.heading)) / (111320 * Math.cos((s.lat * Math.PI) / 180));
-      ingest({ lat: s.lat, lng: s.lng }, Date.now());
+      ingest({ lat: s.lat, lng: s.lng }, Date.now(), 5);
     }, 1000);
   }
 
   function begin() {
     setError(null); setSaved(false);
+    setReviewRequested(false);
     setDistance(0); setElapsed(0); setRoute([]); setRejected(0);
+    setLocationJumps(0); setGpsQualityRejected(0); setSampleGaps(0); setTimestampIssues(0);
     lastPoint.current = null; lastTs.current = null; sim.current = null;
     if (useSim) startSim();
     else if (!startReal()) return;
@@ -157,16 +193,25 @@ export function ActivityTracker() {
   function reset() {
     stopAll();
     setStatus("idle"); setDistance(0); setElapsed(0); setRoute([]); setRejected(0);
-    setError(null); setSaved(false);
+    setLocationJumps(0); setGpsQualityRejected(0); setSampleGaps(0); setTimestampIssues(0);
+    setError(null); setSaved(false); setReviewRequested(false);
     lastPoint.current = null; lastTs.current = null; sim.current = null;
   }
 
-  const cfg = ACTIVITY[kind];
-  const suspicious = rejected >= 3;
+  const durationTooLong = elapsed > MAX_SESSION_SECONDS;
+  const suspicious = rejected >= 3 || locationJumps > 0 || gpsQualityRejected >= 5 || sampleGaps >= 2 || timestampIssues > 0 || durationTooLong;
   const km = distance / 1000;
-  const xp = suspicious ? 0 : computeXp(distance, kind);
+  const baseXp = computeXp(distance, kind);
+  const xpPolicy = applyDailyXpPolicy(baseXp, DEMO_XP_EARNED_TODAY);
+  const xp = suspicious ? 0 : xpPolicy.awarded;
   const spd = speedKmh(distance, elapsed);
   const active = status === "tracking" || status === "paused";
+  const integrityChecks = [
+    { label: "Pace & pola kendaraan", icon: Car, issue: rejected >= 3, detail: `${rejected} segmen ditahan` },
+    { label: "Lonjakan koordinat", icon: Navigation, issue: locationJumps > 0, detail: `${locationJumps} anomali` },
+    { label: "Kualitas GPS", icon: Radio, issue: gpsQualityRejected >= 5, detail: `${gpsQualityRejected} sampel ditolak` },
+    { label: "Kontinuitas data", icon: ClockAlert, issue: sampleGaps >= 2 || timestampIssues > 0, detail: `${sampleGaps + timestampIssues} masalah` },
+  ];
 
   return (
     <div className="card card-pad">
@@ -229,7 +274,43 @@ export function ActivityTracker() {
         <div className="rounded-2xl bg-amber/15 p-3 text-center">
           <Zap className="mx-auto h-4 w-4 text-amber" />
           <p className="stat-num mt-1.5 text-lg text-amber">{xp}</p>
-          <p className="text-[11px] text-muted-foreground">Potential XP</p>
+          <p className="text-[11px] text-muted-foreground">Estimasi XP aman</p>
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-3 lg:grid-cols-[1.2fr_0.8fr]">
+        <div className="rounded-2xl border border-brand/20 bg-brand-soft/55 p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="flex items-start gap-2.5">
+              <Scale className="mt-0.5 h-5 w-5 shrink-0 text-brand" />
+              <div>
+                <p className="text-sm font-bold text-foreground">Pengaman progres harian</p>
+                <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+                  XP penuh sampai {XP_SAFETY_POLICY.fullRateUntil}, lalu {XP_SAFETY_POLICY.reducedRate * 100}% hingga batas {XP_SAFETY_POLICY.dailyCap} XP/hari.
+                </p>
+              </div>
+            </div>
+            <span className="pill border border-brand/20 bg-card text-[10px] font-bold text-brand">ATURAN DEMO</span>
+          </div>
+          <div className="mt-3 h-2 overflow-hidden rounded-full bg-card">
+            <div className="h-full rounded-full bg-brand" style={{ width: `${Math.min(100, (DEMO_XP_EARNED_TODAY / XP_SAFETY_POLICY.dailyCap) * 100)}%` }} />
+          </div>
+          <div className="mt-1.5 flex justify-between text-[10px] text-muted-foreground">
+            <span>{DEMO_XP_EARNED_TODAY} XP diperoleh hari ini</span>
+            <span>{xpPolicy.remainingToday} XP tersisa</span>
+          </div>
+        </div>
+        <div className="rounded-2xl border border-line bg-secondary/45 p-4">
+          <div className="flex items-start gap-2.5">
+            <MoonStar className="mt-0.5 h-5 w-5 shrink-0 text-sky" />
+            <div>
+              <p className="text-sm font-bold text-foreground">Istirahat tetap bagian dari progres</p>
+              <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+                Streak Protection menjaga ritme saat hari pemulihan, tetapi tidak memberi XP tambahan.
+              </p>
+              <span className="mt-2 inline-flex text-[10px] font-bold uppercase tracking-wider text-sky">Roadmap server</span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -252,7 +333,7 @@ export function ActivityTracker() {
               <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0" />
               <div>
                 <p className="text-sm font-bold">Demo Validation Passed</p>
-                <p className="text-xs text-muted-foreground">Kecepatan sesuai parameter {cfg.label.toLowerCase()}.</p>
+                <p className="text-xs text-muted-foreground">Sampel saat ini lolos pemeriksaan browser.</p>
               </div>
             </div>
           )}
@@ -260,6 +341,33 @@ export function ActivityTracker() {
             Aktivitas ini memenuhi pemeriksaan demonstrasi saat ini. Verifikasi produksi memerlukan pemrosesan server.
           </p>
         </div>
+      </div>
+
+      <div className="mt-3 rounded-2xl border border-line p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <p className="text-sm font-bold text-foreground">Pemeriksaan integritas aktivitas</p>
+            <p className="text-xs text-muted-foreground">Beberapa sinyal dinilai bersama; satu anomali bukan otomatis kecurangan.</p>
+          </div>
+          <span className="pill bg-secondary text-[10px] font-bold text-muted-foreground">BROWSER PREVIEW</span>
+        </div>
+        <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          {integrityChecks.map((check) => {
+            const Icon = check.icon;
+            return (
+              <div key={check.label} className={`rounded-xl border p-3 ${check.issue ? "border-amber/30 bg-amber/10" : "border-line bg-secondary/35"}`}>
+                <div className="flex items-center gap-2">
+                  <Icon className={`h-4 w-4 ${check.issue ? "text-amber" : "text-brand"}`} />
+                  <p className="text-xs font-bold text-foreground">{check.label}</p>
+                </div>
+                <p className="mt-1 text-[10px] text-muted-foreground">{check.detail}</p>
+              </div>
+            );
+          })}
+        </div>
+        <p className="mt-3 text-[10px] leading-relaxed text-muted-foreground">
+          Deteksi spoofing GPS, replay, perangkat, dan keputusan reward final memerlukan verifikasi server.
+        </p>
       </div>
 
       {error && (
@@ -288,12 +396,19 @@ export function ActivityTracker() {
         {status === "finished" && (
           <>
             {saved ? (
-              <span className="btn bg-brand-soft text-brand"><Check className="h-5 w-5" /> Tersimpan (demo)</span>
+              <span className="btn bg-brand-soft text-brand"><Check className="h-5 w-5" /> {suspicious ? "Riwayat pribadi tersimpan" : "Tersimpan (demo)"}</span>
             ) : (
-              <button onClick={() => setSaved(true)} className="btn btn-primary btn-lg" disabled={suspicious}>
-                <Save className="h-5 w-5" /> {suspicious ? "Needs Review" : `Simpan (Potential +${xp} XP)`}
+              <button onClick={() => setSaved(true)} className="btn btn-primary btn-lg">
+                <Save className="h-5 w-5" /> {suspicious ? "Simpan sebagai riwayat pribadi" : `Simpan (Estimasi +${xp} XP)`}
               </button>
             )}
+            {suspicious && (reviewRequested ? (
+              <span className="btn bg-amber/15 text-amber"><Check className="h-5 w-5" /> Peninjauan diminta</span>
+            ) : (
+              <button onClick={() => setReviewRequested(true)} className="btn btn-outline btn-lg">
+                <MessageSquareText className="h-5 w-5" /> Ajukan peninjauan
+              </button>
+            ))}
             <button onClick={reset} className="btn btn-ghost btn-lg"><RotateCcw className="h-5 w-5" /> Aktivitas baru</button>
           </>
         )}
@@ -302,10 +417,25 @@ export function ActivityTracker() {
       {status === "finished" && (
         <p className="mt-4 text-center text-xs text-muted-foreground leading-normal">
           {suspicious
-            ? "This session contains segments requiring review before contributing to trusted progress."
-            : `Kerja bagus. Kamu menempuh ${km.toFixed(2)} km. Potential XP: ${xp} XP.`}
+            ? "Sesi tetap dapat disimpan sebagai riwayat pribadi, tetapi belum memberi XP sampai peninjauan selesai."
+            : `Kerja bagus. Kamu menempuh ${km.toFixed(2)} km. Estimasi setelah pengaman harian: ${xp} XP.`}
         </p>
       )}
+
+      <div className="mt-6 rounded-2xl border border-line bg-secondary/30 p-4">
+        <div className="flex items-start gap-3">
+          <Accessibility className="mt-0.5 h-5 w-5 shrink-0 text-brand" />
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm font-bold text-foreground">Aktivitas indoor & adaptif</p>
+              <span className="pill bg-card text-[10px] font-bold text-muted-foreground">ROADMAP VALIDASI</span>
+            </div>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+              Gym, olahraga indoor, kursi roda, dan aktivitas adaptif memerlukan wearable atau peninjauan terstruktur agar tetap adil. Pada MVP, jalur ini belum memberi XP kompetitif.
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

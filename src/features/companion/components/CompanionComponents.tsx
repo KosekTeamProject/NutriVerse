@@ -36,9 +36,9 @@ export function CompanionSafetyNote() {
         <ShieldCheck className="h-4.5 w-4.5" />
       </span>
       <div className="text-xs text-[#665235] dark:text-[#ccbda8] leading-relaxed">
-        <p className="font-bold">Medical &amp; Safety Boundary Guide</p>
+        <p className="font-bold">Batas Panduan Kesehatan</p>
         <p className="mt-0.5">
-          {displayName} supports everyday wellness decisions but does not diagnose medical conditions or replace qualified health professionals. If you experience pain or extreme fatigue, please consult a medical practitioner.
+          {displayName} membantu kebiasaan sehat sehari-hari, bukan mendiagnosis penyakit. Hentikan aktivitas dan cari bantuan profesional jika mengalami nyeri, pusing, atau kelelahan ekstrem.
         </p>
       </div>
     </div>
@@ -55,6 +55,8 @@ interface CompanionCardProps {
   readonly showExplanation?: boolean;
   readonly showSourceLabels?: boolean;
   readonly showPriority?: boolean;
+  readonly actionLabel?: string;
+  readonly actionPath?: string;
 }
 
 export function CompanionCard({
@@ -65,11 +67,15 @@ export function CompanionCard({
   className = "",
   showExplanation = false,
   showSourceLabels = false,
-  showPriority = false
+  showPriority = false,
+  actionLabel,
+  actionPath
 }: CompanionCardProps) {
   const { displayName } = useCompanionName();
   const companionName = companionNameProp ?? displayName;
   const isReflection = variant === "reflection";
+  const resolvedActionLabel = actionLabel ?? insight.recommendedActionLabel;
+  const resolvedActionPath = actionPath ?? insight.recommendedActionPath;
 
   // Reflection Layout (Editorial Card inset, no chat bubbles)
   if (isReflection) {
@@ -92,10 +98,10 @@ export function CompanionCard({
         <p className="text-muted-foreground text-xs leading-relaxed italic">
           &ldquo;{insight.message}&rdquo;
         </p>
-        {insight.recommendedActionPath && insight.recommendedActionLabel && (
+        {resolvedActionPath && resolvedActionLabel && (
           <div className="pt-1 text-right">
-            <Link href={insight.recommendedActionPath} className="inline-flex items-center gap-1 text-xs font-bold text-brand hover:text-brand-bright transition">
-              {insight.recommendedActionLabel} <ArrowRight className="h-3 w-3" />
+            <Link href={resolvedActionPath} className="inline-flex items-center gap-1 text-xs font-bold text-brand hover:text-brand-bright transition">
+              {resolvedActionLabel} <ArrowRight className="h-3 w-3" />
             </Link>
           </div>
         )}
@@ -112,16 +118,16 @@ export function CompanionCard({
           <div className="flex items-start justify-between gap-2">
             <h4 className="font-display text-sm font-bold text-foreground truncate">{insight.title}</h4>
             {showPriority && insight.priority === "safety" && (
-              <span className="pill bg-amber/10 text-amber text-[9px] font-bold uppercase py-0 scale-90">Safety</span>
+              <span className="pill bg-amber/10 text-amber text-[9px] font-bold uppercase py-0 scale-90">Keamanan</span>
             )}
           </div>
           <p className="text-muted-foreground text-xs leading-relaxed">
             {insight.shortMessage}
           </p>
-          {insight.recommendedActionPath && insight.recommendedActionLabel && (
+          {resolvedActionPath && resolvedActionLabel && (
             <div className="pt-1">
-              <Link href={insight.recommendedActionPath} className="inline-flex items-center gap-1 text-xs font-bold text-brand hover:text-brand-bright transition">
-                {insight.recommendedActionLabel} <ArrowRight className="h-3 w-3" />
+              <Link href={resolvedActionPath} className="inline-flex items-center gap-1 text-xs font-bold text-brand hover:text-brand-bright transition">
+                {resolvedActionLabel} <ArrowRight className="h-3 w-3" />
               </Link>
             </div>
           )}
@@ -140,7 +146,7 @@ export function CompanionCard({
           <div>
             <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
               <span className="font-display text-xs font-bold uppercase tracking-wider text-brand">
-                {companionName} Companion
+                Pendamping {companionName}
               </span>
               {showPriority && (
                 <span className="pill bg-secondary text-muted-foreground text-[10px] font-semibold">
@@ -154,13 +160,13 @@ export function CompanionCard({
           </div>
           
           <p className="text-muted-foreground text-sm leading-relaxed max-w-2xl">
-            {travelerName ? `Hello ${travelerName}, ` : ""}{insight.message}
+            {travelerName ? `Halo ${travelerName}, ` : ""}{insight.message}
           </p>
 
           <div className="flex flex-col gap-3.5 sm:flex-row sm:items-center sm:justify-between border-t border-brand/10 pt-3.5 mt-1">
-            {insight.recommendedActionPath && insight.recommendedActionLabel ? (
-              <Link href={insight.recommendedActionPath} className="btn btn-primary text-xs inline-flex items-center gap-2 self-start sm:self-center">
-                {insight.recommendedActionLabel} <ArrowRight className="h-4 w-4" />
+            {resolvedActionPath && resolvedActionLabel ? (
+              <Link href={resolvedActionPath} className="btn btn-primary text-xs inline-flex items-center gap-2 self-start sm:self-center">
+                {resolvedActionLabel} <ArrowRight className="h-4 w-4" />
               </Link>
             ) : (
               <div />
@@ -168,7 +174,7 @@ export function CompanionCard({
 
             {showExplanation && (
               <span className="inline-flex max-w-full items-start gap-1 text-[10px] text-muted-foreground">
-                <HelpCircle className="h-3.5 w-3.5 text-muted-foreground" /> Simulated guidance based on Day 148 logs
+                <HelpCircle className="h-3.5 w-3.5 text-muted-foreground" /> Saran simulasi berdasarkan catatan hari ke-148
               </span>
             )}
           </div>
@@ -227,12 +233,12 @@ interface CompanionInsightFiltersProps {
 export function CompanionInsightFilters({ activeFilter, onFilterChange }: CompanionInsightFiltersProps) {
   const filters = [
     { id: "all", label: "Semua Insight" },
-    { id: "morning-brief", label: "Morning Brief" },
+    { id: "morning-brief", label: "Ringkasan Pagi" },
     { id: "reflection", label: "Refleksi" },
     { id: "nutrition-insight", label: "Nutrisi" },
     { id: "recovery-insight", label: "Pemulihan" },
     { id: "health-pulse-interpretation", label: "Health Pulse" },
-    { id: "challenge-guidance", label: "Challenge" },
+    { id: "challenge-guidance", label: "Tantangan" },
     { id: "safety-reminder", label: "Keamanan" }
   ];
 
