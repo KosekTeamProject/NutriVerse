@@ -31,30 +31,87 @@ function loadMomentImage(source: string) {
   });
 }
 
-async function loadMomentWatermark() {
-  const response = await fetch("/brand/nutriverse-watermark.svg");
-  if (!response.ok) throw new Error("Aset watermark NutriVerse tidak ditemukan.");
-  const svg = await response.text();
-  return loadMomentImage(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`);
+function loadMomentBrandMark() {
+  return loadMomentImage("/brand/nutriverse-app-icon-200.png");
 }
 
-function drawContain(context: CanvasRenderingContext2D, image: HTMLImageElement, width: number, height: number) {
+function drawFullPhoto(context: CanvasRenderingContext2D, image: HTMLImageElement, width: number, height: number) {
+  context.drawImage(image, 0, 0, width, height);
+}
+
+function drawPhotoWithBackdrop(context: CanvasRenderingContext2D, image: HTMLImageElement, width: number, height: number) {
+  const coverScale = Math.max(width / image.naturalWidth, height / image.naturalHeight);
+  const coverWidth = image.naturalWidth * coverScale;
+  const coverHeight = image.naturalHeight * coverScale;
+  context.fillStyle = "#101314";
+  context.fillRect(0, 0, width, height);
+  context.save();
+  context.filter = "blur(28px) grayscale(1) brightness(.38)";
+  context.drawImage(image, (width - coverWidth) / 2, (height - coverHeight) / 2, coverWidth, coverHeight);
+  context.restore();
+  context.fillStyle = "rgba(0, 0, 0, .28)";
+  context.fillRect(0, 0, width, height);
   const scale = Math.min(width / image.naturalWidth, height / image.naturalHeight);
   const drawWidth = image.naturalWidth * scale;
   const drawHeight = image.naturalHeight * scale;
-  context.fillStyle = "#07150f";
-  context.fillRect(0, 0, width, height);
   context.drawImage(image, (width - drawWidth) / 2, (height - drawHeight) / 2, drawWidth, drawHeight);
+}
+
+function getWrappedLines(context: CanvasRenderingContext2D, text: string, maxWidth: number, maxLines: number) {
+  const words = text.trim().split(/\s+/).filter(Boolean);
+  const lines: string[] = [];
+  let currentLine = "";
+  for (const word of words) {
+    const nextLine = currentLine ? `${currentLine} ${word}` : word;
+    if (context.measureText(nextLine).width <= maxWidth || !currentLine) {
+      currentLine = nextLine;
+      continue;
+    }
+    lines.push(currentLine);
+    currentLine = word;
+  }
+  if (currentLine) lines.push(currentLine);
+  if (lines.length <= maxLines) return lines;
+  const visibleLines = lines.slice(0, maxLines);
+  visibleLines[maxLines - 1] = `${visibleLines[maxLines - 1].replace(/[,.!?;:]?$/, "")}…`;
+  return visibleLines;
+}
+
+function drawMomentTypography(context: CanvasRenderingContext2D, text: string, width: number, height: number) {
+  const overlay = context.createLinearGradient(0, height * 0.4, 0, height);
+  overlay.addColorStop(0, "rgba(7, 9, 10, 0)");
+  overlay.addColorStop(0.48, "rgba(7, 9, 10, .2)");
+  overlay.addColorStop(1, "rgba(7, 9, 10, .96)");
+  context.fillStyle = overlay;
+  context.fillRect(0, 0, width, height);
+
+  context.save();
+  context.textAlign = "center";
+  context.fillStyle = "#ffffff";
+  context.shadowColor = "rgba(0, 0, 0, .46)";
+  context.shadowBlur = 14;
+  context.font = "800 58px Arial";
+  const lines = getWrappedLines(context, text.trim() || "Satu momen sehat hari ini.", width - 176, 3);
+  const lineHeight = 68;
+  const startY = height - 214 - (lines.length - 1) * lineHeight;
+  lines.forEach((line, index) => context.fillText(line, width / 2, startY + index * lineHeight));
+  context.shadowBlur = 0;
+  context.fillStyle = "rgba(255, 255, 255, .2)";
+  context.fillRect(112, height - 120, width - 224, 1);
+  context.fillStyle = "rgba(255, 255, 255, .76)";
+  context.font = "700 18px Arial";
+  context.fillText("NUTRIVERSE • MOMENT SEHAT", width / 2, height - 58);
+  context.restore();
 }
 
 async function normalizePhoto(source: string) {
   const image = await loadMomentImage(source);
   const canvas = document.createElement("canvas");
-  canvas.width = 1080;
-  canvas.height = 1350;
+  canvas.width = image.naturalWidth;
+  canvas.height = image.naturalHeight;
   const context = canvas.getContext("2d");
   if (!context) return source;
-  drawContain(context, image, canvas.width, canvas.height);
+  drawFullPhoto(context, image, canvas.width, canvas.height);
   return canvas.toDataURL("image/jpeg", 0.9);
 }
 
@@ -101,7 +158,7 @@ export function NutriVerseMoments() {
       return;
     }
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: { ideal: 1080 }, height: { ideal: 1350 } }, audio: false });
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: { ideal: 1080 }, height: { ideal: 1350 }, aspectRatio: { ideal: 4 / 5 } }, audio: false });
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
@@ -136,23 +193,20 @@ export function NutriVerseMoments() {
     const context = canvas.getContext("2d");
     if (!context) return;
     const image = await loadMomentImage(source);
-    drawContain(context, image, canvas.width, canvas.height);
-    const shade = context.createLinearGradient(0, 700, 0, 1350);
-    shade.addColorStop(0, "rgba(3,18,12,0)");
-    shade.addColorStop(1, "rgba(3,18,12,.9)");
-    context.fillStyle = shade;
-    context.fillRect(0, 0, 1080, 1350);
-    const watermark = await loadMomentWatermark();
-    context.drawImage(watermark, 56, 52, 420, 86);
-    context.fillStyle = "#a3e635";
-    context.font = "800 25px Arial";
-    context.fillText(duringActivity ? "DIAMBIL SAAT AKTIVITAS • BUKAN BUKTI XP" : "NUTRIVERSE MOMENT • TANPA XP", 64, 1110);
-    context.fillStyle = "#fff";
-    context.font = "800 46px Arial";
-    context.fillText((text.trim() || "Satu momen sehat hari ini.").slice(0, 42), 64, 1180);
-    context.fillStyle = "rgba(255,255,255,.82)";
-    context.font = "600 24px Arial";
-    context.fillText("nutriverse.app  •  Bagikan momen, bukan lokasi presisi", 64, 1270);
+    drawPhotoWithBackdrop(context, image, canvas.width, canvas.height);
+    drawMomentTypography(context, text, canvas.width, canvas.height);
+    const brandMark = await loadMomentBrandMark();
+    context.drawImage(brandMark, 62, 62, 96, 96);
+    context.save();
+    context.shadowColor = "rgba(0, 0, 0, .42)";
+    context.shadowBlur = 10;
+    context.textAlign = "left";
+    context.font = "800 30px Arial";
+    context.fillStyle = "#ffffff";
+    context.fillText("Nutri", 178, 105);
+    context.fillStyle = "#34d399";
+    context.fillText("Verse", 178 + context.measureText("Nutri").width, 105);
+    context.restore();
     const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png", 1));
     if (!blob) return;
     const url = URL.createObjectURL(blob);
@@ -244,7 +298,7 @@ export function NutriVerseMoments() {
               {moment.image && <span className="absolute bottom-3 right-3 flex items-center gap-1 rounded-full bg-black/55 px-2 py-1 text-[7px] font-bold text-white opacity-100 backdrop-blur transition sm:opacity-0 sm:group-hover:opacity-100"><Maximize2 className="h-3 w-3" /> Lihat penuh</span>}
             </button>
             <div className="min-h-[58px] border-t border-line/70 bg-card px-3 py-2.5"><div className="flex items-start justify-between gap-2">{moment.duringActivity && <span className="shrink-0 rounded-full bg-brand-soft px-1.5 py-0.5 text-[7px] font-bold text-brand">SAAT AKTIVITAS</span>}<p className="ml-auto shrink-0 text-[8px] text-muted-foreground">{moment.time} · tanpa XP</p></div><p className="mt-1 line-clamp-2 text-[10px] font-bold leading-relaxed text-foreground">{moment.caption}</p></div>
-            <div className="flex items-center justify-between gap-2 px-3 py-2.5"><button className="text-[9px] font-bold text-muted-foreground hover:text-brand">Beri Semangat</button>{moment.image ? <div className="flex gap-1"><button onClick={() => downloadWatermarkedMoment(moment.image, moment.caption)} className="grid h-7 w-7 place-items-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-brand" aria-label="Download Moment dengan watermark"><Download className="h-3.5 w-3.5" /></button><button onClick={() => setMoments((current) => current.filter((item) => item.id !== moment.id))} className="grid h-7 w-7 place-items-center rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive" aria-label="Hapus Moment"><Trash2 className="h-3.5 w-3.5" /></button></div> : <button className="text-[9px] font-bold text-muted-foreground hover:text-destructive">Laporkan</button>}</div>
+            <div className="flex items-center justify-between gap-2 px-3 py-2.5"><button className="text-[9px] font-bold text-muted-foreground hover:text-brand">Beri Semangat</button>{moment.image ? <div className="flex gap-1"><button onClick={() => downloadWatermarkedMoment(moment.image, moment.caption)} className="grid h-7 w-7 place-items-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-brand" aria-label="Download template Moment NutriVerse"><Download className="h-3.5 w-3.5" /></button><button onClick={() => setMoments((current) => current.filter((item) => item.id !== moment.id))} className="grid h-7 w-7 place-items-center rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive" aria-label="Hapus Moment"><Trash2 className="h-3.5 w-3.5" /></button></div> : <button className="text-[9px] font-bold text-muted-foreground hover:text-destructive">Laporkan</button>}</div>
           </article>
         ))}
       </div>
@@ -264,20 +318,20 @@ export function NutriVerseMoments() {
           <section className="h-[100dvh] w-full max-w-3xl overflow-y-auto rounded-none border border-line bg-card shadow-2xl sm:h-auto sm:max-h-[calc(100dvh-1.5rem)] sm:rounded-[2rem]">
             <header className="sticky top-0 z-10 flex items-center justify-between border-b border-line bg-card px-5 py-4"><div><p className="text-[9px] font-bold uppercase tracking-[0.16em] text-brand">NutriVerse Moments</p><h2 id="moment-title" className="mt-1 font-display text-lg font-extrabold">Bagikan momen sehatmu</h2></div><button onClick={closeComposer} className="grid h-9 w-9 place-items-center rounded-xl text-muted-foreground hover:bg-secondary" aria-label="Tutup pembuat Moment"><X className="h-5 w-5" /></button></header>
             <div className="grid gap-5 p-5 sm:grid-cols-[minmax(0,1fr)_280px] sm:p-6">
-              <div className="relative aspect-[4/5] overflow-hidden rounded-3xl bg-[#07150f]">
-                {photo ? <NextImage src={photo} alt="Preview Moment" fill unoptimized className="object-contain" /> : <video ref={videoRef} muted playsInline className={`h-full w-full scale-x-[-1] object-contain ${cameraActive ? "block" : "hidden"}`} />}
+              <div className="relative aspect-[4/5] overflow-hidden rounded-3xl bg-[#101314]">
+                {photo ? <><NextImage src={photo} alt="" fill unoptimized className="scale-110 object-cover opacity-45 grayscale blur-2xl" /><NextImage src={photo} alt="Preview Moment penuh" fill unoptimized className="object-contain" /><div aria-hidden className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#07090a]/95" /><div className="pointer-events-none absolute inset-x-4 top-4 flex items-center gap-2.5 text-white drop-shadow-lg"><BrandLogo compact className="!h-9 !w-9" /><span className="font-display text-base font-extrabold tracking-[-0.05em]">Nutri<span className="text-emerald-300">Verse</span></span></div><div className="pointer-events-none absolute inset-x-5 bottom-5 text-center text-white"><p className="line-clamp-3 font-display text-[clamp(1.15rem,6vw,2rem)] font-extrabold leading-[1.04] tracking-tight drop-shadow-lg">{caption.trim() || "Satu momen sehat hari ini."}</p><div className="mx-auto mt-4 h-px w-3/4 bg-white/20" /><p className="mt-3 text-[8px] font-bold tracking-[0.12em] text-white/75">NUTRIVERSE • MOMENT SEHAT</p></div></> : <video ref={videoRef} muted playsInline className={`h-full w-full scale-x-[-1] object-contain ${cameraActive ? "block" : "hidden"}`} />}
                 {!photo && !cameraActive && <div className="absolute inset-0 grid place-items-center p-6 text-center"><div><span className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-white/10 text-white"><Camera className="h-8 w-8" /></span><p className="mt-4 text-sm font-bold text-white">Kamera belum aktif</p><p className="mt-1 text-xs text-white/60">Izin hanya diminta ketika tombol kamera ditekan.</p><button onClick={startCamera} className="btn mt-5 bg-white text-[#07150f]">Aktifkan Kamera</button></div></div>}
                 {cameraActive && <button onClick={capturePhoto} className="absolute bottom-5 left-1/2 grid h-16 w-16 -translate-x-1/2 place-items-center rounded-full border-4 border-white bg-brand text-white shadow-xl" aria-label="Ambil foto"><Camera className="h-7 w-7" /></button>}
-                <div className="absolute left-4 top-4 rounded-full bg-black/50 px-2.5 py-1.5 text-[8px] font-bold text-white backdrop-blur">NUTRIVERSE • TANPA XP</div>
+                {!photo && <div className="absolute left-4 top-4 rounded-full bg-black/50 px-2.5 py-1.5 text-[8px] font-bold text-white backdrop-blur">NUTRIVERSE • TANPA XP</div>}
               </div>
               <div className="min-w-0 space-y-4">
                 {cameraError && <div className="rounded-xl border border-amber/25 bg-amber/10 p-3 text-[10px] leading-relaxed text-amber">{cameraError}</div>}
                 {photo && <button onClick={() => setPhoto(null)} className="btn btn-outline btn-sm w-full"><RefreshCw className="h-4 w-4" /> Ambil Ulang</button>}
-                <div><label htmlFor="moment-caption" className="label">Caption</label><textarea id="moment-caption" value={caption} onChange={(event) => setCaption(event.target.value)} maxLength={180} rows={4} className="input min-h-24 resize-none" placeholder="Ceritakan momen sehatmu…" /><p className="mt-1 text-right text-[9px] text-muted-foreground">{caption.length}/180</p></div>
+                <div><label htmlFor="moment-caption" className="label">Caption untuk template</label><p id="moment-caption-help" className="mt-1 text-[10px] leading-relaxed text-muted-foreground">Teks ini bisa diedit dan akan tampil sebagai typography di bagian bawah preview serta PNG unduhan.</p><textarea id="moment-caption" value={caption} onChange={(event) => setCaption(event.target.value)} aria-describedby="moment-caption-help" maxLength={180} rows={4} className="input mt-2 min-h-24 resize-none" placeholder="Ceritakan momen sehatmu…" /><p className="mt-1 text-right text-[9px] text-muted-foreground">{caption.length}/180</p></div>
                 <div><p className="label">Siapa yang dapat melihat?</p><div className="grid grid-cols-3 gap-1.5">{PRIVACY_OPTIONS.map((option) => { const Icon = option.icon; return <button key={option.value} onClick={() => setPrivacy(option.value)} className={`rounded-xl border p-2 text-[9px] font-bold ${privacy === option.value ? "border-brand bg-brand-soft text-brand" : "border-line text-muted-foreground"}`}><Icon className="mx-auto mb-1 h-4 w-4" />{option.label}</button>; })}</div></div>
                 <label className="flex cursor-pointer items-start gap-2.5 rounded-xl bg-secondary/50 p-3"><input type="checkbox" checked={duringActivity} onChange={(event) => setDuringActivity(event.target.checked)} className="mt-0.5 accent-[var(--brand)]" /><span className="text-[10px] leading-relaxed text-muted-foreground"><span className="font-bold text-foreground">Diambil saat aktivitas berlangsung</span><br />Label konteks saja, bukan bukti anti-cheat atau sumber XP.</span></label>
-                <div className="grid gap-2"><button onClick={() => downloadWatermarkedMoment()} disabled={!photo} className="btn btn-outline"><Download className="h-4 w-4" /> {downloaded ? "PNG Tersimpan" : "Simpan PNG Watermark"}</button><button onClick={publishMoment} disabled={!photo} className="btn btn-primary"><Check className="h-4 w-4" /> Bagikan Moment</button></div>
-                <p className="text-[9px] leading-relaxed text-muted-foreground">Moment hanya dapat dibuat melalui kamera langsung. Foto dinormalisasi ulang untuk membuang metadata EXIF/lokasi.</p>
+                <div className="grid gap-2"><button onClick={() => downloadWatermarkedMoment()} disabled={!photo} className="btn btn-outline"><Download className="h-4 w-4" /> {downloaded ? "PNG Tersimpan" : "Simpan PNG Template"}</button><button onClick={publishMoment} disabled={!photo} className="btn btn-primary"><Check className="h-4 w-4" /> Bagikan Moment</button></div>
+                <p className="text-[9px] leading-relaxed text-muted-foreground">Moment hanya dapat dibuat melalui kamera langsung. Foto dinormalisasi ulang untuk membuang metadata EXIF/lokasi; PNG unduhan memadukan foto penuh, gradasi, identitas NutriVerse, dan caption.</p>
               </div>
             </div>
           </section>

@@ -24,6 +24,8 @@ export type AuthSession = {
   readonly email: string;
   readonly username: string;
   readonly companionName: string;
+  readonly avatarUrl?: string;
+  readonly coverUrl?: string;
   readonly provider?: "password" | "google";
   readonly baseline?: HealthBaseline;
   readonly preferences?: OnboardingPreferences;

@@ -71,7 +71,7 @@ export function HealthDimensionRow({
       </div>
       
       {/* Progress Bar */}
-      <div className="h-2 overflow-hidden rounded-full bg-secondary">
+      <div className="chart-progress h-2 overflow-hidden rounded-full">
         <div 
           className="h-full rounded-full transition-all duration-500" 
           style={{ width: `${dimScore.score}%`, backgroundColor: colorMap }} 
@@ -191,7 +191,7 @@ export function HealthPulseCard({
         <p className="text-xs text-muted-foreground mt-1">Refleksi koordinat kebiasaan harian Anda</p>
       </div>
 
-      <div className="flex flex-col items-center gap-6 sm:flex-row sm:justify-around sm:gap-4 py-2">
+      <div className="chart-surface chart-surface-brand flex flex-col items-center gap-6 rounded-2xl border border-brand/15 px-4 py-5 sm:flex-row sm:justify-around sm:gap-4">
         <div className="relative grid place-items-center w-[130px] h-[130px] shrink-0">
           <ProgressRing 
             value={snapshot.score} 
@@ -243,7 +243,7 @@ export function HealthPulseCard({
         const consistency = snapshot.dimensions.find((dim) => dim.dimension === "consistency");
         if (!consistency) return null;
         return (
-          <div className="card border border-line bg-secondary/35 p-4 space-y-2">
+          <div className="chart-surface chart-surface-amber rounded-2xl border border-line p-4 space-y-2">
             <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-bold">
               <span className="flex min-w-0 items-center gap-1.5 text-foreground">
                 <Sparkles className="h-4 w-4 text-brand" /> {getHealthDimensionLabel(consistency.dimension)}
@@ -253,7 +253,7 @@ export function HealthPulseCard({
             <p className="text-[11px] text-muted-foreground leading-normal">
               {consistency.summary}
             </p>
-            <div className="h-1.5 overflow-hidden rounded-full bg-secondary">
+            <div className="chart-progress h-1.5 overflow-hidden rounded-full">
               <div 
                 className="h-full rounded-full bg-gradient-to-r from-amber to-brand transition-all duration-1000 ease-out" 
                 style={{ width: `${consistency.score}%` }} 
@@ -322,7 +322,7 @@ export function HealthPulseHistoryChart({ history }: HealthPulseHistoryChartProp
         <p className="text-xs text-muted-foreground mt-0.5">Catatan indeks perkembangan pulse Anda</p>
       </div>
 
-      <div className="relative w-full min-w-0 overflow-hidden rounded-2xl border border-line/45 bg-secondary/15 p-2 sm:p-4">
+      <div className="chart-surface chart-surface-mixed relative w-full min-w-0 overflow-hidden rounded-2xl border border-line/45 p-2 sm:p-4">
         {/* SVG Drawing */}
         <svg 
           viewBox={`0 0 ${width} ${height}`} 

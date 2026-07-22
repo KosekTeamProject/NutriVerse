@@ -168,7 +168,7 @@ export default async function JourneyDetailPage({ params }: JourneyDetailPagePro
                   <span>Progres</span>
                   <span className="text-foreground">7.2 / 10.0 km (72%)</span>
                 </div>
-                <div className="h-2 overflow-hidden rounded-full bg-secondary">
+                <div className="chart-progress h-2 overflow-hidden rounded-full">
                   <div className="h-full rounded-full bg-brand" style={{ width: "72%" }} />
                 </div>
               </div>

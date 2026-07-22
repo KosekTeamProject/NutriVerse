@@ -40,7 +40,7 @@ export function HealthPulseDimensionChart({
       aria-label="Grafik Perbandingan Dimensi Health Pulse"
     >
       {/* Visual Chart Area */}
-      <div className="relative min-w-0 space-y-2 rounded-2xl border border-line/45 bg-card/40 p-2 sm:p-4">
+      <div className="chart-surface chart-surface-brand relative min-w-0 space-y-2 rounded-2xl border border-line/45 p-2 sm:p-4">
         {/* Y-Axis Gridlines & Scale Indicators (0, 50, 100) */}
         {!compact && (
           <div className="absolute inset-x-4 top-4 bottom-10 flex flex-col justify-between pointer-events-none opacity-30">
@@ -90,7 +90,7 @@ export function HealthPulseDimensionChart({
                 </div>
 
                 {/* Bars track container */}
-                <div className="relative w-full max-w-[36px] flex items-end justify-center h-full rounded-t-lg bg-secondary/40 overflow-hidden">
+                <div className="relative flex h-full w-full max-w-[36px] items-end justify-center overflow-hidden rounded-t-lg border-x border-t border-white/20 bg-card/55 shadow-inner backdrop-blur-sm">
                   {/* Muted Previous Score Bar (Background) */}
                   <div
                     className="absolute bottom-0 inset-x-0 bg-muted-foreground/20 rounded-t-sm transition-all duration-700 ease-out origin-bottom"
@@ -100,7 +100,7 @@ export function HealthPulseDimensionChart({
 
                   {/* Foreground Current Score Bar */}
                   <div
-                    className="relative w-full bg-gradient-to-t from-brand/80 to-brand-bright rounded-t-md transition-all duration-700 ease-out shadow-sm origin-bottom group-hover:from-brand group-hover:to-brand-bright"
+                    className="relative w-full origin-bottom rounded-t-md bg-gradient-to-t from-brand via-brand-bright to-lime/80 shadow-[0_-8px_24px_-10px_var(--brand)] transition-all duration-700 ease-out group-hover:brightness-110"
                     style={{ height: `${currentScore}%` }}
                   />
                 </div>

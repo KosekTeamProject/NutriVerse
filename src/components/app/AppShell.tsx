@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import NextImage from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { Activity, Bell, CalendarCheck, Flame, Gift, Heart, Home, LayoutDashboard, LogIn, LogOut, Menu, Moon, ScanLine, Settings, Sparkles, Sun, Trophy, UserRound, UsersRound, X } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
@@ -36,6 +37,12 @@ const MOBILE_NAV = [
   { href: "/komunitas", label: "Komunitas", icon: UsersRound },
   { href: "/profil", label: "Profil", icon: UserRound },
 ];
+
+const HEADER_NOTIFICATIONS = [
+  { id: "daily-goals", title: "Goals harianmu siap", detail: "3 misi sehat sudah dipilih untuk hari ini.", time: "Baru saja", href: "/todays-journey" },
+  { id: "streak", title: "Streak mencapai 7 hari", detail: "Pertahankan konsistensi dengan aktivitas ringan hari ini.", time: "1 jam lalu", href: "/aktivitas" },
+  { id: "reward", title: "Saldo HP bisa ditukar", detail: "Kamu memiliki 3.280 HP di Toko Hadiah.", time: "Kemarin", href: "/reward" },
+] as const;
 
 function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
@@ -73,6 +80,7 @@ export function AppShell({ children }: { readonly children: React.ReactNode }) {
   const session = useAuthSession();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const { dark, toggleTheme } = useTheme();
 
   if (pathname === "/onboarding") return children;
@@ -115,19 +123,59 @@ export function AppShell({ children }: { readonly children: React.ReactNode }) {
       )}
 
       <div className="min-w-0 lg:pl-64">
-        <header className="fixed inset-x-0 top-0 z-40 border-b border-line bg-background/90 shadow-sm backdrop-blur-xl lg:sticky lg:inset-x-auto lg:shadow-none">
-          <div className="flex h-16 items-center gap-3 px-4 sm:px-6 lg:px-8">
-            <button onClick={() => setMobileOpen(true)} className="grid h-9 w-9 place-items-center rounded-lg text-muted-foreground hover:bg-secondary lg:hidden" aria-label="Buka menu"><Menu className="h-5 w-5" /></button>
-            <GlobalSearch companionName={session.companionName} />
-            <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
-              <span className="pill hidden bg-amber/15 text-amber md:inline-flex" aria-label="Saldo 12450 XP Demo"><Flame className="h-3.5 w-3.5" /> 12.450 XP</span>
-              <span className="pill hidden bg-brand-soft text-brand md:inline-flex" aria-label="Saldo 3280 HP Demo">3.280 HP</span>
-              <button onClick={toggleTheme} className="hidden h-9 w-9 place-items-center rounded-lg text-muted-foreground hover:bg-secondary sm:grid" aria-label="Ganti tema">{dark ? <Sun className="h-[18px] w-[18px]" /> : <Moon className="h-[18px] w-[18px]" />}</button>
-              <button className="relative hidden h-9 w-9 place-items-center rounded-lg text-muted-foreground hover:bg-secondary min-[430px]:grid" aria-label="Notifikasi"><Bell className="h-[18px] w-[18px]" /><span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-destructive" /></button>
+        <header className="fixed inset-x-0 top-0 z-40 border-b border-line bg-background/90 shadow-sm backdrop-blur-xl lg:inset-x-auto lg:left-[17rem] lg:right-4 lg:top-3 lg:rounded-2xl lg:border lg:border-line/80 lg:shadow-soft">
+          <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2 gap-y-2 overflow-visible px-3 py-2 sm:flex sm:h-16 sm:gap-3 sm:px-6 sm:py-0 lg:px-5">
+            <button onClick={() => { setMobileOpen(true); setNotificationsOpen(false); setProfileOpen(false); }} className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-secondary lg:hidden" aria-label="Buka menu"><Menu className="h-5 w-5" /></button>
+            <Link href="/dashboard" className="flex min-w-0 items-center gap-1.5 overflow-hidden sm:hidden" aria-label="NutriVerse">
+              <BrandLogo compact className="hidden !h-7 !w-7 shrink-0 min-[360px]:inline-flex" />
+              <span className="truncate font-display text-base font-extrabold tracking-tight text-foreground">Nutri<span className="text-brand">Verse</span></span>
+            </Link>
+            <div className="col-span-3 row-start-2 min-w-0 sm:flex-1">
+              <GlobalSearch companionName={session.companionName} />
+            </div>
+            <div className="col-start-3 row-start-1 ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
+              <span className="pill hidden bg-amber/15 text-amber xl:inline-flex" aria-label="Saldo 12450 XP Demo"><Flame className="h-3.5 w-3.5" /> 12.450 XP</span>
+              <span className="pill hidden bg-brand-soft text-brand xl:inline-flex" aria-label="Saldo 3280 HP Demo">3.280 HP</span>
+              <button onClick={toggleTheme} className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-secondary sm:h-9 sm:w-9" aria-label="Ganti tema">{dark ? <Sun className="h-[18px] w-[18px]" /> : <Moon className="h-[18px] w-[18px]" />}</button>
               <div className="relative">
-                <button onClick={() => setProfileOpen((value) => !value)} className="grid h-9 w-9 place-items-center rounded-full bg-gradient-to-br from-brand to-lime text-sm font-bold text-white ring-2 ring-card transition hover:opacity-90" aria-label={`Menu profil ${session.name}`} aria-expanded={profileOpen}>{initials}</button>
+                <button
+                  onClick={() => { setNotificationsOpen((value) => !value); setProfileOpen(false); }}
+                  className="relative grid h-8 w-8 place-items-center rounded-lg text-muted-foreground transition hover:bg-secondary hover:text-foreground sm:h-9 sm:w-9"
+                  aria-label={`${HEADER_NOTIFICATIONS.length} notifikasi belum dibaca`}
+                  aria-expanded={notificationsOpen}
+                  aria-controls="header-notifications"
+                >
+                  <Bell className="h-[18px] w-[18px]" />
+                  <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-destructive ring-2 ring-background" />
+                </button>
+                {notificationsOpen && (
+                  <section id="header-notifications" className="fixed inset-x-3 top-[7rem] z-50 overflow-hidden rounded-2xl border border-line bg-card shadow-2xl sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-80" aria-label="Daftar notifikasi">
+                    <div className="flex items-center justify-between border-b border-line/60 px-4 py-3">
+                      <div>
+                        <p className="font-display text-sm font-bold text-foreground">Notifikasi</p>
+                        <p className="text-[10px] text-muted-foreground">{HEADER_NOTIFICATIONS.length} pembaruan terbaru</p>
+                      </div>
+                      <span className="grid h-7 min-w-7 place-items-center rounded-full bg-destructive/10 px-2 text-[10px] font-bold text-destructive">{HEADER_NOTIFICATIONS.length}</span>
+                    </div>
+                    <div className="p-2">
+                      {HEADER_NOTIFICATIONS.map((item) => (
+                        <Link key={item.id} href={item.href} onClick={() => setNotificationsOpen(false)} className="flex gap-3 rounded-xl px-3 py-3 transition hover:bg-secondary">
+                          <span className="relative mt-1 h-2 w-2 shrink-0 rounded-full bg-brand"><span className="absolute inset-0 animate-ping rounded-full bg-brand/40" /></span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block text-xs font-bold text-foreground">{item.title}</span>
+                            <span className="mt-0.5 block text-[10px] leading-relaxed text-muted-foreground">{item.detail}</span>
+                            <span className="mt-1 block text-[9px] font-semibold text-brand">{item.time}</span>
+                          </span>
+                        </Link>
+                      ))}
+                    </div>
+                  </section>
+                )}
+              </div>
+              <div className="relative">
+                <button onClick={() => { setProfileOpen((value) => !value); setNotificationsOpen(false); }} className="relative grid h-8 w-8 overflow-hidden rounded-full bg-gradient-to-br from-brand to-lime text-xs font-bold text-white ring-2 ring-card transition hover:opacity-90 sm:h-9 sm:w-9 sm:text-sm" aria-label={`Menu profil ${session.name}`} aria-expanded={profileOpen}>{session.avatarUrl ? <NextImage src={session.avatarUrl} alt="" fill unoptimized className="object-cover" /> : initials}</button>
                 {profileOpen && (
-                  <div className="absolute right-0 mt-2 w-64 overflow-hidden rounded-2xl border border-line bg-card p-2 shadow-2xl">
+                  <div className="fixed right-3 top-[7rem] w-64 overflow-hidden rounded-2xl border border-line bg-card p-2 shadow-2xl sm:absolute sm:right-0 sm:top-full sm:mt-2">
                     <div className="border-b border-line/50 px-3 py-3"><p className="truncate text-sm font-bold text-foreground">{session.name}</p><p className="truncate text-xs text-muted-foreground">{session.email}</p><span className="mt-2 inline-flex rounded-full bg-brand-soft px-2 py-1 text-[9px] font-bold text-brand">AKUN AKTIF</span></div>
                     <Link href="/profil" onClick={() => setProfileOpen(false)} className="mt-1 flex items-center gap-2 rounded-xl px-3 py-2 text-sm hover:bg-secondary"><UserRound className="h-4 w-4" /> Lihat profil</Link>
                     <Link href="/pengaturan" onClick={() => setProfileOpen(false)} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm hover:bg-secondary"><Settings className="h-4 w-4" /> Pengaturan akun</Link>
@@ -139,7 +187,7 @@ export function AppShell({ children }: { readonly children: React.ReactNode }) {
           </div>
         </header>
 
-        <main className="min-w-0 px-4 pb-[calc(6.5rem+env(safe-area-inset-bottom))] pt-24 sm:px-6 sm:pb-[calc(6.5rem+env(safe-area-inset-bottom))] sm:pt-24 lg:px-8 lg:py-8">{children}</main>
+        <main className="min-w-0 px-4 pb-[calc(6.5rem+env(safe-area-inset-bottom))] pt-[7.5rem] sm:px-6 sm:pb-[calc(6.5rem+env(safe-area-inset-bottom))] sm:pt-24 lg:px-8 lg:pb-8 lg:pt-24">{children}</main>
       </div>
 
       <nav className="fixed inset-x-3 bottom-3 z-30 grid grid-cols-5 rounded-2xl border border-line bg-card/95 p-1.5 shadow-2xl backdrop-blur-xl lg:hidden" aria-label="Navigasi utama mobile">

@@ -100,7 +100,7 @@ export function GoalProgressRow({
             {goal.currentValue} / {goal.targetValue} <span className="text-muted-foreground">{goal.unit}</span>
           </span>
         </div>
-        <div className="h-2 overflow-hidden rounded-full bg-secondary">
+        <div className="chart-progress h-2 overflow-hidden rounded-full">
           <div 
             className="h-full rounded-full transition-all duration-500 bg-brand" 
             style={{ 
@@ -234,7 +234,7 @@ export function ChallengePreviewCard({ summary }: { readonly summary: ChallengeS
           <span>Akumulasi Progres Tantangan</span>
           <span className="stat-num text-foreground">{summary.currentValue} / {summary.targetValue} {summary.unit} ({summary.progressPercent}%)</span>
         </div>
-        <div className="h-2 overflow-hidden rounded-full bg-secondary">
+        <div className="chart-progress h-2 overflow-hidden rounded-full">
           <div 
             className="h-full rounded-full bg-gradient-to-r from-amber to-brand transition-all duration-500" 
             style={{ width: `${summary.progressPercent}%` }}
@@ -311,7 +311,7 @@ export function HealthyDayHeatmap({ history }: HealthyDayHeatmapProps) {
   };
 
   return (
-    <div className="card card-pad space-y-4">
+    <div className="card card-pad chart-surface chart-surface-mixed space-y-4">
       <div>
         <h3 className="font-display text-base font-bold text-foreground">28-Day Consistency Heatmap</h3>
         <p className="text-xs text-muted-foreground mt-0.5">Reflecting daily consistency coordinates across activity and recovery days</p>
@@ -434,7 +434,7 @@ export function TodayJourneyCard({
         </div>
 
         {/* Progress Bar */}
-        <div className="w-full h-2 overflow-hidden rounded-full bg-secondary">
+        <div className="chart-progress h-2 w-full overflow-hidden rounded-full">
           <div 
             className="h-full rounded-full bg-gradient-to-r from-brand to-lime transition-all duration-500" 
             style={{ width: `${journey.progressPercent}%` }}
@@ -529,7 +529,7 @@ export function TodayJourneyCard({
         </div>
 
         {/* Progress Bar */}
-        <div className="w-full h-3 overflow-hidden rounded-full bg-secondary">
+        <div className="chart-progress h-3 w-full overflow-hidden rounded-full">
           <div 
             className="h-full rounded-full bg-gradient-to-r from-brand to-lime transition-all duration-500" 
             style={{ width: `${journey.progressPercent}%` }}

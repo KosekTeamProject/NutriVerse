@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ChevronUp, ChevronDown, Minus, Crown, Flame, ShieldCheck, CalendarDays, MapPinOff } from "lucide-react";
 import { RankCrest } from "@/components/brand/RankCrest";
-import { tierBySlug, tierForXp, nextTier } from "@/lib/tiers";
+import { TIER_EMBLEM_NAMES, tierBySlug, tierForXp, nextTier } from "@/lib/tiers";
 
 type Entry = { 
   rank: number; 
@@ -69,7 +69,7 @@ function Podium({ e, place }: { readonly e: Entry; readonly place: 1 | 2 | 3 }) 
     <div className={`flex flex-col items-center ${place === 1 ? "-mt-4" : ""}`}>
       <div className="relative">
         {place === 1 && <Crown className="absolute -top-5 left-1/2 h-5 w-5 -translate-x-1/2 text-amber" />}
-        <RankCrest id={`podium-${place}`} from={t.from} to={t.to} size={size} />
+        <RankCrest id={`podium-${place}`} tier={t.slug} from={t.from} to={t.to} size={size} />
       </div>
       <div className={`mt-2 grid ${place === 1 ? "h-12 w-12" : "h-10 w-10"} place-items-center rounded-full bg-gradient-to-br from-brand to-lime text-sm font-bold text-white shadow-sm`}>
         {initials(e.name)}
@@ -133,10 +133,10 @@ export function LeaderboardView() {
       {me && meTier && (
         <div className="card card-pad border-line/65">
           <div className="flex items-center gap-4">
-            <RankCrest id="me" from={meTier.from} to={meTier.to} size={48} />
+            <RankCrest id="me" tier={meTier.slug} from={meTier.from} to={meTier.to} size={48} />
             <div className="flex-1">
               <p className="text-xs font-medium text-muted-foreground">Peringkatmu ({SCOPES.find((s) => s.key === scope)?.label})</p>
-              <p className="font-display text-2xl font-extrabold text-foreground mt-0.5">#{me.rank} <span className="text-sm font-bold text-muted-foreground">· {meTier.name}</span></p>
+              <p className="font-display text-2xl font-extrabold text-foreground mt-0.5">#{me.rank} <span className="text-sm font-bold text-muted-foreground">· {meTier.name} · {TIER_EMBLEM_NAMES[meTier.slug]}</span></p>
             </div>
             <div className="text-right">
               <p className="stat-num text-lg font-extrabold text-brand flex items-center justify-end gap-1"><Flame className="h-4.5 w-4.5" /> {me.consistencyDays} Hari</p>
@@ -152,8 +152,9 @@ export function LeaderboardView() {
       )}
 
       {/* podium */}
-      <div className="card card-pad bg-card border-line">
-        <div className="flex items-end justify-center gap-4 sm:gap-8 pt-6">
+      <div className="card card-pad chart-surface chart-surface-sky border-sky/20">
+        <div className="mb-3 flex items-center justify-between gap-3"><div><p className="text-[9px] font-bold uppercase tracking-[0.16em] text-sky">Puncak klasemen</p><p className="mt-0.5 text-xs text-muted-foreground">Tiga traveler paling konsisten musim ini</p></div><span className="pill border border-sky/20 bg-card/70 text-[9px] font-bold text-sky backdrop-blur">TOP 3</span></div>
+        <div className="flex min-h-64 items-end justify-center gap-4 pt-8 sm:gap-8">
           {top3[1] && <Podium e={top3[1]} place={2} />}
           {top3[0] && <Podium e={top3[0]} place={1} />}
           {top3[2] && <Podium e={top3[2]} place={3} />}
@@ -169,10 +170,10 @@ export function LeaderboardView() {
               <div key={e.rank} className={`flex items-center gap-3 rounded-xl px-3 py-2.5 transition ${e.you ? "bg-brand-soft border border-brand/20 shadow-sm" : "hover:bg-secondary/40"}`}>
                 <span className="stat-num w-6 text-center text-xs font-bold text-muted-foreground">{e.rank}</span>
                 <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-gradient-to-br from-brand to-lime text-xs font-bold text-white shadow-sm">{initials(e.name)}</div>
-                <RankCrest id={`row-${scope}-${e.rank}`} from={t.from} to={t.to} size={22} />
+                <RankCrest id={`row-${scope}-${e.rank}`} tier={t.slug} from={t.from} to={t.to} size={22} />
                 <div className="min-w-0 flex-1">
                   <p className={`truncate text-xs ${e.you ? "font-bold text-brand" : "font-semibold text-foreground"}`}>{e.name}{e.you ? " (kamu)" : ""}</p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">{t.name}</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">{t.name} · {TIER_EMBLEM_NAMES[t.slug]}</p>
                 </div>
                 <Delta v={e.delta} />
                 <div className="text-right">

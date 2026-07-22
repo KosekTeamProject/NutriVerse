@@ -33,41 +33,41 @@ export function AuthEntryModal({ open, onClose, initialView = "choice" }: { read
   }
 
   return (
-    <div className="fixed inset-0 z-[100] grid place-items-center overflow-y-auto bg-ink/65 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="auth-title">
+    <div className="fixed inset-0 z-[100] grid place-items-center overflow-y-auto bg-ink/65 p-3 backdrop-blur-sm sm:p-4" role="dialog" aria-modal="true" aria-labelledby="auth-title">
       <button className="absolute inset-0 cursor-default" onClick={onClose} aria-label="Tutup dialog" />
-      <section className="relative z-10 w-full max-w-lg overflow-hidden rounded-[2rem] border border-line bg-card shadow-2xl">
-        <div className="bg-gradient-to-br from-brand/15 via-card to-lime/10 p-6 sm:p-8">
+      <section className="relative z-10 max-h-[calc(100dvh-1.5rem)] w-full max-w-lg overflow-y-auto overscroll-contain rounded-[1.5rem] border border-line bg-card shadow-2xl sm:max-h-[calc(100dvh-2rem)] sm:rounded-[2rem]">
+        <div className="bg-gradient-to-br from-brand/15 via-card to-lime/10 p-4 sm:p-8">
           <div className="flex items-start justify-between gap-4">
             <BrandLogo />
-            <button onClick={onClose} className="grid h-9 w-9 place-items-center rounded-xl text-muted-foreground hover:bg-secondary" aria-label="Tutup"><X className="h-5 w-5" /></button>
+            <button onClick={onClose} className="grid h-8 w-8 shrink-0 place-items-center rounded-xl text-muted-foreground hover:bg-secondary sm:h-9 sm:w-9" aria-label="Tutup"><X className="h-5 w-5" /></button>
           </div>
 
           {view === "choice" ? (
-            <div className="mt-6">
+            <div className="mt-4 sm:mt-6">
               <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand">Selamat datang</p>
-              <h2 id="auth-title" className="mt-2 font-display text-2xl font-extrabold text-foreground sm:text-3xl">Mulai perjalanan sehatmu</h2>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Masuk untuk melanjutkan progres, atau daftar agar NutriVerse dapat mengenali baseline dan tujuan kesehatanmu.</p>
-              <button onClick={loginWithGoogle} className="mt-6 flex w-full items-center justify-center gap-3 rounded-xl border border-line bg-card px-4 py-3 text-sm font-bold text-foreground shadow-sm transition hover:border-brand/35 hover:bg-secondary" aria-label="Lanjutkan dengan Google">
+              <h2 id="auth-title" className="mt-1.5 font-display text-xl font-extrabold text-foreground sm:mt-2 sm:text-3xl">Mulai perjalanan sehatmu</h2>
+              <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground sm:mt-2 sm:text-sm">Masuk untuk melanjutkan progres, atau daftar agar NutriVerse dapat mengenali baseline dan tujuan kesehatanmu.</p>
+              <button onClick={loginWithGoogle} className="mt-4 flex w-full items-center justify-center gap-3 rounded-xl border border-line bg-card px-4 py-2.5 text-sm font-bold text-foreground shadow-sm transition hover:border-brand/35 hover:bg-secondary sm:mt-6 sm:py-3" aria-label="Lanjutkan dengan Google">
                 <span className="grid h-6 w-6 place-items-center rounded-full bg-white font-sans text-sm font-black text-[#4285F4] shadow-sm">G</span>
                 Lanjutkan dengan Google
               </button>
-              <div className="my-4 flex items-center gap-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground"><span className="h-px flex-1 bg-line" /> atau pilih alur <span className="h-px flex-1 bg-line" /></div>
-              <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                <button onClick={() => setView("login")} className="rounded-2xl border border-line bg-card p-5 text-left transition hover:-translate-y-0.5 hover:border-brand/40 hover:shadow-soft">
-                  <LogIn className="h-6 w-6 text-brand" />
-                  <p className="mt-4 font-display text-base font-bold text-foreground">Masuk</p>
-                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Lanjutkan Health Pulse, aktivitas, dan peringkatmu.</p>
+              <div className="my-3 flex items-center gap-3 text-[9px] font-bold uppercase tracking-wider text-muted-foreground sm:my-4 sm:text-[10px]"><span className="h-px flex-1 bg-line" /> atau pilih alur <span className="h-px flex-1 bg-line" /></div>
+              <div className="grid grid-cols-2 gap-2.5 sm:mt-6 sm:gap-3">
+                <button onClick={() => setView("login")} className="rounded-2xl border border-line bg-card p-3.5 text-left transition hover:-translate-y-0.5 hover:border-brand/40 hover:shadow-soft sm:p-5">
+                  <LogIn className="h-5 w-5 text-brand sm:h-6 sm:w-6" />
+                  <p className="mt-2.5 font-display text-sm font-bold text-foreground sm:mt-4 sm:text-base">Masuk</p>
+                  <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground sm:text-xs">Lanjutkan Health Pulse, aktivitas, dan peringkatmu.</p>
                 </button>
-                <Link href="/onboarding" onClick={onClose} className="rounded-2xl border border-brand/25 bg-brand-soft/55 p-5 text-left transition hover:-translate-y-0.5 hover:shadow-soft">
-                  <UserPlus className="h-6 w-6 text-brand" />
-                  <p className="mt-4 font-display text-base font-bold text-foreground">Daftar</p>
-                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Buat akun, isi baseline, lalu beri nama AI Companion.</p>
+                <Link href="/onboarding" onClick={onClose} className="rounded-2xl border border-brand/25 bg-brand-soft/55 p-3.5 text-left transition hover:-translate-y-0.5 hover:shadow-soft sm:p-5">
+                  <UserPlus className="h-5 w-5 text-brand sm:h-6 sm:w-6" />
+                  <p className="mt-2.5 font-display text-sm font-bold text-foreground sm:mt-4 sm:text-base">Daftar</p>
+                  <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground sm:text-xs">Buat akun, isi baseline, lalu beri nama AI Companion.</p>
                 </Link>
               </div>
-              <button onClick={onClose} className="btn btn-ghost mt-4 w-full">Jelajahi informasi publik dahulu</button>
+              <button onClick={onClose} className="btn btn-ghost mt-3 min-h-9 w-full py-2 text-xs sm:mt-4 sm:text-sm">Jelajahi informasi publik dahulu</button>
             </div>
           ) : (
-            <form onSubmit={login} className="mt-6 space-y-4">
+            <form onSubmit={login} className="mt-4 space-y-3 sm:mt-6 sm:space-y-4">
               <button type="button" onClick={() => setView("choice")} className="inline-flex items-center gap-1 text-xs font-bold text-muted-foreground hover:text-brand"><ArrowLeft className="h-4 w-4" /> Kembali</button>
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand">Mode Login</p>

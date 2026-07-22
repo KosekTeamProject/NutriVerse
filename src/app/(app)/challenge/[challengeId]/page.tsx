@@ -72,7 +72,7 @@ export default async function ChallengeDetailPage({ params }: ChallengeDetailPag
             <span className="capitalize">Target {challenge.period}</span>
             <span>{now} / {challenge.goal} {challenge.unit} ({pct}%)</span>
           </div>
-          <div className="h-3 overflow-hidden rounded-full bg-secondary">
+          <div className="chart-progress h-3 overflow-hidden rounded-full">
             <div 
               className={`h-full rounded-full transition-all duration-500 ${done ? "bg-brand" : "bg-gradient-to-r from-brand to-lime"}`} 
               style={{ width: `${pct}%` }} 

@@ -292,7 +292,7 @@ export function ActivityTracker() {
             </div>
             <span className="pill border border-brand/20 bg-card text-[10px] font-bold text-brand">ATURAN DEMO</span>
           </div>
-          <div className="mt-3 h-2 overflow-hidden rounded-full bg-card">
+          <div className="chart-progress mt-3 h-2 overflow-hidden rounded-full bg-card">
             <div className="h-full rounded-full bg-brand" style={{ width: `${Math.min(100, (DEMO_XP_EARNED_TODAY / XP_SAFETY_POLICY.dailyCap) * 100)}%` }} />
           </div>
           <div className="mt-1.5 flex justify-between text-[10px] text-muted-foreground">
@@ -316,7 +316,7 @@ export function ActivityTracker() {
 
       {/* route + validity */}
       <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-stretch">
-        <div className="h-40 rounded-2xl border border-line bg-secondary/50 p-2">
+        <div className="chart-surface chart-surface-sky h-40 rounded-2xl border border-line p-2">
           <RoutePath points={route} />
         </div>
         <div className="flex flex-col justify-center gap-2 rounded-2xl border border-line p-4 sm:w-52">

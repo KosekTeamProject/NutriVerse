@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } f
 import {
   Heart, HeartPulse, MessageCircle, Footprints, Flame, MessageSquarePlus, Users2, Check, Lock,
   CalendarDays, Clock3, Gift, MapPin, Megaphone, Palette, RefreshCw, Share2, Trophy, Target, TrendingUp,
-  Download, Droplets, ImagePlus, Trash2, ChevronLeft, ChevronRight
+  Download, Droplets, ImagePlus, Trash2, ChevronDown, ChevronLeft, ChevronRight
 } from "lucide-react";
 import { POSTS, COMMUNITY_CHALLENGE, type Post } from "@/lib/community";
 import { LeaderboardView } from "@/components/app/LeaderboardView";
@@ -84,6 +84,8 @@ const COMMUNITY_EVENTS = [
   { id: "surabaya-steps", area: "Surabaya", title: "Surabaya Sunrise Steps", location: "Taman Bungkul, Surabaya", date: "16 Agustus 2026", day: "Minggu", time: "05.45 WIB", participants: 344, capacity: 500, xp: 380, badge: "Sunrise Badge", background: "linear-gradient(120deg,#713f12 0%,#c05a22 50%,#3f250e 100%)", accent: "#fde047" },
   { id: "bali-coast", area: "Bali", title: "Bali Coast Recovery Walk", location: "Pantai Sanur, Bali", date: "23 Agustus 2026", day: "Minggu", time: "06.15 WITA", participants: 172, capacity: 280, xp: 300, badge: "Coastal Calm", background: "linear-gradient(120deg,#134e4a 0%,#0f766e 50%,#164e63 100%)", accent: "#99f6e4" },
 ] as const;
+
+const EVENT_LOCATIONS = ["Semua Area", "Yogyakarta", "Jakarta", "Bandung", "Surabaya", "Bali"] as const;
 
 function EventCarousel({ location }: { readonly location: string }) {
   const filteredEvents = location === "Semua Area" ? COMMUNITY_EVENTS : COMMUNITY_EVENTS.filter((event) => event.area === location);
@@ -583,11 +585,24 @@ export function CommunityFeed() {
 
   return (
     <div className="min-w-0 space-y-5">
-      <div className="flex max-w-full items-center gap-2 overflow-x-auto pb-1" aria-label="Filter lokasi event">
-        <span className="flex shrink-0 items-center gap-1.5 pr-1 text-xs font-bold text-foreground"><MapPin className="h-4 w-4 text-brand" /> Lokasi Event</span>
-        {["Semua Area", "Yogyakarta", "Jakarta", "Bandung", "Surabaya", "Bali"].map((item) => (
-          <button key={item} onClick={() => setLocation(item)} className={`shrink-0 rounded-full border px-3 py-1.5 text-[10px] font-bold transition ${location === item ? "border-brand bg-brand text-white" : "border-line bg-card text-muted-foreground hover:border-brand/30 hover:text-brand"}`}>{item}</button>
-        ))}
+      <div className="flex max-w-full flex-col items-stretch gap-2 sm:flex-row sm:items-center" aria-label="Filter lokasi event">
+        <label htmlFor="event-location" className="flex shrink-0 items-center gap-1.5 text-xs font-bold text-foreground">
+          <MapPin className="h-4 w-4 text-brand" /> Lokasi Event
+        </label>
+        <div className="relative w-full sm:w-52">
+          <select
+            id="event-location"
+            value={location}
+            onChange={(event) => setLocation(event.target.value)}
+            className="h-10 w-full appearance-none rounded-xl border border-line bg-card py-2 pl-3 pr-9 text-xs font-bold text-foreground shadow-sm outline-none transition hover:border-brand/40 focus:border-brand focus:ring-2 focus:ring-brand/15"
+            aria-label="Pilih lokasi event"
+          >
+            {EVENT_LOCATIONS.map((item) => (
+              <option key={item} value={item}>{item}</option>
+            ))}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+        </div>
       </div>
 
       <div className="grid min-w-0 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
@@ -640,7 +655,7 @@ export function CommunityFeed() {
 
           <section className="card card-pad space-y-4 border-line bg-card">
             <div className="flex items-center justify-between gap-2"><h2 className="font-display text-sm font-bold text-foreground">Tantangan Aktif</h2><Target className="h-5 w-5 text-brand" /></div>
-            <div><h3 className="text-xs font-bold text-foreground">{cc.title}</h3><div className="mt-3 h-2 overflow-hidden rounded-full bg-secondary"><div className="h-full rounded-full bg-gradient-to-r from-brand to-lime" style={{ width: `${pct}%` }} /></div><p className="mt-2 text-[10px] text-muted-foreground">{cc.now.toLocaleString("id-ID")} / {cc.goal.toLocaleString("id-ID")} langkah ({pct}%)</p></div>
+          <div><h3 className="text-xs font-bold text-foreground">{cc.title}</h3><div className="chart-progress mt-3 h-2 overflow-hidden rounded-full"><div className="h-full rounded-full bg-gradient-to-r from-brand to-lime" style={{ width: `${pct}%` }} /></div><p className="mt-2 text-[10px] text-muted-foreground">{cc.now.toLocaleString("id-ID")} / {cc.goal.toLocaleString("id-ID")} langkah ({pct}%)</p></div>
             <div className="flex items-center justify-between gap-3 border-t border-line/45 pt-3"><span className="text-[10px] text-muted-foreground">{cc.participants} pengguna bergabung</span>{joined ? <span className="pill bg-brand-soft text-[10px] font-bold text-brand"><Check className="h-3 w-3" /> Terdaftar</span> : <button onClick={() => setJoined(true)} className="btn btn-primary btn-xs">Gabung</button>}</div>
           </section>
 

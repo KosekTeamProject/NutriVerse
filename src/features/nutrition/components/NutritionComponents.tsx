@@ -83,7 +83,7 @@ export function NutritionProgressSummary() {
           <span className="flex items-center gap-1"><Sparkles className="h-3.5 w-3.5 text-brand" /> Progres Protein</span>
           <span className="stat-num text-foreground">{s.proteinCurrent} / {s.proteinTarget} g ({proteinPct}%)</span>
         </div>
-        <div className="h-2 overflow-hidden rounded-full bg-secondary">
+        <div className="chart-progress h-2 overflow-hidden rounded-full">
           <div className="h-full rounded-full bg-brand" style={{ width: `${proteinPct}%` }} />
         </div>
         <p className="text-[10px] text-muted-foreground italic">

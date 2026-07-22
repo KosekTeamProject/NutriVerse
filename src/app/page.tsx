@@ -2,13 +2,15 @@
 
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
-import { ArrowRight, Play, Check, Trophy, Flame, ScanLine, Activity, HeartPulse, UserRound } from "lucide-react";
+import { ArrowRight, Play, Check, Trophy, Flame, ScanLine, Activity, HeartPulse, Moon, Sun, UserRound } from "lucide-react";
 import { RankCrest } from "@/components/brand/RankCrest";
 import { BrandLogo } from "@/components/brand/BrandLogo";
 import { AuthEntryModal } from "@/components/auth/AuthEntryModal";
 import { useAuthSession } from "@/hooks/useAuthSession";
+import { useTheme } from "@/hooks/useTheme";
+import { TIER_EMBLEM_NAMES, type TierSlug } from "@/lib/tiers";
 
-const TIERS = [
+const TIERS: ReadonlyArray<{ name: string; slug: TierSlug; from: string; to: string; xp: string }> = [
   { name: "Sprout", slug: "sprout", from: "#bbf7d0", to: "#4ade80", xp: "0" },
   { name: "Seedling", slug: "seedling", from: "#86efac", to: "#22c55e", xp: "1.2K" },
   { name: "Bloom", slug: "bloom", from: "#6ee7b7", to: "#10b981", xp: "3K" },
@@ -22,7 +24,10 @@ const TIERS = [
 
 function Logo() {
   return (
-    <Link href="/" className="transition hover:opacity-90 active:scale-95 duration-200"><BrandLogo /></Link>
+    <Link href="/" className="flex min-w-0 items-center transition duration-200 hover:opacity-90 active:scale-95" aria-label="NutriVerse">
+      <BrandLogo className="hidden min-[360px]:inline-flex" />
+      <span className="truncate font-display text-lg font-extrabold tracking-[-0.055em] text-foreground min-[360px]:hidden">Nutri<span className="text-brand">Verse</span></span>
+    </Link>
   );
 }
 
@@ -137,7 +142,7 @@ function MacroBar({
           <CountUp value={pct} duration={1200} reducedMotion={reducedMotion} />%
         </span>
       </div>
-      <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-secondary">
+          <div className="chart-progress mt-1 h-1.5 overflow-hidden rounded-full">
         <div 
           className="h-full rounded-full transition-all duration-[1s] ease-[cubic-bezier(0.16,1,0.3,1)]" 
           style={{ width: reducedMotion ? `${pct}%` : width, background: color }} 
@@ -183,7 +188,7 @@ function PreviewCard({ reducedMotion }: { readonly reducedMotion: boolean }) {
     >
       <div aria-hidden className="absolute -inset-4 -z-10 rounded-[2rem] bg-gradient-to-br from-brand/25 to-sky/15 blur-2xl opacity-80" />
       <div className="absolute -right-3 -top-5 z-10 flex items-center gap-2 rounded-2xl border border-line bg-card px-3 py-2 shadow-lift">
-        <RankCrest id="hero" from="#7dd3fc" to="#0ea5e9" size={30} />
+        <RankCrest id="hero" tier="radiant" from="#7dd3fc" to="#0ea5e9" size={30} />
         <div className="leading-tight">
           <p className="text-[10px] font-medium text-muted-foreground">Tier</p>
           <p className="font-display text-sm font-bold text-foreground">Radiant</p>
@@ -233,7 +238,7 @@ function PreviewCard({ reducedMotion }: { readonly reducedMotion: boolean }) {
               <CountUp value={1550} duration={1800} reducedMotion={reducedMotion} /> XP menuju Peak
             </span>
           </div>
-          <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-secondary">
+            <div className="chart-progress mt-1.5 h-2 overflow-hidden rounded-full">
             <div 
               className="h-full rounded-full bg-gradient-to-r from-sky to-brand transition-all duration-[1.5s] ease-[cubic-bezier(0.16,1,0.3,1)]" 
               style={{ width: hovering || activeTransition(reducedMotion) ? "68%" : "0%" }} 
@@ -314,6 +319,7 @@ function FooterCol({ title, links }: { readonly title: string; readonly links: s
 
 export default function Home() {
   const session = useAuthSession();
+  const { dark, toggleTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
@@ -373,14 +379,17 @@ export default function Home() {
       </div>
 
       <header className="sticky top-0 z-50 border-b border-line/70 bg-background/80 backdrop-blur-xl transition duration-500 animate-slide-down-nav">
-        <nav className="container-app flex h-16 items-center justify-between">
+        <nav className="container-app flex h-16 min-w-0 items-center gap-2 sm:gap-3">
           <Logo />
           <div className="hidden items-center gap-8 text-sm font-medium text-muted-foreground md:flex">
             <a href="#cara-kerja" className="transition hover:text-brand">Cara kerja</a>
             <a href="#tier" className="transition hover:text-brand">Tier & liga</a>
             <a href="#" className="transition hover:text-brand">Reward</a>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
+            <button onClick={toggleTheme} className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground transition hover:bg-secondary hover:text-foreground sm:h-9 sm:w-9" aria-label="Ganti tema">
+              {dark ? <Sun className="h-[18px] w-[18px]" /> : <Moon className="h-[18px] w-[18px]" />}
+            </button>
             {session ? (
               <>
                 <span className="hidden text-xs font-semibold text-muted-foreground sm:inline">Halo, {session.name.split(" ")[0]}</span>
@@ -389,7 +398,7 @@ export default function Home() {
             ) : (
               <>
                 <button onClick={() => openAuth("login")} className="btn btn-ghost btn-sm hidden font-bold transition hover:bg-line/40 sm:inline-flex">Masuk</button>
-                <button onClick={() => openAuth("choice")} className="btn btn-primary btn-sm font-bold shadow-soft transition hover:scale-105 active:scale-98">Mulai gratis <ArrowRight className="h-4 w-4" /></button>
+                <button onClick={() => openAuth("choice")} className="btn btn-primary btn-sm px-2.5 font-bold shadow-soft transition hover:scale-105 active:scale-98 sm:px-3"><span className="hidden min-[360px]:inline">Mulai </span>gratis <ArrowRight className="h-4 w-4" /></button>
               </>
             )}
           </div>
@@ -523,9 +532,10 @@ export default function Home() {
             </div>
             <div className="mt-12 grid grid-cols-3 gap-3 md:grid-cols-9">
               {TIERS.map((t) => (
-                <div key={t.slug} className="card card-hover flex flex-col items-center gap-2 p-3 text-center border-line bg-card hover:scale-105 duration-200">
-                  <RankCrest id={t.slug} from={t.from} to={t.to} size={44} />
+                <div key={t.slug} className="card card-hover flex min-h-40 flex-col items-center justify-center gap-1.5 p-3 text-center border-line bg-card hover:scale-105 duration-200">
+                  <RankCrest id={t.slug} tier={t.slug} from={t.from} to={t.to} size={52} />
                   <p className="font-display text-sm font-bold leading-none text-foreground">{t.name}</p>
+                  <p className="rounded-full bg-secondary/75 px-2 py-0.5 text-[10px] font-bold leading-none text-muted-foreground">{TIER_EMBLEM_NAMES[t.slug]}</p>
                   <p className="stat-num text-[11px] text-muted-foreground">{t.xp} XP</p>
                 </div>
               ))}

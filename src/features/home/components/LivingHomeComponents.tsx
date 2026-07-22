@@ -137,7 +137,7 @@ export function ActiveChallengeCard({ challenge }: { challenge: ChallengePreview
           <span>Perkembangan Total</span>
           <span className="stat-num text-foreground">{challenge.progress} / {challenge.target} {challenge.unit} ({pct}%)</span>
         </div>
-        <div className="h-2 overflow-hidden rounded-full bg-secondary">
+        <div className="chart-progress h-2 overflow-hidden rounded-full">
           <div 
             className="h-full rounded-full bg-gradient-to-r from-amber to-brand transition-all duration-500" 
             style={{ width: `${pct}%` }}

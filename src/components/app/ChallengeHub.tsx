@@ -72,7 +72,7 @@ function ChallengeCard({ c, now, onMark }: { c: Challenge; now: number; onMark: 
             <span className="capitalize">{c.period}</span>
             <span>{now % 1 === 0 ? now : now.toFixed(1)} / {c.goal} {c.unit} ({pct}%)</span>
           </div>
-          <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-secondary">
+          <div className="chart-progress mt-1.5 h-2 overflow-hidden rounded-full">
             <div 
               className={`h-full rounded-full transition-all duration-500 ${done ? "bg-brand" : "bg-gradient-to-r from-brand to-lime"}`} 
               style={{ width: `${pct}%` }} 
@@ -148,7 +148,7 @@ export function ChallengeHub() {
             <p className="text-sm text-white/85">{dailyDone} dari {daily.length} misi selesai &middot; dipilih otomatis untukmu</p>
           </div>
         </div>
-        <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/25">
+        <div className="chart-progress mt-4 h-2 overflow-hidden rounded-full bg-white/25">
           <div className="h-full rounded-full bg-white transition-all duration-500" style={{ width: `${(dailyDone / daily.length) * 100}%` }} />
         </div>
       </div>

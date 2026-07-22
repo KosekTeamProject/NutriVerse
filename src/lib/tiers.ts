@@ -1,4 +1,18 @@
-export type Tier = { name: string; slug: string; from: string; to: string; minXp: number };
+export type TierSlug = "sprout" | "seedling" | "bloom" | "vital" | "radiant" | "peak" | "elite" | "apex" | "legend";
+
+export type Tier = { name: string; slug: TierSlug; from: string; to: string; minXp: number };
+
+export const TIER_EMBLEM_NAMES: Record<TierSlug, string> = {
+  sprout: "Tunas",
+  seedling: "Bibit",
+  bloom: "Bunga",
+  vital: "Denyut",
+  radiant: "Matahari",
+  peak: "Gunung",
+  elite: "Permata",
+  apex: "Mahkota",
+  legend: "Trofi",
+};
 
 export const TIERS: Tier[] = [
   { name: "Sprout", slug: "sprout", from: "#bbf7d0", to: "#4ade80", minXp: 0 },

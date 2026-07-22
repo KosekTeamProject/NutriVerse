@@ -57,7 +57,7 @@ export function ProfileCollection() {
                   <span className="stat-num text-xs text-muted-foreground">{a.now}/{a.goal} {a.unit}</span>
                 </div>
                 <p className="mt-0.5 text-xs text-muted-foreground">{a.desc}</p>
-                <div className="mt-2.5 h-2 overflow-hidden rounded-full bg-secondary">
+                <div className="chart-progress mt-2.5 h-2 overflow-hidden rounded-full">
                   <div className="h-full rounded-full bg-gradient-to-r from-brand to-brand-bright" style={{ width: `${pct}%` }} />
                 </div>
               </div>
