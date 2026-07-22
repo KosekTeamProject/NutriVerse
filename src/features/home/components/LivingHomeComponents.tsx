@@ -14,14 +14,17 @@ import {
 import { JourneyRecord } from "../../journey/types";
 import { CompanionWeeklyLetter } from "../../companion/types";
 import { useCompanionName } from "@/hooks/useCompanionName";
+import { useAuthSession } from "@/hooks/useAuthSession";
 
 // 1. LivingHomeHeader
 export function LivingHomeHeader({ traveler }: { traveler: DemoTraveler }) {
+  const session = useAuthSession();
+  const displayName = session?.name ?? traveler.name;
   return (
     <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between border-b border-line/40 pb-5">
       <div>
         <h1 className="font-display text-2xl font-extrabold tracking-tight sm:text-3xl">
-          Halo, {traveler.name}!
+          Halo, {displayName}!
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Tindakan kecil mulai menjadi bagian dari perjalanan Anda.

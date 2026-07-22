@@ -1,4 +1,4 @@
-import { Footprints, Bike, ShieldCheck, Info, HelpCircle } from "lucide-react";
+import { Footprints, Bike, ShieldCheck, Info, HelpCircle, MousePointerClick, MapPin, Save, Database } from "lucide-react";
 import Link from "next/link";
 import { ActivityTracker } from "@/components/app/ActivityTracker";
 import { GpsConsent } from "@/components/app/GpsConsent";
@@ -21,8 +21,12 @@ export default function AktivitasPage() {
           </p>
         </div>
         <Link href="/aktivitas/kepercayaan" className="btn btn-outline btn-sm inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider self-start sm:self-center">
-          <HelpCircle className="h-4.5 w-4.5" /> Trust &amp; Safety
+          <HelpCircle className="h-4.5 w-4.5" /> Kepercayaan &amp; Keamanan
         </Link>
+      </div>
+
+      <div className="grid gap-2 sm:grid-cols-4">
+        {[{ icon: ShieldCheck, title: "1. Beri izin", text: "Lokasi aktif hanya selama sesi." }, { icon: MousePointerClick, title: "2. Pilih aktivitas", text: "Jalan, lari, atau sepeda." }, { icon: MapPin, title: "3. Mulai lacak", text: "Jarak dan pace dihitung GPS." }, { icon: Save, title: "4. Tinjau & simpan", text: "XP menunggu hasil validasi." }].map((item) => { const Icon = item.icon; return <div key={item.title} className="rounded-2xl border border-line bg-card p-3"><Icon className="h-4 w-4 text-brand" /><p className="mt-2 text-xs font-bold text-foreground">{item.title}</p><p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">{item.text}</p></div>; })}
       </div>
 
       {/* GPS Consent Card */}
@@ -44,7 +48,7 @@ export default function AktivitasPage() {
       <div className="card card-pad">
         <div className="flex items-center justify-between pb-3 border-b border-line/40 mb-4">
           <h2 className="font-display text-lg font-bold">Riwayat aktivitas</h2>
-          <span className="chip"><ShieldCheck className="h-3.5 w-3.5" /> Demo Validation Passed</span>
+          <span className="chip"><Database className="h-3.5 w-3.5" /> Data Demo</span>
         </div>
         <div className="space-y-3">
           {deterministicActivities.map((act) => {
@@ -74,10 +78,10 @@ export default function AktivitasPage() {
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-0.5 capitalize">{act.type} &middot; {formatDuration(act.durationSeconds)}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Sumber: dataset demo &middot; {act.type} &middot; {formatDuration(act.durationSeconds)}</p>
                 </div>
                 <div className="text-right">
-                  <span className="pill bg-amber/15 text-amber text-xs font-bold">+{xp} Potential XP</span>
+                  <span className="pill bg-amber/15 text-amber text-xs font-bold">+{xp} XP potensial</span>
                 </div>
               </div>
             );

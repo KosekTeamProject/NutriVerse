@@ -168,7 +168,7 @@ export const companionInsights: readonly CompanionInsight[] = [
 export const currentWeeklyLetter: CompanionWeeklyLetter = {
   id: "weekly-letter-current",
   title: "Surat Mingguanmu",
-  greeting: "Halo Fathan,",
+  greeting: "Halo,",
   opening: "Minggu ini menunjukkan progres yang stabil tanpa perubahan ekstrem.",
   highlights: [
     "Jalan pagi terverifikasi mendukung pola aktivitasmu.",

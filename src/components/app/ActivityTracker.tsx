@@ -324,7 +324,7 @@ export function ActivityTracker() {
             <div className="flex items-start gap-2 text-amber">
               <TriangleAlert className="mt-0.5 h-5 w-5 shrink-0" />
               <div>
-                <p className="text-sm font-bold">Needs Review</p>
+                <p className="text-sm font-bold">Perlu Ditinjau</p>
                 <p className="text-xs text-muted-foreground">{rejected} segmen menunjukkan variasi kecepatan berlebih.</p>
               </div>
             </div>
@@ -332,7 +332,7 @@ export function ActivityTracker() {
             <div className="flex items-start gap-2 text-brand">
               <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0" />
               <div>
-                <p className="text-sm font-bold">Demo Validation Passed</p>
+                <p className="text-sm font-bold">Lolos Validasi Demo</p>
                 <p className="text-xs text-muted-foreground">Sampel saat ini lolos pemeriksaan browser.</p>
               </div>
             </div>
@@ -349,7 +349,7 @@ export function ActivityTracker() {
             <p className="text-sm font-bold text-foreground">Pemeriksaan integritas aktivitas</p>
             <p className="text-xs text-muted-foreground">Beberapa sinyal dinilai bersama; satu anomali bukan otomatis kecurangan.</p>
           </div>
-          <span className="pill bg-secondary text-[10px] font-bold text-muted-foreground">BROWSER PREVIEW</span>
+          <span className="pill bg-secondary text-[10px] font-bold text-muted-foreground">PRATINJAU BROWSER</span>
         </div>
         <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
           {integrityChecks.map((check) => {
@@ -428,7 +428,7 @@ export function ActivityTracker() {
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm font-bold text-foreground">Aktivitas indoor & adaptif</p>
-              <span className="pill bg-card text-[10px] font-bold text-muted-foreground">ROADMAP VALIDASI</span>
+              <span className="pill bg-card text-[10px] font-bold text-muted-foreground">RENCANA VALIDASI</span>
             </div>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
               Gym, olahraga indoor, kursi roda, dan aktivitas adaptif memerlukan wearable atau peninjauan terstruktur agar tetap adil. Pada MVP, jalur ini belum memberi XP kompetitif.

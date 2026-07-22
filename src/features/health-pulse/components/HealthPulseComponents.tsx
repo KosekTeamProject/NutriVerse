@@ -79,7 +79,7 @@ export function HealthDimensionRow({
       </div>
 
       <p className="text-[10px] text-muted-foreground leading-normal mt-1 italic">
-        {dimScore.summary} (Completeness: {dimScore.completeness}%)
+        {dimScore.summary} (Kelengkapan: {dimScore.completeness}%)
       </p>
     </div>
   );
@@ -442,7 +442,7 @@ export function HealthPulseHistoryChart({ history }: HealthPulseHistoryChartProp
 
       <div className="flex items-center gap-2 rounded-xl bg-secondary/60 p-3 text-[11px] text-muted-foreground border border-line/30">
         <Info className="h-4 w-4 shrink-0" />
-        <p>Accessible Chart Summary: Scores show steady progress starting at 73.2, dipping slightly to 75.0, then gradually recovering up to 78.0 today.</p>
+        <p>Ringkasan grafik: skor bergerak stabil dari 73,2, sempat menurun tipis, lalu pulih bertahap hingga 78,0 hari ini.</p>
       </div>
     </div>
   );

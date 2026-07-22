@@ -106,14 +106,14 @@ export function analyze(food: Food, portion: number): FoodAnalysis {
   let activityRec: string;
   let insight: string;
   if (nutrition.kcal <= 300) {
-    activityRec = `Jalan santai ${burn.walk} menit sudah cukup mengimbangi.`;
-    insight = "Porsi ringan dan seimbang. Cocok untuk menjaga defisit kalori.";
+    activityRec = `Jika tubuh terasa nyaman, jalan santai sekitar ${Math.min(20, burn.walk)} menit dapat menjadi pilihan gerak ringan.`;
+    insight = "Porsi relatif ringan. Tetap lihat pola makan secara keseluruhan, bukan satu menu saja.";
   } else if (nutrition.kcal <= 550) {
-    activityRec = `Lari ${burn.run} menit atau bersepeda ${burn.bike} menit untuk mengimbangi.`;
-    insight = "Kalori menengah. Perhatikan asupan berikutnya agar tetap sesuai target.";
+    activityRec = "Coba jalan santai 10–15 menit atau pilih aktivitas ringan yang kamu sukai jika kondisi tubuh mendukung.";
+    insight = "Porsi berada pada rentang menengah. Nikmati secara sadar dan lanjutkan kebiasaan sehat seperti biasa.";
   } else {
-    activityRec = `Butuh lari ${burn.run} menit atau bersepeda ${burn.bike} menit untuk membakarnya.`;
-    insight = "Tinggi kalori. Imbangi dengan aktivitas fisik dan pilih porsi lebih ringan nanti.";
+    activityRec = "Tidak perlu membayar makanan dengan olahraga. Bila ingin bergerak, mulai dari jalan santai 10–15 menit.";
+    insight = "Estimasi energi lebih tinggi. Gunakan informasi ini sebagai konteks, bukan alasan untuk merasa bersalah.";
   }
   return { nutrition, burn, activityRec, insight };
 }

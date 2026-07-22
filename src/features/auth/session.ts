@@ -1,0 +1,79 @@
+export const AUTH_STORAGE_KEY = "nutriverse.auth-session";
+export const AUTH_EVENT = "nutriverse:auth-session-updated";
+
+export type HealthBaseline = {
+  readonly heightCm: number;
+  readonly weightKg: number;
+  readonly age: number;
+  readonly gender: "Laki-laki" | "Perempuan";
+  readonly activityLevel: string;
+  readonly goal: string;
+  readonly bmi: number;
+  readonly estimatedDailyCalories: number;
+};
+
+export type OnboardingPreferences = {
+  readonly preferredActivities: readonly string[];
+  readonly reminderEnabled: boolean;
+  readonly reminderIntervalMinutes: number;
+  readonly privacyAccepted: boolean;
+};
+
+export type AuthSession = {
+  readonly name: string;
+  readonly email: string;
+  readonly username: string;
+  readonly companionName: string;
+  readonly provider?: "password" | "google";
+  readonly baseline?: HealthBaseline;
+  readonly preferences?: OnboardingPreferences;
+  readonly createdAt: string;
+};
+
+export function readAuthSession(): AuthSession | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(AUTH_STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as AuthSession) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveAuthSession(session: AuthSession) {
+  window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
+  window.dispatchEvent(new Event(AUTH_EVENT));
+}
+
+export function clearAuthSession() {
+  window.localStorage.removeItem(AUTH_STORAGE_KEY);
+  window.dispatchEvent(new Event(AUTH_EVENT));
+}
+
+export function updateAuthSession(patch: Partial<AuthSession>) {
+  const current = readAuthSession();
+  if (!current) return;
+  saveAuthSession({ ...current, ...patch });
+}
+
+export function createDemoLogin(email: string): AuthSession {
+  return {
+    name: "Fathan Mubarak",
+    email,
+    username: email.split("@")[0] || "fathan.mubarak",
+    companionName: "Nora",
+    provider: "password",
+    createdAt: new Date().toISOString(),
+  };
+}
+
+export function createGoogleDemoLogin(): AuthSession {
+  return {
+    name: "Fathan Mubarak",
+    email: "fathan.mubarak@gmail.com",
+    username: "fathan.mubarak",
+    companionName: "Nora",
+    provider: "google",
+    createdAt: new Date().toISOString(),
+  };
+}

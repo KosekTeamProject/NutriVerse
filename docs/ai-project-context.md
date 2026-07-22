@@ -21,6 +21,7 @@ NutriVerse tidak bertujuan memanipulasi pengguna agar berolahraga berlebihan. Ga
 ## 3. Aturan sistem yang tidak boleh dilanggar
 
 - **XP kompetitif hanya berasal dari aktivitas fisik nyata yang tervalidasi.** Pada MVP, sumber utamanya jalan, lari, dan sepeda berbasis GPS.
+- Challenge harian, mingguan, bulanan, dan event boleh memberi **bonus XP satu kali** hanya ketika targetnya diselesaikan oleh aktivitas GPS tervalidasi yang sesuai. XP dasar aktivitas dan bonus XP challenge tetap tunduk pada batas XP serta validasi server.
 - **Scan makanan tidak memberikan XP maupun HP.** Scan bersifat informatif dan membantu pengguna memilih tindakan kecil yang realistis.
 - **XP dan HP berbeda.** XP adalah progres peringkat yang hanya naik; HP adalah mata uang yang dapat dibelanjakan.
 - Catatan mandiri, refleksi, scan makanan, dan chat Companion tidak boleh memberi XP atau memverifikasi aktivitas.
@@ -123,12 +124,22 @@ Journey dan Companion tetap dua fungsi berbeda, tetapi ditempatkan berdekatan se
 - Bahasa utama antarmuka adalah Bahasa Indonesia. Istilah merek seperti NutriVerse, Health Pulse, XP, dan HP boleh dipertahankan.
 - Companion/Nora harus ringkas dan berorientasi percakapan. Hindari terlalu banyak paragraf, kartu penjelasan, dan CTA di sekitar area chat.
 - Quick Chat harus dapat ditutup dan dibuka kembali tanpa kehilangan pesan selama halaman masih terbuka.
-- Story pengguna tidak ditampilkan sebagai fitur internal seperti Instagram karena bertabrakan dengan feed komunitas.
-- Ruang story diganti oleh poster event komunitas dan template 9:16 yang dapat dibagikan ke media sosial eksternal. Tombol **Ubah Template** wajib tersedia.
+- Story pengguna tidak ditampilkan sebagai fitur internal seperti Instagram. Sebagai gantinya tersedia **NutriVerse Moments** ala BeReal/Locket untuk foto sosial real-time melalui kamera langsung; unggah galeri dinonaktifkan, Moment tidak memberi XP, dan label “diambil saat aktivitas” bukan bukti anti-cheat.
+- Moment memiliki caption, privasi komunitas/teman/privat, laporan/hapus, serta unduhan PNG ber-watermark. Metadata lokasi foto harus dibuang sebelum penyimpanan produksi. Daftar Moment memakai rail horizontal yang ringkas, menampilkan sebagian kartu berikutnya, mendukung swipe/drag, dan menyediakan tombol arah pada desktop supaya jumlah konten tidak memanjangkan halaman.
+- Poster event komunitas menggunakan track carousel horizontal yang benar-benar bergeser, bukan sekadar mengganti teks. Carousel berjalan otomatis maju-mundur, dapat dikontrol lewat titik/tombol arah, mendukung swipe/drag, berhenti saat hover/fokus/drag, dan menghormati preferensi reduced motion.
 - Template berbagi hanya memakai ringkasan aman dan tidak boleh menyertakan rute, koordinat, jurnal privat, catatan makanan, atau detail kesehatan sensitif.
 - Jurnal kesehatan selalu privat secara bawaan, tidak memberi XP/HP, tidak muncul di Komunitas/Peringkat, dan hanya dapat dipakai Nora jika pengguna memberi izin eksplisit.
 - Pengingat jeda bersifat opt-in, nonaktif secara bawaan, dan tidak boleh mengklaim mendeteksi posisi duduk jika sensor tersebut tidak tersedia.
 - Pengingat dari Nora menggunakan bahasa ringan, dapat ditutup/ditunda, dan tidak memberi XP atau hukuman ketika diabaikan.
+- Landing page memiliki dua keadaan pada permukaan yang sama: mode publik menampilkan informasi umum, sedangkan mode login menambahkan sapaan, ringkasan personal, dan pintu menuju dashboard.
+- Pengguna baru melihat pilihan **Masuk** atau **Daftar**. Registrasi terdiri dari identitas akun, baseline kesehatan, tingkat aktivitas/tujuan, dan personalisasi nama AI Companion.
+- Setelah registrasi, nama Companion hanya diubah melalui bagian **Preferensi Pendamping AI** di Profil. Halaman Companion fokus pada percakapan dan hanya menautkan pengguna kembali ke Profil.
+- Password pada prototipe frontend tidak disimpan. Sesi, baseline, dan preferensi nama Companion saat ini hanya simulasi `localStorage` sampai autentikasi serta database produksi tersedia.
+- Semua halaman personal harus tersembunyi ketika tidak ada sesi. Logout menghapus sesi lokal dan mengembalikan pengguna ke landing publik.
+- Setiap fitur yang menerima data harus memiliki empty state, CTA pertama, asal data, dan cara tambah/ubah/hapus yang dapat dipahami pengguna baru.
+- Navigasi mobile menggunakan bottom navigation untuk tujuan terpenting, sementara menu lengkap tetap tersedia melalui drawer.
+- Template sosial menyediakan pilihan konten Health Pulse, aktivitas, pencapaian, dan peringkat dengan branding NutriVerse serta tanpa data sensitif. Semua tema memakai sistem poster editorial yang sama: foto/warna memenuhi kanvas, overlay gelap, logo resmi kiri atas, angka progres dan headline putih berukuran besar, lalu tiga insight Health Pulse/Aktivitas/Hidrasi di bagian bawah. Hasil dapat berupa overlay PNG transparan atau PNG siap unggah berukuran Story 9:16/Post 4:5; preview dan mesin canvas harus memakai komposisi yang sama, caption tetap dapat diedit, dan Web Share mengutamakan file PNG bila perangkat mendukungnya.
+- Aset avatar resmi aktif berada di `/public/brand/nutriverse-app-icon-200.png` dengan ukuran tepat 200×200. `BrandLogo` menyusun ikon tersebut dengan wordmark responsif untuk landing, aplikasi user, autentikasi, dan portal admin.
 
 ## 13. Nada dan desain
 
@@ -143,7 +154,7 @@ Journey dan Companion tetap dua fungsi berbeda, tetapi ditempatkan berdekatan se
 - Frontend menggunakan Next.js, React, TypeScript, Tailwind, dan Lucide.
 - Data pengguna, saldo, leaderboard, reward, dan sebagian insight masih data demo/simulasi.
 - GPS browser dan kalkulasi rute sisi klien tersedia sebagai demonstrasi.
-- Verifikasi produksi, autentikasi, database, ledger reward, fulfillment, AI produksi, anti-spoofing tingkat lanjut, dan kebijakan retensi masih memerlukan backend.
+- Verifikasi produksi, autentikasi server, database, ledger reward, fulfillment, AI produksi, anti-spoofing tingkat lanjut, dan kebijakan retensi masih memerlukan backend. Login/registrasi yang terlihat saat ini merupakan simulasi frontend lokal.
 - AI tidak boleh mengklaim fitur roadmap sebagai fitur produksi yang sudah aktif.
 
 ## Prompt singkat yang dapat disalin

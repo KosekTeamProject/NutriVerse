@@ -10,7 +10,7 @@ export default function ChallengePage() {
       <div>
         <h1 className="font-display text-2xl font-extrabold tracking-tight sm:text-3xl">Pusat Tantangan</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Tantangan harian, mingguan, dan bulanan dalam satu tempat. Selesaikan untuk meraih XP dan Health Points.
+          Tantangan harian, mingguan, dan bulanan dalam satu tempat. Target GPS tervalidasi memberi bonus XP; kebiasaan suportif memberi Health Points.
         </p>
       </div>
 

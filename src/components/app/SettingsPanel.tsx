@@ -27,6 +27,7 @@ import {
   BREAK_REMINDER_PREVIEW_EVENT,
   type BreakReminderPreference,
 } from "@/components/app/WellbeingReminder";
+import { useAuthSession } from "@/hooks/useAuthSession";
 
 function Switch({ on, onToggle, ariaLabel }: { readonly on: boolean; readonly onToggle: () => void; readonly ariaLabel: string }) {
   return (
@@ -97,10 +98,9 @@ function SaveButton() {
 }
 
 export function SettingsPanel() {
+  const session = useAuthSession();
   const { dark, toggleTheme } = useTheme();
   const companionName = useCompanionName();
-  const [isEditingName, setIsEditingName] = useState(false);
-  const [nameInput, setNameInput] = useState(companionName.displayName);
   
   // Local state toggles (MVP simulations)
   const [notif, setNotif] = useState({ aktivitas: true, leaderboard: true, sosial: false });
@@ -152,11 +152,11 @@ export function SettingsPanel() {
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label className="label text-xs font-bold uppercase text-muted-foreground">Nama Lengkap</label>
-            <input className="input mt-1.5" defaultValue="Fathan Mubarak" />
+            <input className="input mt-1.5" defaultValue={session?.name ?? "Fathan Mubarak"} />
           </div>
           <div>
             <label className="label text-xs font-bold uppercase text-muted-foreground">Username</label>
-            <input className="input mt-1.5" defaultValue="fathan.mubarak" />
+            <input className="input mt-1.5" defaultValue={session?.username ?? "fathan.mubarak"} />
           </div>
           <div className="sm:col-span-2">
             <label className="label text-xs font-bold uppercase text-muted-foreground">Bio</label>
@@ -211,79 +211,8 @@ export function SettingsPanel() {
       </SectionCard>
 
       {/* 5. Companion settings */}
-      <SectionCard icon={Sparkles} title={`Pendamping ${companionName.displayName}`}>
+      <SectionCard icon={Sparkles} title={`Preferensi ${companionName.displayName}`}>
         <div className="divide-y divide-line/35">
-          {/* Display Name Edit Row */}
-          <div className="py-3.5 space-y-2 border-b border-line/35">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-semibold text-foreground">Nama pendamping</p>
-                <p className="text-xs text-muted-foreground">Nama ini digunakan pada ringkasan pagi, percakapan, refleksi, dan saran.</p>
-              </div>
-              {!isEditingName && (
-                <button
-                  onClick={() => { setIsEditingName(true); setNameInput(companionName.displayName); }}
-                  className="btn btn-outline btn-xs font-bold shrink-0"
-                >
-                  Ubah Nama
-                </button>
-              )}
-            </div>
-
-            {isEditingName ? (
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-1">
-                <input
-                  value={nameInput}
-                  onChange={(e) => setNameInput(e.target.value)}
-                  maxLength={24}
-                  placeholder="Contoh: Nora, Aira, Maya…"
-                  className="input text-sm flex-1"
-                />
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <button
-                    onClick={() => {
-                      companionName.setDisplayName(nameInput);
-                      setIsEditingName(false);
-                    }}
-                    className="btn btn-primary btn-xs font-bold"
-                  >
-                    Simpan
-                  </button>
-                  <button
-                    onClick={() => setIsEditingName(false)}
-                    className="btn btn-outline btn-xs font-semibold text-muted-foreground"
-                  >
-                    Batal
-                  </button>
-                  {!companionName.isDefault && (
-                    <button
-                      onClick={() => {
-                        companionName.resetToDefault();
-                        setNameInput("Nora");
-                        setIsEditingName(false);
-                      }}
-                      className="btn btn-ghost btn-xs font-semibold text-muted-foreground"
-                    >
-                      Kembalikan ke Nora
-                    </button>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-center justify-between text-xs bg-secondary/30 rounded-xl p-2.5">
-                <span className="text-muted-foreground">Nama Aktif: <strong className="text-foreground">{companionName.displayName}</strong></span>
-                {!companionName.isDefault && (
-                  <button
-                    onClick={() => companionName.resetToDefault()}
-                    className="text-[10px] text-brand underline font-bold"
-                  >
-                    Kembalikan ke Nora
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-
           <ToggleRow label={`Saran kontekstual ${companionName.displayName}`} desc={`Tampilkan kartu refleksi dan masukan dari ${companionName.displayName}`} on={companion.insights} onToggle={() => setCompanion((s) => ({ ...s, insights: !s.insights }))} />
           <ToggleRow label="Ringkasan Pagi" desc={`Aktifkan ringkasan pagi ${companionName.displayName} di halaman utama`} on={companion.morningBrief} onToggle={() => setCompanion((s) => ({ ...s, morningBrief: !s.morningBrief }))} />
           <ToggleRow label="Surat Mingguan" desc={`Sertakan evaluasi siklus mingguan ${companionName.displayName}`} on={companion.weeklyLetter} onToggle={() => setCompanion((s) => ({ ...s, weeklyLetter: !s.weeklyLetter }))} />

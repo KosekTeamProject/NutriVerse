@@ -130,13 +130,13 @@ export function FoodScanner({ onAdd }: { onAdd?: (entry: LoggedFood) => void }) 
 
   return (
     <div className="card card-pad space-y-6">
-      <input ref={fileRef} type="file" accept="image/*" onChange={onPick} className="hidden" aria-label="Upload meal image" />
+      <input ref={fileRef} type="file" accept="image/*" onChange={onPick} className="hidden" aria-label="Unggah foto makanan" />
 
       {/* Demo Selector */}
       {(status === "empty" || status === "ready") && (
         <div className="space-y-2 border-b border-line/40 pb-4">
           <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
-            Demo Analysis Meals
+            Contoh Analisis Demo
           </label>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
             {deterministicFoodEntries.map((entry, idx) => (
@@ -159,7 +159,7 @@ export function FoodScanner({ onAdd }: { onAdd?: (entry: LoggedFood) => void }) 
             ))}
           </div>
           <p className="text-[10px] text-muted-foreground italic">
-            * Use a prepared meal example without uploading a personal image.
+            * Pilih contoh untuk mencoba alur. Contoh tidak masuk riwayat sampai disimpan.
           </p>
         </div>
       )}

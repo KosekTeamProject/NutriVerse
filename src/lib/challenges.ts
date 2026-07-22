@@ -62,12 +62,12 @@ export const CATEGORY_META: Record<
   ChallengeCategory,
   { label: string; icon: string; earnsXp: boolean }
 > = {
-  cardio: { label: "Cardio", icon: "activity", earnsXp: true },
-  mobility: { label: "Mobility", icon: "walk", earnsXp: true },
-  strength: { label: "Strength", icon: "dumbbell", earnsXp: false },
-  nutrition: { label: "Nutrition", icon: "salad", earnsXp: false },
-  recovery: { label: "Recovery", icon: "moon", earnsXp: false },
-  habit: { label: "Healthy Habit", icon: "droplet", earnsXp: false },
+  cardio: { label: "Kardio", icon: "activity", earnsXp: true },
+  mobility: { label: "Mobilitas", icon: "walk", earnsXp: true },
+  strength: { label: "Kekuatan", icon: "dumbbell", earnsXp: false },
+  nutrition: { label: "Nutrisi", icon: "salad", earnsXp: false },
+  recovery: { label: "Pemulihan", icon: "moon", earnsXp: false },
+  habit: { label: "Kebiasaan Sehat", icon: "droplet", earnsXp: false },
 };
 
 /** Akumulasi aktivitas periode berjalan (DUMMY - nanti dari database). */
@@ -100,8 +100,8 @@ export const DAILY_POOL: Challenge[] = [
 export const WEEKLY: Challenge[] = [
   {
     id: "challenge-light-cardio",
-    title: "Light Cardio Journey",
-    desc: "Accumulate 10 km of walking or running this week.",
+    title: "Perjalanan Kardio Ringan",
+    desc: "Kumpulkan 10 km jalan atau lari tervalidasi dalam satu minggu.",
     period: "mingguan",
     tier: "Medium",
     category: "cardio",
@@ -115,17 +115,17 @@ export const WEEKLY: Challenge[] = [
     trustLevel: "verified",
     sourceMode: "automatic-activity",
     completionMode: "automatic",
-    explanation: "Only trusted walking or running activity contributes to this Challenge."
+    explanation: "Hanya aktivitas jalan atau lari GPS tervalidasi yang menambah progres dan membuka bonus XP."
   },
   { id: "w-lari-15", title: "Jarak lari mingguan", desc: "Akumulasi lari 15 km minggu ini - cukup lari, terisi otomatis", period: "mingguan", tier: "Medium", category: "cardio", source: "gps", metric: "lari_km", icon: "run", goal: 15, unit: "km", xp: 800, hp: 120, trustLevel: "verified", sourceMode: "automatic-activity", completionMode: "automatic", explanation: "Only trusted running activity contributes." },
   { id: "w-sepeda-40", title: "Gowes jauh", desc: "Bersepeda total 40 km minggu ini", period: "mingguan", tier: "High", category: "cardio", source: "gps", metric: "sepeda_km", icon: "bike", goal: 40, unit: "km", xp: 900, hp: 200, trustLevel: "verified", sourceMode: "automatic-activity", completionMode: "automatic", explanation: "Only trusted cycling activity contributes." },
-  { id: "w-aktif-5", title: "Seven-Day Foundation", desc: "Berolahraga minimal 5 hari minggu ini", period: "mingguan", tier: "Medium", category: "cardio", source: "gps", metric: "hari_aktif", icon: "flame", goal: 5, unit: "hari", xp: 400, hp: 100, trustLevel: "verified", sourceMode: "automatic-activity", completionMode: "automatic", explanation: "Only verified active days qualify." },
+  { id: "w-aktif-5", title: "Fondasi Tujuh Hari", desc: "Beraktivitas fisik tervalidasi minimal 5 hari minggu ini", period: "mingguan", tier: "Medium", category: "cardio", source: "gps", metric: "hari_aktif", icon: "flame", goal: 5, unit: "hari", xp: 400, hp: 100, trustLevel: "verified", sourceMode: "automatic-activity", completionMode: "automatic", explanation: "Hanya hari dengan aktivitas GPS tervalidasi yang dihitung." },
   { id: "w-strength", title: "Latihan kekuatan", desc: "3 sesi latihan kekuatan minggu ini", period: "mingguan", tier: "Medium", category: "strength", source: "manual", metric: "sesi", icon: "dumbbell", goal: 3, unit: "sesi", xp: 0, hp: 90, optional: true, trustLevel: "self-reported", sourceMode: "optional-selection", completionMode: "manual-confirmation", explanation: "Self-reported strength workouts." },
 ];
 
 export const MONTHLY: Challenge[] = [
   { id: "m-gerak-80", title: "Jarak bulanan", desc: "Akumulasi 80 km lari + sepeda + jalan bulan ini", period: "bulanan", tier: "High", category: "cardio", source: "gps", metric: "aktivitas_km", icon: "target", goal: 80, unit: "km", xp: 2000, hp: 350, trustLevel: "verified", sourceMode: "automatic-activity", completionMode: "automatic", explanation: "Only trusted active segments qualify." },
-  { id: "challenge-weekend-explorer", title: "Weekend Explorer", desc: "Jelajahi rute luar ruangan sepanjang 12 km", period: "bulanan", tier: "High", category: "cardio", source: "gps", metric: "jalan_km", icon: "target", goal: 12, unit: "km", xp: 600, hp: 150, optional: true, trustLevel: "verified", sourceMode: "optional-selection", completionMode: "automatic", explanation: "Only trusted walking activity contributes." },
+  { id: "challenge-weekend-explorer", title: "Jelajah Akhir Pekan", desc: "Jelajahi rute luar ruangan sepanjang 12 km", period: "bulanan", tier: "High", category: "cardio", source: "gps", metric: "jalan_km", icon: "target", goal: 12, unit: "km", xp: 600, hp: 150, optional: true, trustLevel: "verified", sourceMode: "optional-selection", completionMode: "automatic", explanation: "Hanya aktivitas jalan GPS tervalidasi yang menambah progres." },
   { id: "m-recovery", title: "Rutin pemulihan", desc: "12 sesi peregangan/pemulihan bulan ini", period: "bulanan", tier: "Medium", category: "recovery", source: "manual", metric: "sesi", icon: "moon", goal: 12, unit: "sesi", xp: 0, hp: 220, optional: true, trustLevel: "self-reported", sourceMode: "optional-selection", completionMode: "manual-confirmation", explanation: "Self-reported recovery sessions." },
 ];
 

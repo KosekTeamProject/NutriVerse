@@ -1,43 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { Camera, PencilLine, Clock, Trash2, Info, Leaf } from "lucide-react";
+import { Camera, PencilLine, Clock, Trash2, Info, Leaf, Database, X, Check } from "lucide-react";
 import { FoodScanner, type LoggedFood } from "./FoodScanner";
 import { ManualFoodInput } from "./ManualFoodInput";
-import { deterministicFoodEntries } from "@/features/nutrition/data";
 import { NutritionProgressSummary, NutritionTrustBadge } from "@/features/nutrition/components/NutritionComponents";
 
 type Tab = "scan" | "manual";
 type Entry = LoggedFood & { id: number; via: "scan" | "manual"; date: string };
 
-const seed: Entry[] = [
-  {
-    id: 1,
-    via: "scan",
-    date: "Hari ini, 07.20",
-    name: "Balanced Breakfast",
-    portion: "1x porsi",
-    nutrition: deterministicFoodEntries[0].nutrition,
-    activityRec: deterministicFoodEntries[0].activityRec,
-    insight: deterministicFoodEntries[0].insight,
-    trustLevel: "simulated"
-  },
-  {
-    id: 2,
-    via: "manual",
-    date: "Kemarin, 12.40",
-    name: "Grilled Chicken Rice Bowl",
-    portion: "1x porsi",
-    nutrition: deterministicFoodEntries[1].nutrition,
-    activityRec: deterministicFoodEntries[1].activityRec,
-    insight: deterministicFoodEntries[1].insight,
-    trustLevel: "confirmed"
-  }
-];
-
 export function FoodLogger() {
   const [tab, setTab] = useState<Tab>("scan");
-  const [log, setLog] = useState<Entry[]>(seed);
+  const [log, setLog] = useState<Entry[]>([]);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editDraft, setEditDraft] = useState({ name: "", portion: "" });
 
   function addEntry(entry: LoggedFood) {
     const now = new Date();
@@ -45,6 +21,12 @@ export function FoodLogger() {
     setLog((prev) => [{ ...entry, id: Date.now() + Math.random(), via: tab === "manual" ? "manual" : "scan", date }, ...prev]);
   }
   const remove = (id: number) => setLog((prev) => prev.filter((e) => e.id !== id));
+  const beginEdit = (entry: Entry) => { setEditingId(entry.id); setEditDraft({ name: entry.name, portion: entry.portion }); };
+  const saveEdit = () => {
+    if (!editingId || !editDraft.name.trim() || !editDraft.portion.trim()) return;
+    setLog((entries) => entries.map((entry) => entry.id === editingId ? { ...entry, name: editDraft.name.trim(), portion: editDraft.portion.trim() } : entry));
+    setEditingId(null);
+  };
   const total = log.reduce((s, e) => s + e.nutrition.kcal, 0);
 
   const tabs: { key: Tab; label: string; icon: typeof Camera }[] = [
@@ -54,8 +36,17 @@ export function FoodLogger() {
 
   return (
     <div className="space-y-6">
-      {/* Nutrition Progress Summary */}
-      <NutritionProgressSummary />
+      {log.length > 0 ? <NutritionProgressSummary /> : (
+        <div className="card card-pad border-dashed text-center">
+          <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-brand-soft text-brand"><Leaf className="h-6 w-6" /></span>
+          <h2 className="mt-4 font-display text-lg font-bold">Belum ada catatan makanan</h2>
+          <p className="mx-auto mt-1 max-w-md text-xs leading-relaxed text-muted-foreground">Mulai dengan foto atau input manual. Data baru masuk ke riwayat setelah kamu menekan tombol simpan.</p>
+          <div className="mt-4 flex flex-col justify-center gap-2 sm:flex-row">
+            <button onClick={() => setTab("scan")} className="btn btn-primary btn-sm"><Camera className="h-4 w-4" /> Pindai pertama</button>
+            <button onClick={() => setTab("manual")} className="btn btn-outline btn-sm"><PencilLine className="h-4 w-4" /> Input manual</button>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-2 rounded-2xl bg-secondary p-1">
         {tabs.map((t) => {
@@ -80,7 +71,11 @@ export function FoodLogger() {
 
         <div className="mt-4 space-y-3">
           {log.length === 0 ? (
-            <p className="py-6 text-center text-xs text-muted-foreground">Belum ada riwayat. Pindai atau catat makananmu.</p>
+            <div className="rounded-2xl border border-dashed border-line p-5 text-center">
+              <Database className="mx-auto h-5 w-5 text-muted-foreground" />
+              <p className="mt-2 text-xs font-bold text-foreground">Riwayat pengguna masih kosong</p>
+              <p className="mt-1 text-[10px] text-muted-foreground">Contoh makanan pada alat pindai diberi label Demo dan belum menjadi catatanmu.</p>
+            </div>
           ) : (
             log.map((e) => (
               <div key={e.id} className="rounded-2xl border border-line p-4 space-y-3 bg-card hover:border-brand/30 transition">
@@ -93,10 +88,13 @@ export function FoodLogger() {
                   )}
                   <div className="min-w-0 flex-1 space-y-1">
                     <div className="flex items-center justify-between gap-2">
-                      <p className="truncate text-sm font-bold text-foreground">{e.name}</p>
-                      <button onClick={() => remove(e.id)} className="grid h-7 w-7 shrink-0 place-items-center rounded-lg text-muted-foreground transition hover:text-destructive" aria-label="Delete entry"><Trash2 className="h-3.5 w-3.5" /></button>
+                      {editingId === e.id ? <input value={editDraft.name} onChange={(event) => setEditDraft({ ...editDraft, name: event.target.value })} className="input h-8 text-xs" aria-label="Ubah nama makanan" /> : <p className="truncate text-sm font-bold text-foreground">{e.name}</p>}
+                      <div className="flex shrink-0 items-center gap-1">
+                        {editingId === e.id ? <><button onClick={saveEdit} className="grid h-7 w-7 place-items-center rounded-lg text-brand hover:bg-brand-soft" aria-label="Simpan perubahan"><Check className="h-3.5 w-3.5" /></button><button onClick={() => setEditingId(null)} className="grid h-7 w-7 place-items-center rounded-lg text-muted-foreground hover:bg-secondary" aria-label="Batalkan perubahan"><X className="h-3.5 w-3.5" /></button></> : <button onClick={() => beginEdit(e)} className="grid h-7 w-7 place-items-center rounded-lg text-muted-foreground hover:text-brand" aria-label="Ubah catatan"><PencilLine className="h-3.5 w-3.5" /></button>}
+                        <button onClick={() => remove(e.id)} className="grid h-7 w-7 place-items-center rounded-lg text-muted-foreground transition hover:text-destructive" aria-label="Hapus catatan"><Trash2 className="h-3.5 w-3.5" /></button>
+                      </div>
                     </div>
-                    <p className="text-xs text-muted-foreground">{e.portion} &middot; {e.date} &middot; {e.via === "scan" ? "pindai" : "manual"}</p>
+                    {editingId === e.id ? <input value={editDraft.portion} onChange={(event) => setEditDraft({ ...editDraft, portion: event.target.value })} className="input h-8 text-xs" aria-label="Ubah porsi makanan" /> : <p className="text-xs text-muted-foreground">{e.portion} &middot; {e.date} &middot; sumber: {e.via === "scan" ? "pindai foto" : "input manual"}</p>}
                     <div className="mt-2 flex flex-wrap gap-2">
                       <span className="pill bg-secondary text-muted-foreground text-[10px] font-semibold">{e.nutrition.kcal} kkal</span>
                       <span className="pill bg-secondary text-muted-foreground text-[10px] font-semibold">P {e.nutrition.protein}g</span>

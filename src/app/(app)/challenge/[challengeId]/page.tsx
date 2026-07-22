@@ -111,7 +111,7 @@ export default async function ChallengeDetailPage({ params }: ChallengeDetailPag
 
         <p className="text-xs text-muted-foreground leading-normal">
           {challenge.source === "gps" 
-            ? "Aktivitas jalan atau lari terverifikasi dapat menambah progres Tantangan ini."
+            ? "Hanya aktivitas GPS tervalidasi yang sesuai dengan jenis challenge ini yang dapat menambah progres."
             : "Catatan mandiri berguna untuk melihat konsistensi, tetapi tidak memperoleh status aktivitas terverifikasi."
           }
         </p>
@@ -129,7 +129,7 @@ export default async function ChallengeDetailPage({ params }: ChallengeDetailPag
         <div className="grid grid-cols-2 gap-3 text-center">
           {challenge.xp > 0 && (
             <div className="rounded-xl border border-line bg-card/65 p-3.5 space-y-1">
-              <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">XP Potensial</p>
+              <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Bonus XP Challenge</p>
               <p className="text-lg font-extrabold text-foreground flex items-center justify-center gap-1">
                 <Zap className="h-4.5 w-4.5 text-amber" /> +{challenge.xp} XP
               </p>
@@ -145,7 +145,7 @@ export default async function ChallengeDetailPage({ params }: ChallengeDetailPag
         </div>
 
         <p className="text-[11px] text-muted-foreground italic leading-normal bg-secondary/40 rounded-xl p-2.5 border border-line/20">
-          * XP/HP diberikan setelah penyelesaian tervalidasi. Hanya aktivitas tepercaya yang dihitung.
+          * Bonus XP hanya diberikan sekali setelah target challenge tervalidasi. XP dasar aktivitas tetap dihitung melalui aktivitas GPS yang sama sesuai batas sistem.
         </p>
       </div>
 

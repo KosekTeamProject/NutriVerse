@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useState, useRef } from "react";
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { 
   AlertTriangle, 
   Send, 
@@ -76,7 +77,7 @@ function ChatSection() {
   const { displayName } = useCompanionName();
 
   const [messages, setMessages] = useState<Msg[]>(() => [
-    { role: "ai", text: `Halo Fathan, aku ${displayName}. Apa yang ingin kamu pahami hari ini?`, time: "Baru saja" }
+    { role: "ai", text: "Halo Fathan, aku {{companion}}. Apa yang ingin kamu pahami hari ini?", time: "Baru saja" }
   ]);
   const [input, setInput] = useState(() => suggestedPrompt ?? "");
   const [isTyping, setIsTyping] = useState(false);
@@ -93,12 +94,13 @@ function ChatSection() {
   }, [analysisId, journeyId, journeyTitle]);
   const [contextDismissed, setContextDismissed] = useState(false);
   const [chatOpen, setChatOpen] = useState(true);
-  const scrollRef = useRef<HTMLDivElement>(null);
-
+  const chatLogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    scrollRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isTyping, hasError]);
+    const chatLog = chatLogRef.current;
+    if (!chatLog) return;
+    chatLog.scrollTo({ top: chatLog.scrollHeight, behavior: reducedMotion ? "auto" : "smooth" });
+  }, [messages, isTyping, hasError, reducedMotion]);
 
   function ask(text: string) {
     const q = text.trim();
@@ -160,9 +162,10 @@ function ChatSection() {
           <MessageSquare className="h-5 w-5" />
         </span>
         <div className="min-w-0 flex-1">
-          <h2 className="font-display text-base font-bold text-foreground">Percakapan dengan {displayName}</h2>
+          <h2 className="truncate font-display text-base font-bold text-foreground">Percakapan dengan {displayName}</h2>
           <p className="text-xs text-muted-foreground">Tanyakan aktivitas, nutrisi, atau pemulihan.</p>
         </div>
+        <Link href="/profil#pendamping-ai" className="hidden shrink-0 text-[10px] font-bold text-brand hover:underline sm:inline-flex">Kelola di Profil</Link>
         <button onClick={() => setChatOpen(false)} className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-muted-foreground hover:bg-secondary hover:text-foreground" aria-label="Tutup percakapan cepat">
           <X className="h-4.5 w-4.5" />
         </button>
@@ -189,7 +192,8 @@ function ChatSection() {
 
       {/* Messages log */}
       <div 
-        className="max-h-80 overflow-y-auto space-y-3.5 pr-1 flex flex-col border border-line/40 rounded-xl p-3 bg-secondary/10"
+        ref={chatLogRef}
+        className="max-h-80 overflow-y-auto overscroll-contain space-y-3.5 pr-1 flex flex-col border border-line/40 rounded-xl p-3 bg-secondary/10"
         aria-label={`Area percakapan ${displayName}`}
         role="region"
       >
@@ -201,7 +205,7 @@ function ChatSection() {
                   ? "bg-brand text-white font-bold rounded-tr-none" 
                   : "bg-card text-foreground border border-line/50 rounded-tl-none"
               }`}>
-                {m.text}
+                {m.text.replace("{{companion}}", displayName)}
               </div>
               <p className={`text-[9px] text-muted-foreground px-1 ${m.role === "user" ? "text-right" : "text-left"}`}>{m.time}</p>
             </div>
@@ -232,8 +236,6 @@ function ChatSection() {
             </div>
           </div>
         )}
-
-        <div ref={scrollRef} />
       </div>
 
       {/* Suggested quick prompt chips */}

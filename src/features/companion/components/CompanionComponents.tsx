@@ -5,6 +5,7 @@ import { Sparkles, ArrowRight, ShieldCheck, HelpCircle, Calendar, MessageSquareH
 import { CompanionInsight, CompanionWeeklyLetter } from "../types";
 import { getCompanionSourceLabels, getCompanionPriorityLabel } from "../helpers";
 import { useCompanionName } from "@/hooks/useCompanionName";
+import { useAuthSession } from "@/hooks/useAuthSession";
 
 // 1. CompanionPresence (Abstract Circular Mark)
 export function CompanionPresence({ size = "md" }: { size?: "sm" | "md" | "lg" }) {
@@ -63,7 +64,7 @@ export function CompanionCard({
   insight,
   variant = "compact",
   companionName: companionNameProp,
-  travelerName = "Fathan",
+  travelerName,
   className = "",
   showExplanation = false,
   showSourceLabels = false,
@@ -72,7 +73,9 @@ export function CompanionCard({
   actionPath
 }: CompanionCardProps) {
   const { displayName } = useCompanionName();
+  const session = useAuthSession();
   const companionName = companionNameProp ?? displayName;
+  const resolvedTravelerName = travelerName ?? session?.name.split(" ")[0] ?? "";
   const isReflection = variant === "reflection";
   const resolvedActionLabel = actionLabel ?? insight.recommendedActionLabel;
   const resolvedActionPath = actionPath ?? insight.recommendedActionPath;
@@ -160,7 +163,7 @@ export function CompanionCard({
           </div>
           
           <p className="text-muted-foreground text-sm leading-relaxed max-w-2xl">
-            {travelerName ? `Halo ${travelerName}, ` : ""}{insight.message}
+            {resolvedTravelerName ? `Halo ${resolvedTravelerName}, ` : ""}{insight.message}
           </p>
 
           <div className="flex flex-col gap-3.5 sm:flex-row sm:items-center sm:justify-between border-t border-brand/10 pt-3.5 mt-1">

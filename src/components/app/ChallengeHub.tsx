@@ -85,7 +85,7 @@ function ChallengeCard({ c, now, onMark }: { c: Challenge; now: number; onMark: 
         {/* Source info notice */}
         <p className="text-[10px] text-muted-foreground italic leading-normal">
           {auto 
-            ? "Hanya aktivitas jalan atau lari tepercaya yang berkontribusi pada tantangan ini."
+            ? "Hanya aktivitas GPS tervalidasi yang sesuai dengan jenis tantangan ini yang menambah progres."
             : "Tantangan ini menggunakan konfirmasi pengguna sebagai data kebiasaan suportif."
           }
         </p>
@@ -95,7 +95,7 @@ function ChallengeCard({ c, now, onMark }: { c: Challenge; now: number; onMark: 
           <div className="flex flex-wrap gap-2 text-[10px]">
             {c.xp > 0 && (
               <span className="pill bg-amber/10 text-amber font-bold flex items-center gap-1">
-                <Zap className="h-3.5 w-3.5" /> +{c.xp} XP Potensial
+                <Zap className="h-3.5 w-3.5" /> +{c.xp} Bonus XP
               </span>
             )}
             <span className="pill bg-brand-soft text-brand font-bold flex items-center gap-1">
@@ -157,10 +157,10 @@ export function ChallengeHub() {
       <div className="flex items-start gap-2 rounded-2xl border border-sky/20 bg-sky/5 p-4 text-xs text-muted-foreground">
         <Info className="mt-0.5 h-4.5 w-4.5 shrink-0 text-sky" />
         <div>
-          <p className="font-bold text-foreground mb-0.5">Progres yang Memenuhi Syarat &amp; Pratinjau Hadiah</p>
+          <p className="font-bold text-foreground mb-0.5">XP Aktivitas dan Bonus XP Challenge</p>
           <p>
-            Kategori <span className="font-semibold text-foreground">Cardio &amp; Mobility</span> (lari/sepeda/jalan) terisi
-            otomatis dari GPS dan memberi <span className="font-semibold text-amber">XP</span>. Kategori lain (Strength,
+            Kategori <span className="font-semibold text-foreground">Kardio &amp; Mobilitas</span> (lari/sepeda/jalan) terisi
+            otomatis dari aktivitas GPS tervalidasi dan dapat memberi <span className="font-semibold text-amber">bonus XP challenge</span> di atas XP dasar aktivitas. Bonus hanya diberikan sekali setelah target lolos validasi. Kategori lain (Strength,
             Nutrisi, Pemulihan, Kebiasaan) ditandai manual dan hanya memberi <span className="font-semibold text-brand">HP</span>.
             Semua hadiah di bawah ini bersifat estimasi/preview dan tunduk pada aturan keamanan sistem.
           </p>
@@ -215,7 +215,7 @@ export function ChallengeHub() {
                       <p className="mt-0.5 text-xs text-muted-foreground truncate">{c.desc}</p>
                       <div className="mt-2 flex gap-2 flex-wrap">
                         <CategoryChip category={c.category} />
-                        <span className="pill bg-secondary text-muted-foreground text-[9px] font-bold uppercase">Optional Selection</span>
+                        <span className="pill bg-secondary text-muted-foreground text-[9px] font-bold uppercase">Opsional</span>
                       </div>
                     </div>
                   </div>

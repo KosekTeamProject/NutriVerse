@@ -1,6 +1,6 @@
 "use client";
 
-import { Info, ArrowRight } from "lucide-react";
+import { Info, ArrowRight, Database, Footprints, Utensils, Droplets, Moon } from "lucide-react";
 import Link from "next/link";
 import { currentSnapshot, previousSnapshot, historyPoints } from "@/features/health-pulse/data";
 import { 
@@ -26,6 +26,16 @@ export default function HealthPulseDetailPage() {
         <p className="mt-1.5 text-muted-foreground text-sm font-medium">
           Tampilan jelas mengenai perkembangan kebiasaan kebugaran Anda pada Nutrisi, Aktivitas, Tidur, Hidrasi, dan Manajemen Berat.
         </p>
+      </div>
+
+      <div className="card card-pad">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div><p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-brand"><Database className="h-4 w-4" /> Asal data hari ini</p><p className="mt-1 text-xs text-muted-foreground">Setiap skor dapat dilacak kembali ke jenis inputnya.</p></div>
+          <span className="pill self-start bg-secondary text-[10px] font-bold text-muted-foreground">86% DATA TERISI</span>
+        </div>
+        <div className="mt-4 grid grid-cols-2 gap-2 min-[480px]:grid-cols-4">
+          {[{ icon: Footprints, label: "Aktivitas", source: "GPS terverifikasi" }, { icon: Utensils, label: "Nutrisi", source: "Pindai & manual" }, { icon: Droplets, label: "Hidrasi", source: "Catatan mandiri" }, { icon: Moon, label: "Tidur", source: "Catatan mandiri" }].map((item) => { const Icon = item.icon; return <div key={item.label} className="rounded-2xl border border-line bg-secondary/30 p-3"><Icon className="h-4 w-4 text-brand" /><p className="mt-2 text-xs font-bold text-foreground">{item.label}</p><p className="mt-0.5 text-[10px] leading-relaxed text-muted-foreground">{item.source}</p></div>; })}
+        </div>
       </div>
 
       {/* Grid: Main details + Sidebar actions */}

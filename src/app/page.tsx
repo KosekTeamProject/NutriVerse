@@ -2,8 +2,11 @@
 
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
-import { Leaf, ArrowRight, Play, Check, Trophy, Flame, ScanLine, Activity } from "lucide-react";
+import { ArrowRight, Play, Check, Trophy, Flame, ScanLine, Activity, HeartPulse, UserRound } from "lucide-react";
 import { RankCrest } from "@/components/brand/RankCrest";
+import { BrandLogo } from "@/components/brand/BrandLogo";
+import { AuthEntryModal } from "@/components/auth/AuthEntryModal";
+import { useAuthSession } from "@/hooks/useAuthSession";
 
 const TIERS = [
   { name: "Sprout", slug: "sprout", from: "#bbf7d0", to: "#4ade80", xp: "0" },
@@ -19,14 +22,7 @@ const TIERS = [
 
 function Logo() {
   return (
-    <Link href="/" className="flex items-center gap-2.5 transition hover:opacity-90 active:scale-95 duration-200">
-      <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-brand to-lime text-white shadow-lg shadow-brand/30">
-        <Leaf className="h-5 w-5" strokeWidth={2.5} />
-      </span>
-      <span className="font-display text-lg font-extrabold tracking-tight text-foreground">
-        Nutri<span className="text-brand">Verse</span>
-      </span>
-    </Link>
+    <Link href="/" className="transition hover:opacity-90 active:scale-95 duration-200"><BrandLogo /></Link>
   );
 }
 
@@ -317,8 +313,11 @@ function FooterCol({ title, links }: { readonly title: string; readonly links: s
 }
 
 export default function Home() {
+  const session = useAuthSession();
   const [mounted, setMounted] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
+  const [authOpen, setAuthOpen] = useState(false);
+  const [authView, setAuthView] = useState<"choice" | "login">("choice");
 
   useEffect(() => {
     let active = true;
@@ -344,12 +343,29 @@ export default function Home() {
     };
   }, []);
 
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      if (!session && !window.localStorage.getItem("nutriverse.welcome-seen")) {
+        window.localStorage.setItem("nutriverse.welcome-seen", "true");
+        setAuthView("choice");
+        setAuthOpen(true);
+      }
+    }, 350);
+    return () => window.clearTimeout(timer);
+  }, [session]);
+
+  function openAuth(view: "choice" | "login") {
+    setAuthView(view);
+    setAuthOpen(true);
+  }
+
   const titleWords = [
     "Ubah", "kebiasaan", "sehat", "jadi", "peringkat", "yang", "dibanggakan."
   ];
 
   return (
     <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
+      <AuthEntryModal key={`${authView}-${authOpen}`} open={authOpen} initialView={authView} onClose={() => setAuthOpen(false)} />
       {/* Background radial gradient animations */}
       <div aria-hidden className="pointer-events-none fixed inset-0 -z-20 overflow-hidden">
         <div className="absolute -left-24 -top-24 h-96 w-96 rounded-full bg-brand/10 blur-[80px] animate-[float_12s_ease-in-out_infinite]" />
@@ -365,10 +381,17 @@ export default function Home() {
             <a href="#" className="transition hover:text-brand">Reward</a>
           </div>
           <div className="flex items-center gap-2">
-            <Link href="/dashboard" className="btn btn-ghost btn-sm hidden sm:inline-flex font-bold hover:bg-line/40 transition">Masuk</Link>
-            <Link href="/dashboard" className="btn btn-primary btn-sm font-bold shadow-soft transition hover:scale-105 active:scale-98">
-              Mulai gratis <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
-            </Link>
+            {session ? (
+              <>
+                <span className="hidden text-xs font-semibold text-muted-foreground sm:inline">Halo, {session.name.split(" ")[0]}</span>
+                <Link href="/dashboard" className="btn btn-primary btn-sm font-bold shadow-soft"><UserRound className="h-4 w-4" /> Dasbor</Link>
+              </>
+            ) : (
+              <>
+                <button onClick={() => openAuth("login")} className="btn btn-ghost btn-sm hidden font-bold transition hover:bg-line/40 sm:inline-flex">Masuk</button>
+                <button onClick={() => openAuth("choice")} className="btn btn-primary btn-sm font-bold shadow-soft transition hover:scale-105 active:scale-98">Mulai gratis <ArrowRight className="h-4 w-4" /></button>
+              </>
+            )}
           </div>
         </nav>
       </header>
@@ -421,7 +444,11 @@ export default function Home() {
                 transform: mounted ? "translateY(0)" : "translateY(8px)"
               }}
             >
-              <Link href="/dashboard" className="btn btn-primary btn-lg font-bold shadow-soft transition hover:scale-105 active:scale-98">Mulai gratis <ArrowRight className="h-[18px] w-[18px]" /></Link>
+              {session ? (
+                <Link href="/dashboard" className="btn btn-primary btn-lg font-bold shadow-soft">Lanjutkan progres <ArrowRight className="h-[18px] w-[18px]" /></Link>
+              ) : (
+                <button onClick={() => openAuth("choice")} className="btn btn-primary btn-lg font-bold shadow-soft transition hover:scale-105 active:scale-98">Mulai gratis <ArrowRight className="h-[18px] w-[18px]" /></button>
+              )}
               <a href="#cara-kerja" className="btn btn-outline btn-lg font-bold transition hover:bg-secondary"><Play className="h-[18px] w-[18px]" /> Lihat cara kerja</a>
             </div>
             <ul 
@@ -449,6 +476,24 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {session && (
+        <section className="container-app pb-4">
+          <div className="grid gap-5 overflow-hidden rounded-[2rem] border border-brand/20 bg-gradient-to-br from-brand/10 via-card to-sky/10 p-5 shadow-soft sm:p-7 lg:grid-cols-[1fr_auto] lg:items-center">
+            <div>
+              <span className="eyebrow"><HeartPulse className="h-3.5 w-3.5" /> Ringkasan personal</span>
+              <h2 className="mt-3 font-display text-2xl font-extrabold">Selamat datang kembali, {session.name.split(" ")[0]}.</h2>
+              <p className="mt-1 text-sm text-muted-foreground">Health Pulse dan progresmu tetap hadir di landing page tanpa memutus identitas visual NutriVerse.</p>
+              <div className="mt-4 grid grid-cols-3 gap-2 sm:max-w-md">
+                <div className="rounded-2xl bg-card p-3"><p className="text-[10px] font-bold text-muted-foreground">HEALTH PULSE</p><p className="mt-1 font-display text-xl font-extrabold">78</p></div>
+                <div className="rounded-2xl bg-card p-3"><p className="text-[10px] font-bold text-muted-foreground">HARI AKTIF</p><p className="mt-1 font-display text-xl font-extrabold">4/7</p></div>
+                <div className="rounded-2xl bg-card p-3"><p className="text-[10px] font-bold text-muted-foreground">STREAK</p><p className="mt-1 font-display text-xl font-extrabold">7</p></div>
+              </div>
+            </div>
+            <Link href="/dashboard" className="btn btn-primary w-full lg:w-auto">Buka ruang personal <ArrowRight className="h-4 w-4" /></Link>
+          </div>
+        </section>
+      )}
 
       <ScrollReveal>
         <section id="cara-kerja" className="container-app py-20">
@@ -497,9 +542,11 @@ export default function Home() {
               <h2 className="font-display text-3xl font-extrabold tracking-tight sm:text-4xl">Siap memulai pendakianmu?</h2>
               <p className="text-white/90 leading-relaxed text-sm">Gratis untuk mahasiswa. Buat akun, catat aktivitas pertamamu, dan rebut posisi di leaderboard kampus.</p>
               <div className="pt-4 flex justify-center">
-                <Link href="/dashboard" className="btn btn-lg bg-white text-brand hover:bg-white/90 font-bold shadow-soft transition hover:scale-105 active:scale-98 flex items-center gap-2">
-                  Buat akun gratis <ArrowRight className="h-[18px] w-[18px]" />
-                </Link>
+                {session ? (
+                  <Link href="/dashboard" className="btn btn-lg bg-white text-brand hover:bg-white/90 font-bold shadow-soft">Lihat progres saya <ArrowRight className="h-[18px] w-[18px]" /></Link>
+                ) : (
+                  <Link href="/onboarding" className="btn btn-lg bg-white text-brand hover:bg-white/90 font-bold shadow-soft transition hover:scale-105 active:scale-98">Buat akun gratis <ArrowRight className="h-[18px] w-[18px]" /></Link>
+                )}
               </div>
             </div>
           </div>
