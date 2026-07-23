@@ -18,7 +18,9 @@ export default function ChallengePage() {
         <CompanionCard insight={challengeInsight} variant="compact" showPriority={true} />
       )}
 
-      <ChallengeHub />
+      <div data-tour="challenge-cards">
+        <ChallengeHub />
+      </div>
     </div>
   );
 }

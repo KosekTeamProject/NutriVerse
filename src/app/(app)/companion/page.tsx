@@ -298,13 +298,15 @@ export default function CompanionHubPage() {
       <div className="grid min-w-0 gap-6 lg:grid-cols-3">
         {/* Main column: chat first, concise supporting insights second. */}
         <div className="min-w-0 space-y-6 lg:col-span-2">
-          <Suspense fallback={
-            <div className="card card-pad flex flex-col items-center justify-center py-10">
-              <Loader2 className="h-6 w-6 animate-spin text-brand" />
-            </div>
-          }>
-            <ChatSection />
-          </Suspense>
+          <div data-tour="nora-chat">
+            <Suspense fallback={
+              <div className="card card-pad flex flex-col items-center justify-center py-10">
+                <Loader2 className="h-6 w-6 animate-spin text-brand" />
+              </div>
+            }>
+              <ChatSection />
+            </Suspense>
+          </div>
 
           <CompanionHubContainer insights={companionInsights} />
         </div>

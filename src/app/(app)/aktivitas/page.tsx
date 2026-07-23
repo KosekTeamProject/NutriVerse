@@ -42,7 +42,9 @@ export default function AktivitasPage() {
       </div>
 
       {/* Live tracker component */}
-      <ActivityTracker />
+      <div data-tour="gps-demo">
+        <ActivityTracker />
+      </div>
 
       {/* Recent Activities list */}
       <div className="card card-pad">

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { 
   Footprints, 
@@ -169,63 +170,73 @@ export function HealthyDaySummaryCard({ summary }: { readonly summary: HealthyDa
 
 // 3. StreakSummaryCard
 export function StreakSummaryCard({ summary }: { readonly summary: StreakSummary }) {
+  const [recoveryUsed, setRecoveryUsed] = useState(false);
+
   return (
-    <div className="card card-pad space-y-4">
+    <div className="card card-pad space-y-4 transition-all duration-300 hover:shadow-soft">
       <div className="flex items-start justify-between border-b border-line/45 pb-3">
         <div>
-          <span className="pill bg-amber/10 text-amber text-[9px] font-bold uppercase tracking-wider">Consistency Record</span>
-          <h3 className="font-display text-base font-bold text-foreground mt-1.5">Consistency Streak</h3>
+          <span className="pill bg-amber/10 text-amber text-[9px] font-bold uppercase tracking-wider">Perlindungan Konsistensi</span>
+          <h3 className="font-display text-base font-bold text-foreground mt-1.5">Streak &amp; Recovery Day</h3>
         </div>
-        <span className="pill bg-amber/10 text-amber font-bold flex items-center gap-1 text-[11px]">
+        <span className="pill bg-amber/15 text-amber font-bold flex items-center gap-1 text-[11px] shadow-sm">
           <Flame className="h-3.5 w-3.5" /> {getStreakStatusLabel(summary.status)}
         </span>
       </div>
 
       <div className="grid grid-cols-2 gap-3 text-xs">
         <div className="rounded-xl border border-line bg-card/65 p-3.5 space-y-1">
-          <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Current Streak</p>
+          <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Streak Saat Ini</p>
           <p className="text-lg font-extrabold text-brand flex items-center gap-1">
-            <Flame className="h-5 w-5 text-brand" /> {summary.currentDays} Days
+            <Flame className="h-5 w-5 text-brand" /> {summary.currentDays} Hari
           </p>
         </div>
 
         <div className="rounded-xl border border-line bg-card/65 p-3.5 space-y-1">
-          <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Longest Streak</p>
-          <p className="text-lg font-extrabold text-foreground">{summary.longestDays} Days</p>
+          <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Recovery Protection</p>
+          <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-1">
+            {recoveryUsed ? "Aktif (Streak Aman)" : "1 Hari Libur Tersedia"}
+          </p>
         </div>
       </div>
 
-      <p className="text-xs text-muted-foreground leading-relaxed leading-normal bg-secondary/50 rounded-xl p-3 border border-line/30">
-        {summary.explanation}
-      </p>
-
-      <div className="flex flex-wrap gap-2 text-[10px] text-muted-foreground">
-        {summary.freezeAvailable && (
-          <span className="pill bg-secondary/80 border border-line flex items-center gap-1">
-            ❄️ 1 Streak Freeze Available
-          </span>
-        )}
-        {summary.recoveryProtected && (
-          <span className="pill bg-secondary/80 border border-line flex items-center gap-1">
-            Pemulihan Terlindungi Aktif
-          </span>
-        )}
-      </div>
+      {recoveryUsed ? (
+        <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-3.5 text-xs text-foreground leading-relaxed animate-fade-up">
+          <p className="font-bold text-emerald-600 dark:text-emerald-400">🛡️ Recovery Day Terpasang!</p>
+          <p className="mt-1 text-muted-foreground text-[11px]">
+            &ldquo;Istirahat adalah bagian penting dari kesehatan. Hari ini kamu bebas beristirahat tanpa kehilangan streak 7 harimu.&rdquo; — Nora AI Companion
+          </p>
+        </div>
+      ) : (
+        <div className="flex items-center justify-between gap-2 rounded-2xl bg-secondary/50 p-3 border border-line/30">
+          <p className="text-xs text-muted-foreground">Butuh hari libur? Aktifkan Recovery Day untuk menjaga streak.</p>
+          <button
+            type="button"
+            onClick={() => setRecoveryUsed(true)}
+            className="btn btn-outline btn-xs font-bold shrink-0 text-brand border-brand/30 hover:bg-brand-soft"
+          >
+            🛡️ Aktifkan Libur
+          </button>
+        </div>
+      )}
     </div>
   );
 }
 
 // 4. ChallengePreviewCard
 export function ChallengePreviewCard({ summary }: { readonly summary: ChallengeSummary }) {
+  const isCompleted = summary.progressPercent >= 100;
+  const isExpired = summary.status === "Kedaluwarsa" || summary.status === "Terlewat";
+
   return (
-    <div className="card card-pad space-y-4 border-line bg-card">
+    <div className="card card-pad space-y-4 border-line bg-card transition-all duration-300 hover:shadow-soft">
       <div className="flex items-start justify-between border-b border-line/45 pb-3">
         <div className="space-y-1">
           <span className="pill bg-amber/10 text-amber text-[9px] font-bold uppercase tracking-wider">Pelacak Tantangan</span>
           <h3 className="font-display text-base font-bold text-foreground mt-1">{summary.title}</h3>
         </div>
-        <span className="pill bg-secondary text-muted-foreground font-semibold text-[10px]">
-          {summary.status}
+        <span className={`pill font-semibold text-[10px] ${isCompleted ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" : "bg-secondary text-muted-foreground"}`}>
+          {isCompleted ? "Selesai 🎉" : summary.status}
         </span>
       </div>
 
@@ -242,9 +253,26 @@ export function ChallengePreviewCard({ summary }: { readonly summary: ChallengeS
         </div>
       </div>
 
-      <p className="text-[10px] text-muted-foreground bg-secondary/35 p-3 rounded-xl border border-line/20 italic">
-        * {summary.explanation}
-      </p>
+      {/* Empathy & Encouragement Messages from Nora */}
+      {isCompleted ? (
+        <div className="rounded-2xl border border-brand/30 bg-brand-soft/30 p-3 text-xs text-foreground leading-relaxed animate-fade-up">
+          <p className="font-bold text-brand">🎉 Nora Merayakan Progresmu!</p>
+          <p className="mt-1 text-muted-foreground text-[11px]">
+            &ldquo;Langkah kecil yang luar biasa! Setiap usaha kecilmu hari ini membawa dampak positif jangka panjang.&rdquo;
+          </p>
+        </div>
+      ) : isExpired ? (
+        <div className="rounded-2xl border border-amber/30 bg-amber/10 p-3 text-xs text-foreground leading-relaxed">
+          <p className="font-bold text-amber">🌱 Catatan Hangat dari Nora</p>
+          <p className="mt-1 text-muted-foreground text-[11px]">
+            &ldquo;Tidak apa. Besok kita coba lagi. Perjalanan sehatmu bukan tentang kesempurnaan, tapi keberlanjutan.&rdquo;
+          </p>
+        </div>
+      ) : (
+        <p className="text-[10px] text-muted-foreground bg-secondary/35 p-3 rounded-xl border border-line/20 italic">
+          &ldquo;{summary.explanation}&rdquo;
+        </p>
+      )}
 
       {summary.actionHref && summary.actionLabel && (
         <div className="pt-1">

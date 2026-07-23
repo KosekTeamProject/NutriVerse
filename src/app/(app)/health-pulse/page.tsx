@@ -5,7 +5,8 @@ import Link from "next/link";
 import { currentSnapshot, previousSnapshot, historyPoints } from "@/features/health-pulse/data";
 import { 
   HealthPulseCard, 
-  HealthPulseHistoryChart 
+  HealthPulseHistoryChart,
+  HealthPulseTrendLineChart
 } from "@/features/health-pulse/components/HealthPulseComponents";
 import { HealthPulseDimensionChart } from "@/features/health-pulse/components/HealthPulseDimensionChart";
 import { getPrimaryCompanionInsight } from "@/features/companion/helpers";
@@ -43,13 +44,15 @@ export default function HealthPulseDetailPage() {
         {/* Main Columns: Detailed card + Nora interpretation + Chart */}
         <div className="min-w-0 space-y-6 lg:col-span-2">
           {/* Detailed Health Pulse Card */}
-          <HealthPulseCard 
-            snapshot={currentSnapshot} 
-            variant="detailed" 
-            showReasons={true} 
-            showTrustIndicators={true} 
-            maxReasons={3} 
-          />
+          <div data-tour="health-pulse-score">
+            <HealthPulseCard 
+              snapshot={currentSnapshot} 
+              variant="detailed" 
+              showReasons={true} 
+              showTrustIndicators={true} 
+              maxReasons={3} 
+            />
+          </div>
 
           {/* Grouped Vertical Bar Comparison Chart */}
           <div className="card card-pad space-y-3">
@@ -70,6 +73,9 @@ export default function HealthPulseDetailPage() {
               <CompanionCard insight={noraInsight} variant="compact" showPriority={true} />
             </div>
           )}
+
+          {/* Interactive Line Chart Trend (Hari Ini / 7 Hari / 30 Hari) */}
+          <HealthPulseTrendLineChart />
 
           {/* 14-Day History Trend Chart */}
           <HealthPulseHistoryChart history={historyPoints} />

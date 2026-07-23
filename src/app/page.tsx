@@ -379,12 +379,13 @@ export default function Home() {
       </div>
 
       <header className="sticky top-0 z-50 border-b border-line/70 bg-background/80 backdrop-blur-xl transition duration-500 animate-slide-down-nav">
-        <nav className="container-app flex h-16 min-w-0 items-center gap-2 sm:gap-3">
+        <nav className="container-app relative flex h-16 min-w-0 items-center justify-between gap-2 sm:gap-3">
           <Logo />
-          <div className="hidden items-center gap-8 text-sm font-medium text-muted-foreground md:flex">
+          <div className="hidden items-center gap-8 text-sm font-medium text-muted-foreground md:flex lg:absolute lg:left-1/2 lg:top-1/2 lg:-translate-x-1/2 lg:-translate-y-1/2">
             <a href="#cara-kerja" className="transition hover:text-brand">Cara kerja</a>
-            <a href="#tier" className="transition hover:text-brand">Tier & liga</a>
+            <a href="#tier" className="transition hover:text-brand">Tier &amp; liga</a>
             <a href="#" className="transition hover:text-brand">Reward</a>
+            <Link href="/bantuan" className="transition hover:text-brand">Bantuan</Link>
           </div>
           <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
             <button onClick={toggleTheme} className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground transition hover:bg-secondary hover:text-foreground sm:h-9 sm:w-9" aria-label="Ganti tema">

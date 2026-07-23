@@ -37,10 +37,10 @@ export function getHealthPulseStatusDescription(status: HealthPulseStatus): stri
 
 export function getHealthPulseTrendLabel(trend: HealthPulseTrend): string {
   switch (trend) {
-    case "improving": return "Meningkat";
+    case "improving": return "Meningkat Sehat";
     case "stable": return "Stabil";
     case "recovering": return "Pemulihan";
-    case "needs-attention": return "Perlu Perhatian";
+    case "needs-attention": return "Masih ada ruang untuk berkembang";
     default: return trend;
   }
 }

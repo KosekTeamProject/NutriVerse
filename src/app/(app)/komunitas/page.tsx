@@ -10,7 +10,9 @@ export default function KomunitasPage() {
         </p>
       </div>
 
-      <CommunityHub />
+      <div data-tour="community-leaderboard">
+        <CommunityHub />
+      </div>
     </div>
   );
 }

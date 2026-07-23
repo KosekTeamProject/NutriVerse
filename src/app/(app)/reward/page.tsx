@@ -11,7 +11,9 @@ export default function RewardPage() {
         </p>
       </div>
 
-      <RewardStore />
+      <div data-tour="reward-cards">
+        <RewardStore />
+      </div>
 
       <div className="flex items-start gap-2 rounded-2xl border border-sky/20 bg-sky/5 p-4 text-sm text-muted-foreground">
         <Info className="mt-0.5 h-4 w-4 shrink-0 text-sky" />

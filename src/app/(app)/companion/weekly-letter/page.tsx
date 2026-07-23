@@ -54,62 +54,84 @@ export default function WeeklyLetterPage() {
 
         {/* Weekly Metrics Dashboard Summary Grid */}
         <div className="border-t border-b border-line/45 py-4 space-y-3">
-          <h3 className="font-display text-xs font-bold text-brand uppercase tracking-wider">Ringkasan Mingguan</h3>
+          <h3 className="font-display text-xs font-bold text-brand uppercase tracking-wider">Ringkasan Mingguan Nora</h3>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <div className="rounded-xl border border-line bg-card p-3 text-center">
-              <p className="text-[9px] text-muted-foreground font-semibold">RENTANG PULSE</p>
-              <p className="text-xs font-bold text-foreground mt-1">76.8 &rarr; 78.0</p>
+              <p className="text-[9px] text-muted-foreground font-semibold uppercase">Health Pulse</p>
+              <p className="text-xs font-extrabold text-brand mt-1">76.8 &rarr; 82.0</p>
             </div>
             <div className="rounded-xl border border-line bg-card p-3 text-center">
-              <p className="text-[9px] text-muted-foreground font-semibold">POLA STREAK</p>
-              <p className="text-xs font-bold text-brand mt-1">7 Hari</p>
+              <p className="text-[9px] text-muted-foreground font-semibold uppercase">Challenge Selesai</p>
+              <p className="text-xs font-extrabold text-foreground mt-1">3 Challenge</p>
             </div>
             <div className="rounded-xl border border-line bg-card p-3 text-center">
-              <p className="text-[9px] text-muted-foreground font-semibold">CATATAN UTAMA</p>
-              <p className="text-xs font-bold text-foreground mt-1">Jalan 1,4 km</p>
+              <p className="text-[9px] text-muted-foreground font-semibold uppercase">Aktivitas</p>
+              <p className="text-xs font-extrabold text-foreground mt-1">12,400 Langkah</p>
             </div>
             <div className="rounded-xl border border-line bg-card p-3 text-center">
-              <p className="text-[9px] text-muted-foreground font-semibold">JURNAL HARI INI</p>
-              <p className="text-xs font-bold text-brand mt-1">64%</p>
+              <p className="text-[9px] text-muted-foreground font-semibold uppercase">Makanan dicatat</p>
+              <p className="text-xs font-extrabold text-brand mt-1">18 Porsi Gizi</p>
             </div>
           </div>
         </div>
 
-        {/* Highlights */}
+        {/* Highlights & AI Insights */}
         <div className="space-y-3">
-          <h3 className="font-display text-xs font-bold text-brand uppercase tracking-wider">Sorotan Mingguan</h3>
+          <h3 className="font-display text-xs font-bold text-brand uppercase tracking-wider">Sorotan &amp; Insight Nora</h3>
           <ul className="space-y-2">
-            {currentWeeklyLetter.highlights.map((hl, idx) => (
-              <li key={idx} className="flex items-start gap-2.5 text-xs text-foreground leading-normal">
-                <span className="mt-1 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-brand-soft text-[9px] font-bold text-brand">
-                  {idx + 1}
-                </span>
-                <span>{hl}</span>
-              </li>
-            ))}
+            <li className="flex items-start gap-2.5 text-xs text-foreground leading-normal">
+              <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-soft text-[10px] font-bold text-brand">
+                1
+              </span>
+              <span><strong>Aktivitas:</strong> Kamu berhasil menyelesaikan 3 kali jalan santai pagi tanpa terlewat.</span>
+            </li>
+            <li className="flex items-start gap-2.5 text-xs text-foreground leading-normal">
+              <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-soft text-[10px] font-bold text-brand">
+                2
+              </span>
+              <span><strong>Makanan:</strong> Asupan protein harianmu mencapai rata-rata 82% target seimbang.</span>
+            </li>
+            <li className="flex items-start gap-2.5 text-xs text-foreground leading-normal">
+              <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-soft text-[10px] font-bold text-brand">
+                3
+              </span>
+              <span><strong>AI Insight:</strong> Hidrasimu sangat stabil pada hari kerja, tetapi cenderung turun sedikit di akhir pekan.</span>
+            </li>
           </ul>
         </div>
 
-        {/* Growth Area */}
+        {/* Achievements Unlocked */}
         <div className="space-y-2">
-          <h3 className="font-display text-xs font-bold text-brand uppercase tracking-wider">Hal yang Dapat Ditingkatkan</h3>
-          <div className="rounded-xl border border-line bg-card/50 p-3.5 text-xs text-muted-foreground leading-relaxed">
-            {currentWeeklyLetter.growthArea}
+          <h3 className="font-display text-xs font-bold text-brand uppercase tracking-wider">Pencapaian Minggu Ini (Achievement)</h3>
+          <div className="flex flex-wrap gap-2">
+            <span className="pill bg-brand-soft border border-brand/30 text-brand text-xs font-bold px-3 py-1">
+              🏆 7 Hari Konsisten
+            </span>
+            <span className="pill bg-brand-soft border border-brand/30 text-brand text-xs font-bold px-3 py-1">
+              🟢 Healthy Week
+            </span>
+            <span className="pill bg-brand-soft border border-brand/30 text-brand text-xs font-bold px-3 py-1">
+              📸 Pertama Kali Scan
+            </span>
           </div>
         </div>
 
-        {/* Next Week's Focus */}
+        {/* Next Week Target */}
         <div className="space-y-2">
-          <h3 className="font-display text-xs font-bold text-brand uppercase tracking-wider">Fokus Minggu Depan</h3>
-          <p className="text-xs text-foreground font-semibold bg-brand-soft/20 rounded-xl p-3 border border-brand/10 leading-relaxed">
-            {currentWeeklyLetter.nextWeekFocus}
-          </p>
+          <h3 className="font-display text-xs font-bold text-brand uppercase tracking-wider">Target Minggu Depan</h3>
+          <div className="rounded-2xl border border-brand/30 bg-brand-soft/20 p-4 space-y-1">
+            <p className="text-xs font-extrabold text-foreground">1. Menjaga 2 Gelas Air Putih Setelah Bangun Tidur</p>
+            <p className="text-xs font-extrabold text-foreground">2. Menambah 5 Menit Jalan Santai di Sore Hari</p>
+            <p className="text-[11px] text-muted-foreground mt-2 italic">
+              &ldquo;Ingat, yang paling penting adalah keberlanjutan dan kenyamanan tubuhmu, bukan kesempurnaan.&rdquo;
+            </p>
+          </div>
         </div>
 
         {/* Closing */}
-        <div className="space-y-2 pt-2">
+        <div className="space-y-2 pt-2 border-t border-line/35">
           <p className="text-xs text-muted-foreground leading-relaxed">
-            {currentWeeklyLetter.closing}
+            Sampai jumpa di laporan mingguan berikutnya. Aku akan selalu ada di sini untuk mendampingi setiap langkah sehatmu.
           </p>
           <p className="text-xs font-bold text-foreground mt-2">
             {displayName}, Pendamping NutriVerse

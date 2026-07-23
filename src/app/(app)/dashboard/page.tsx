@@ -5,59 +5,51 @@ import {
 import { getJourneyById } from "@/features/journey/helpers";
 import { currentSnapshot } from "@/features/health-pulse/data";
 import { HealthPulseCard } from "@/features/health-pulse/components/HealthPulseComponents";
-import { getPrimaryCompanionInsight, getWeeklyLetterById } from "@/features/companion/helpers";
-import { CompanionCard } from "@/features/companion/components/CompanionComponents";
-import { todayJourney } from "@/features/behavior/data";
-import { TodayJourneyCard } from "@/features/behavior/components/BehaviorComponents";
+import { getWeeklyLetterById } from "@/features/companion/helpers";
 import { 
-  LivingHomeHeader, 
+  DashboardHero, 
   RecentJourneyCard, 
   WeeklyReflectionCard, 
   ActiveChallengeCard 
 } from "@/features/home/components/LivingHomeComponents";
-import { DashboardStarter, HealthyHabitSummary } from "@/components/app/DashboardWidgets";
+import { 
+  DashboardStarter, 
+  HealthyHabitSummary, 
+  DailyMotivationCard, 
+  TodaysFocusCard, 
+  VisualProgressWidget 
+} from "@/components/app/DashboardWidgets";
 
 export default function DashboardPage() {
   const morningWalkRecord = getJourneyById("journey-morning-walk");
-  const morningBriefInsight = getPrimaryCompanionInsight("home");
   const weeklyLetter = getWeeklyLetterById("weekly-letter-current");
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 animate-fade-up">
-      {/* 1. Greeting and Journey Day */}
-      <LivingHomeHeader traveler={demoTraveler} />
+      {/* 1. Hero Dashboard (Companion Greeting & Personal Stats) */}
+      <div data-tour="dashboard-summary">
+        <DashboardHero traveler={demoTraveler} />
+      </div>
+
+      {/* 3. Lifestyle Cards Grid: Daily Motivation & Today's Focus (Max 3 priorities) */}
+      <div className="grid gap-6 md:grid-cols-2">
+        <DailyMotivationCard />
+        <TodaysFocusCard />
+      </div>
+
+      {/* 4. Visual Progress & Health Pulse (Animated) */}
+      <div className="grid gap-6 md:grid-cols-2">
+        <VisualProgressWidget />
+        <HealthPulseCard snapshot={currentSnapshot} variant="compact" />
+      </div>
+
+      {/* 5. Habit Quality & Quick Actions */}
+      <HealthyHabitSummary />
 
       <DashboardStarter />
 
-      {/* Healthy outcomes are more important than total XP. */}
-      <HealthyHabitSummary />
-
-      {/* 2. Nora Morning Brief */}
-      {morningBriefInsight && (
-        <CompanionCard 
-          insight={morningBriefInsight} 
-          variant="hero" 
-          showExplanation={true} 
-          showPriority={false}
-        />
-      )}
-
-      {/* 3-7. Grids for Health Pulse, Today's Journey, Recent Journey, Reflection, and Active Challenge */}
+      {/* 6. Recent Journey & Weekly Reflection & Active Challenge */}
       <div className="grid gap-6 md:grid-cols-2">
-        <HealthPulseCard snapshot={currentSnapshot} variant="compact" />
-        
-        {/* Render canonical Today's Journey Card */}
-        <TodayJourneyCard 
-          journey={todayJourney} 
-          variant="hero"
-          showGoalTrust={false}
-          showHealthyDay={true}
-          showStreak={true}
-          showChallenge={false}
-          showRewardPreview={false}
-          maxGoals={3}
-        />
-
         {morningWalkRecord && <RecentJourneyCard record={morningWalkRecord} />}
         {weeklyLetter && <WeeklyReflectionCard letter={weeklyLetter} />}
         

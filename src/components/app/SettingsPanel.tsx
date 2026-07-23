@@ -254,6 +254,31 @@ export function SettingsPanel() {
         <SaveButton />
       </SectionCard>
 
+      {/* Bantuan & Tur */}
+      <SectionCard icon={Sparkles} title="Bantuan">
+        <div className="space-y-4">
+          <div>
+            <p className="text-sm font-semibold text-foreground">Tur Bersama Nora</p>
+            <p className="mt-0.5 text-xs text-muted-foreground leading-relaxed">
+              Jalankan ulang tur interaktif keliling aplikasi NutriVerse bersama Nora. 
+              Ini akan memandumu memahami cara kerja setiap fitur utama dari awal.
+            </p>
+          </div>
+          <button 
+            onClick={() => {
+              if (typeof window !== "undefined") {
+                // Because useGuidedTour must be imported, but we didn't import it to avoid breaking changes if it doesn't exist, we can use an event or local storage + reload.
+                window.localStorage.setItem("nutriverse.needs_tour", "true");
+                window.location.href = "/dashboard";
+              }
+            }} 
+            className="btn btn-outline btn-sm font-bold flex items-center gap-1.5"
+          >
+            <Sparkles className="h-4 w-4 text-brand" /> Ulangi Tur Bersama Nora
+          </button>
+        </div>
+      </SectionCard>
+
       {/* 8. Break reminder settings */}
       <SectionCard icon={TimerReset} title="Pengingat Jeda">
         <div className="space-y-4">

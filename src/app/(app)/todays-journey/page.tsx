@@ -39,16 +39,18 @@ export default function TodaysJourneyDetailPage() {
       )}
 
       {/* 3. Detailed TodayJourneyCard */}
-      <TodayJourneyCard 
-        journey={todayJourney} 
-        variant="detailed"
-        showGoalTrust={true}
-        showHealthyDay={true}
-        showStreak={true}
-        showChallenge={true}
-        showRewardPreview={true}
-        maxGoals={4}
-      />
+      <div data-tour="todays-mission">
+        <TodayJourneyCard 
+          journey={todayJourney} 
+          variant="detailed"
+          showGoalTrust={true}
+          showHealthyDay={true}
+          showStreak={true}
+          showChallenge={true}
+          showRewardPreview={true}
+          maxGoals={4}
+        />
+      </div>
 
       {/* 4. Trust Explanation Section */}
       <div className="card card-pad space-y-4">

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { 
   ArrowRight, 
@@ -130,27 +131,57 @@ export function HealthPulseCard({
   maxReasons = 1
 }: HealthPulseCardProps) {
   const isCompact = variant === "compact";
+  const [animatedScore, setAnimatedScore] = useState(snapshot.previousScore);
+
+  useEffect(() => {
+    let start = snapshot.previousScore;
+    const target = snapshot.score;
+    const duration = 1000; // 1s
+    const startTime = performance.now();
+
+    function updateScore(currentTime: number) {
+      const elapsed = currentTime - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      // easeOutCubic
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const current = start + (target - start) * eased;
+      setAnimatedScore(Number(current.toFixed(1)));
+      if (progress < 1) {
+        requestAnimationFrame(updateScore);
+      }
+    }
+
+    const animationFrame = requestAnimationFrame(updateScore);
+    return () => cancelAnimationFrame(animationFrame);
+  }, [snapshot.score, snapshot.previousScore]);
 
   if (isCompact) {
     return (
-      <div className={`card card-pad flex flex-col justify-between space-y-4 ${className}`}>
+      <div className={`card card-pad flex flex-col justify-between space-y-4 transition-all duration-300 hover:shadow-soft ${className}`}>
         <div>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <h3 className="font-display text-lg font-bold">Health Pulse</h3>
-            <span className="pill bg-brand-soft text-brand font-semibold capitalize">
+            <div className="flex items-center gap-2">
+              <span className="grid h-8 w-8 place-items-center rounded-xl bg-brand-soft text-brand">
+                <Sparkles className="h-4.5 w-4.5 animate-breathe" />
+              </span>
+              <h3 className="font-display text-lg font-bold text-foreground">Health Pulse</h3>
+            </div>
+            <span className="pill bg-brand-soft text-brand font-semibold capitalize shadow-sm">
               {getHealthPulseStatusLabel(snapshot.status)}
             </span>
           </div>
-          <p className="text-xs text-muted-foreground mt-0.5">Tren kebiasaan Anda {getHealthPulseTrendLabel(snapshot.trend).toLowerCase()}</p>
+          <p className="text-xs text-muted-foreground mt-1">Tren kebiasaan Anda {getHealthPulseTrendLabel(snapshot.trend).toLowerCase()}</p>
         </div>
 
-        <div className="flex items-center justify-between py-1 bg-secondary/30 rounded-xl px-3 border border-line/20">
-          <span className="text-xs text-muted-foreground font-medium">Skor Pulse</span>
+        <div className="flex items-center justify-between py-2 bg-gradient-to-r from-secondary/40 via-card to-brand-soft/20 rounded-2xl px-4 border border-line/40 shadow-sm">
+          <span className="text-xs text-muted-foreground font-semibold">Skor Pulse Score</span>
           <span className="text-xs font-bold text-foreground flex items-center gap-1.5 tabular-nums">
-            <span className="text-muted-foreground font-normal line-through">{snapshot.previousScore.toFixed(1)}</span>
-            <ArrowRight className="h-3 w-3 text-brand" />
-            <span className="text-brand text-sm font-extrabold">{snapshot.score.toFixed(1)}</span>
-            <span className="text-[10px] text-brand">({formatHealthPulseChange(snapshot.change)})</span>
+            <span className="text-muted-foreground font-normal line-through text-[11px]">{snapshot.previousScore.toFixed(1)}</span>
+            <ArrowRight className="h-3.5 w-3.5 text-brand" />
+            <span className="text-brand text-lg font-extrabold animate-scale-in">{animatedScore.toFixed(1)}</span>
+            <span className="pill bg-brand-soft text-brand text-[10px] font-bold py-0.5 px-1.5">
+              ({formatHealthPulseChange(snapshot.change)})
+            </span>
           </span>
         </div>
 
@@ -163,13 +194,13 @@ export function HealthPulseCard({
 
         {/* Reasons */}
         {showReasons && snapshot.reasons.length > 0 && (
-          <div className="border-l-2 border-brand/35 pl-3.5 italic text-xs text-[#586b60] dark:text-[#96aa9e] leading-relaxed">
+          <div className="border-l-2 border-brand/40 pl-3.5 italic text-xs text-muted-foreground leading-relaxed">
             &ldquo;{snapshot.reasons[0]}&rdquo;
           </div>
         )}
 
-        <div className="flex flex-col gap-3 border-t border-line/45 pt-2 min-[380px]:flex-row min-[380px]:items-center min-[380px]:justify-between">
-          <span className="text-[10px] text-muted-foreground">Kelengkapan: {snapshot.dataCompleteness}%</span>
+        <div className="flex flex-col gap-3 border-t border-line/45 pt-3 min-[380px]:flex-row min-[380px]:items-center min-[380px]:justify-between">
+          <span className="text-[10px] font-semibold text-muted-foreground">Kelengkapan Data: {snapshot.dataCompleteness}%</span>
           <Link href="/health-pulse" className="btn btn-outline btn-sm inline-flex items-center gap-1 text-xs font-bold">
             Lihat Detail <ArrowRight className="h-3.5 w-3.5" />
           </Link>
@@ -440,9 +471,171 @@ export function HealthPulseHistoryChart({ history }: HealthPulseHistoryChartProp
         </svg>
       </div>
 
-      <div className="flex items-center gap-2 rounded-xl bg-secondary/60 p-3 text-[11px] text-muted-foreground border border-line/30">
+      <div className="flex items-start gap-2 rounded-xl bg-secondary/60 p-3 text-[11px] text-muted-foreground border border-line/30">
         <Info className="h-4 w-4 shrink-0" />
         <p>Ringkasan grafik: skor bergerak stabil dari 73,2, sempat menurun tipis, lalu pulih bertahap hingga 78,0 hari ini.</p>
+      </div>
+    </div>
+  );
+}
+
+// 7. HealthPulseTrendLineChart
+export function HealthPulseTrendLineChart() {
+  const [filter, setFilter] = useState<"today" | "7days" | "30days">("7days");
+
+  const trendData = useMemo(() => {
+    if (filter === "today") {
+      return [
+        { label: "06:00", score: 81.2 },
+        { label: "09:00", score: 81.5 },
+        { label: "12:00", score: 81.1 },
+        { label: "15:00", score: 81.4 },
+        { label: "18:00", score: 81.8 },
+        { label: "21:00", score: 82.0 },
+      ];
+    }
+    if (filter === "7days") {
+      return [
+        { label: "Sen", score: 79.5 },
+        { label: "Sel", score: 80.0 },
+        { label: "Rab", score: 80.4 },
+        { label: "Kam", score: 80.2 },
+        { label: "Jum", score: 81.0 },
+        { label: "Sab", score: 81.5 },
+        { label: "Min", score: 82.0 },
+      ];
+    }
+    return [
+      { label: "Minggu 1", score: 76.0 },
+      { label: "Minggu 2", score: 78.5 },
+      { label: "Minggu 3", score: 80.2 },
+      { label: "Minggu 4", score: 82.0 },
+    ];
+  }, [filter]);
+
+  const scores = trendData.map((d: { label: string; score: number }) => d.score);
+  const minS = Math.min(...scores) - 1;
+  const maxS = Math.max(...scores) + 1;
+
+  // Generate SVG polyline points
+  const pointsStr = trendData
+    .map((d: { label: string; score: number }, idx: number) => {
+      const x = (idx / (trendData.length - 1)) * 300 + 20;
+      const y = 110 - ((d.score - minS) / (maxS - minS)) * 80;
+      return `${x},${y}`;
+    })
+    .join(" ");
+
+  return (
+    <div className="card card-pad space-y-4 border-line/60 bg-gradient-to-br from-card to-secondary/30">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-line/45 pb-3">
+        <div>
+          <span className="eyebrow bg-brand-soft/40 border-brand/20 text-brand text-[10px] py-0.5 px-2">
+            Tren Kebiasaan Holistic
+          </span>
+          <h3 className="font-display text-base font-bold text-foreground mt-1">Health Score Trend Chart</h3>
+        </div>
+
+        {/* Filter Toggle */}
+        <div className="flex items-center gap-1 rounded-xl bg-secondary p-1 self-start sm:self-center">
+          <button
+            type="button"
+            onClick={() => setFilter("today")}
+            className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition ${
+              filter === "today" ? "bg-brand text-white shadow-sm" : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Hari Ini
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilter("7days")}
+            className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition ${
+              filter === "7days" ? "bg-brand text-white shadow-sm" : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            7 Hari
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilter("30days")}
+            className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition ${
+              filter === "30days" ? "bg-brand text-white shadow-sm" : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            30 Hari
+          </button>
+        </div>
+      </div>
+
+      {/* Comforting Nora Explanation Note */}
+      <div className="rounded-2xl border border-brand/20 bg-brand-soft/30 p-3.5 flex items-start gap-3 text-xs leading-relaxed text-muted-foreground">
+        <Sparkles className="h-4 w-4 shrink-0 text-brand mt-0.5 animate-breathe" />
+        <p>
+          <span className="font-bold text-foreground">Prinsip Daily Pattern Nora: </span>
+          &ldquo;Hari ini asupan gula sedikit meningkat. Tidak apa! Kita bisa menyeimbangkannya dengan aktivitas ringan nanti sore.&rdquo;
+        </p>
+      </div>
+
+      {/* SVG Line Chart */}
+      <div className="relative h-44 w-full rounded-2xl border border-line bg-card p-3 shadow-inner">
+        <svg viewBox="0 0 340 130" className="h-full w-full overflow-visible">
+          <defs>
+            <linearGradient id="trendGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="var(--brand)" stopOpacity="0.3" />
+              <stop offset="100%" stopColor="var(--brand)" stopOpacity="0" />
+            </linearGradient>
+          </defs>
+
+          {/* Area fill */}
+          <polygon
+            points={`20,120 ${pointsStr} 320,120`}
+            fill="url(#trendGrad)"
+          />
+
+          {/* Line stroke */}
+          <polyline
+            fill="none"
+            stroke="var(--brand)"
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            points={pointsStr}
+            className="transition-all duration-500"
+          />
+
+          {/* Data Points */}
+          {trendData.map((d: { label: string; score: number }, idx: number) => {
+            const x = (idx / (trendData.length - 1)) * 300 + 20;
+            const y = 110 - ((d.score - minS) / (maxS - minS)) * 80;
+            return (
+              <g key={idx} className="group cursor-pointer">
+                <circle
+                  cx={x}
+                  cy={y}
+                  r="5"
+                  className="fill-brand stroke-background stroke-2 transition-transform duration-300 group-hover:scale-150"
+                />
+                <text
+                  x={x}
+                  y={y - 10}
+                  textAnchor="middle"
+                  className="fill-foreground text-[9px] font-extrabold opacity-0 group-hover:opacity-100 transition duration-200"
+                >
+                  {d.score.toFixed(1)}
+                </text>
+                <text
+                  x={x}
+                  y="125"
+                  textAnchor="middle"
+                  className="fill-muted-foreground text-[8px] font-semibold"
+                >
+                  {d.label}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
       </div>
     </div>
   );

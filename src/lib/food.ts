@@ -83,11 +83,97 @@ export function burnMinutes(kcal: number): { run: number; bike: number; walk: nu
   };
 }
 
+export type HealthIndicatorLevel = "sangat-baik" | "baik" | "cukup" | "perlu-diperhatikan" | "kurang-sehat";
+
+export type HealthIndicator = {
+  level: HealthIndicatorLevel;
+  label: string;
+  badgeClass: string;
+  reasons: string[];
+  nutritionInsight: string;
+  healthyAlternative: string;
+  portionAdvice: string;
+};
+
+export function getHealthIndicator(nutrition: Nutrition): HealthIndicator {
+  const { protein, carbs, fat, fiber, sugar, sodium, kcal } = nutrition;
+  const reasons: string[] = [];
+
+  // Determine specific reasons
+  if (protein >= 20) reasons.push("Protein sangat baik.");
+  if (fiber >= 5) reasons.push("Serat melimpah.");
+  if (sugar > 18) reasons.push("Tinggi gula sederhana.");
+  else if (sugar <= 5) reasons.push("Rendah gula sederhana.");
+  if (sodium > 750) reasons.push("Sodium cukup tinggi.");
+  if (fat > 25) reasons.push("Lemak jenuh cukup tinggi.");
+  if (fiber < 3 && carbs > 40) reasons.push("Serat masih rendah.");
+
+  // Determine level
+  if (sugar <= 10 && protein >= 18 && fiber >= 4 && fat <= 18) {
+    return {
+      level: "sangat-baik",
+      label: "Sangat Baik",
+      badgeClass: "bg-emerald-500/15 text-emerald-600 border-emerald-500/30 dark:text-emerald-400",
+      reasons: reasons.length ? reasons : ["Gizi seimbang & kaya nutrisi."],
+      nutritionInsight: "Makanan ini sangat cocok dikonsumsi sebelum atau setelah olahraga untuk pemulihan otot.",
+      healthyAlternative: "Pilihan sudah sangat baik! Bisa ditambahkan potongan buah segar atau biji-bijian untuk variasi.",
+      portionAdvice: "Porsi saat ini sudah ideal untuk kebutuhan tubuhmu."
+    };
+  }
+
+  if (sugar <= 15 && (protein >= 12 || fiber >= 3) && fat <= 22) {
+    return {
+      level: "baik",
+      label: "Baik",
+      badgeClass: "bg-emerald-500/15 text-emerald-600 border-emerald-500/30 dark:text-emerald-400",
+      reasons: reasons.length ? reasons : ["Makronutrisi seimbang."],
+      nutritionInsight: "Memberikan energi stabil untuk aktivitas harian tanpa memicu lonjakan gula darah drastis.",
+      healthyAlternative: "Bisa dipadukan dengan sayuran hijau untuk menambah serat dan mikronutrisi harian.",
+      portionAdvice: "Porsi saat ini sudah sesuai."
+    };
+  }
+
+  if (sugar <= 22 && fat <= 28 && kcal <= 550) {
+    return {
+      level: "cukup",
+      label: "Cukup",
+      badgeClass: "bg-amber-500/15 text-amber-600 border-amber-500/30 dark:text-amber-400",
+      reasons: reasons.length ? reasons : ["Karbohidrat cukup dominan.", "Serat masih bisa ditingkatkan."],
+      nutritionInsight: "Menyediakan sumber energi cepat. Disarankan untuk mendukung aktivitas harian yang aktif.",
+      healthyAlternative: "Nasi putih dapat diganti sebagian dengan nasi merah atau gandum utuh.",
+      portionAdvice: "Porsi saat ini sudah sesuai untuk aktivitas harianmu."
+    };
+  }
+
+  if (sugar > 22 || sodium > 800 || fat > 28) {
+    return {
+      level: "perlu-diperhatikan",
+      label: "Masih ada ruang untuk berkembang",
+      badgeClass: "bg-amber-500/15 text-amber-600 border-amber-500/30 dark:text-amber-400",
+      reasons: reasons.length ? reasons : ["Tinggi gula sederhana atau sodium."],
+      nutritionInsight: "Tidak apa-apa menikmati makanan ini! Cukup imbangi dengan minum 1-2 gelas air putih segar.",
+      healthyAlternative: "Coba padukan dengan potongan buah utuh atau infused water untuk menambah kesegaran.",
+      portionAdvice: "Bisa dikurangi sedikit porsinya jika ingin energi tubuh terasa lebih stabil."
+    };
+  }
+
+  return {
+    level: "kurang-sehat",
+    label: "Masih ada ruang untuk berkembang",
+    badgeClass: "bg-amber-500/15 text-amber-600 border-amber-500/30 dark:text-amber-400",
+    reasons: reasons.length ? reasons : ["Tinggi gula & lemak jenuh."],
+    nutritionInsight: "Nikmati hidangan ini secara tenang tanpa rasa bersalah. Kamu bisa menyeimbangkannya dengan asupan sayur & hidrasi air sepanjang hari.",
+    healthyAlternative: "Pilih versi kukus/rebus pada kesempatan berikutnya atau ganti camilan dengan buah-buahan segar.",
+    portionAdvice: "Bisa dinikmati bersama teman atau dikurangi sedikit porsinya agar tetap nyaman di perut."
+  };
+}
+
 export type FoodAnalysis = {
   nutrition: Nutrition;
   burn: { run: number; bike: number; walk: number };
   activityRec: string;
   insight: string;
+  healthIndicator: HealthIndicator;
 };
 
 export function analyze(food: Food, portion: number): FoodAnalysis {
@@ -103,6 +189,8 @@ export function analyze(food: Food, portion: number): FoodAnalysis {
     vitamins: food.vitamins,
   };
   const burn = burnMinutes(nutrition.kcal);
+  const healthIndicator = getHealthIndicator(nutrition);
+
   let activityRec: string;
   let insight: string;
   if (nutrition.kcal <= 300) {
@@ -115,5 +203,5 @@ export function analyze(food: Food, portion: number): FoodAnalysis {
     activityRec = "Tidak perlu membayar makanan dengan olahraga. Bila ingin bergerak, mulai dari jalan santai 10–15 menit.";
     insight = "Estimasi energi lebih tinggi. Gunakan informasi ini sebagai konteks, bukan alasan untuk merasa bersalah.";
   }
-  return { nutrition, burn, activityRec, insight };
+  return { nutrition, burn, activityRec, insight, healthIndicator };
 }

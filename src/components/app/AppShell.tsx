@@ -11,6 +11,7 @@ import { clearAuthSession } from "@/features/auth/session";
 import { WellbeingReminder } from "@/components/app/WellbeingReminder";
 import { GlobalSearch } from "@/components/app/GlobalSearch";
 import { BrandLogo } from "@/components/brand/BrandLogo";
+import { Footer } from "@/components/app/Footer";
 
 const NAV_GROUPS = [
   { label: "Utama", items: [
@@ -68,6 +69,7 @@ function SidebarContent({ pathname, companionName, onNavigate, onLogout }: { rea
 
       <div className="space-y-1 border-t border-line/50 pt-3">
         <Link href="/pengaturan" onClick={onNavigate} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition hover:bg-secondary hover:text-foreground"><Settings className="h-[18px] w-[18px]" /> Pengaturan</Link>
+        <Link href="/bantuan" onClick={onNavigate} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition hover:bg-secondary hover:text-foreground"><Sparkles className="h-[18px] w-[18px]" /> Pusat Bantuan</Link>
         <button onClick={onLogout} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"><LogOut className="h-[18px] w-[18px]" /> Keluar</button>
       </div>
     </div>
@@ -83,9 +85,11 @@ export function AppShell({ children }: { readonly children: React.ReactNode }) {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const { dark, toggleTheme } = useTheme();
 
+  const isPublicPage = pathname === "/onboarding" || pathname.startsWith("/bantuan");
+
   if (pathname === "/onboarding") return children;
 
-  if (!session) {
+  if (!session && !isPublicPage) {
     return (
       <div className="grid min-h-screen place-items-center bg-background p-4 text-foreground">
         <section className="card card-pad w-full max-w-md text-center sm:p-8">
@@ -98,7 +102,8 @@ export function AppShell({ children }: { readonly children: React.ReactNode }) {
     );
   }
 
-  const initials = session.name.split(" ").filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
+  const initials = session?.name ? session.name.split(" ").filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase() : "";
+  const companionName = session?.companionName || "Nora";
 
   function logout() {
     clearAuthSession();
@@ -109,35 +114,50 @@ export function AppShell({ children }: { readonly children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-background">
-      <WellbeingReminder />
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 border-r border-line bg-sidebar lg:block"><SidebarContent pathname={pathname} companionName={session.companionName} onLogout={logout} /></aside>
+      {session && <WellbeingReminder />}
+      <aside className={`fixed inset-y-0 left-0 z-40 hidden w-64 border-r border-line bg-sidebar lg:block ${!session ? "lg:hidden" : ""}`}><SidebarContent pathname={pathname} companionName={companionName} onLogout={logout} /></aside>
 
-      {mobileOpen && (
+      {mobileOpen && session && (
         <div className="fixed inset-0 z-50 lg:hidden">
           <button className="absolute inset-0 bg-black/40" onClick={() => setMobileOpen(false)} aria-label="Tutup menu" />
           <aside className="absolute inset-y-0 left-0 w-[85vw] max-w-72 border-r border-line bg-sidebar pb-[env(safe-area-inset-bottom)]">
             <button onClick={() => setMobileOpen(false)} className="absolute right-3 top-3 z-10 grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-secondary" aria-label="Tutup menu"><X className="h-5 w-5" /></button>
-            <SidebarContent pathname={pathname} companionName={session.companionName} onNavigate={() => setMobileOpen(false)} onLogout={logout} />
+            <SidebarContent pathname={pathname} companionName={companionName} onNavigate={() => setMobileOpen(false)} onLogout={logout} />
           </aside>
         </div>
       )}
 
-      <div className="min-w-0 lg:pl-64">
-        <header className="fixed inset-x-0 top-0 z-40 border-b border-line bg-background/90 shadow-sm backdrop-blur-xl lg:inset-x-auto lg:left-[17rem] lg:right-4 lg:top-3 lg:rounded-2xl lg:border lg:border-line/80 lg:shadow-soft">
+      <div className={`min-w-0 ${session ? "lg:pl-64" : ""}`}>
+        <header className="fixed inset-x-0 top-0 z-40 border-b border-line bg-background/90 shadow-sm backdrop-blur-xl lg:inset-x-auto lg:left-[17rem] lg:right-4 lg:top-3 lg:rounded-2xl lg:border lg:border-line/80 lg:shadow-soft" style={!session ? { left: '1rem' } : undefined}>
           <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2 gap-y-2 overflow-visible px-3 py-2 sm:flex sm:h-16 sm:gap-3 sm:px-6 sm:py-0 lg:px-5">
-            <button onClick={() => { setMobileOpen(true); setNotificationsOpen(false); setProfileOpen(false); }} className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-secondary lg:hidden" aria-label="Buka menu"><Menu className="h-5 w-5" /></button>
-            <Link href="/dashboard" className="flex min-w-0 items-center gap-1.5 overflow-hidden sm:hidden" aria-label="NutriVerse">
+            {session && (
+              <button onClick={() => { setMobileOpen(true); setNotificationsOpen(false); setProfileOpen(false); }} className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-secondary lg:hidden" aria-label="Buka menu"><Menu className="h-5 w-5" /></button>
+            )}
+            <Link href={session ? "/dashboard" : "/"} className="flex min-w-0 items-center gap-1.5 overflow-hidden sm:hidden" aria-label="NutriVerse">
               <BrandLogo compact className="hidden !h-7 !w-7 shrink-0 min-[360px]:inline-flex" />
               <span className="truncate font-display text-base font-extrabold tracking-tight text-foreground">Nutri<span className="text-brand">Verse</span></span>
             </Link>
             <div className="col-span-3 row-start-2 min-w-0 sm:flex-1">
-              <GlobalSearch companionName={session.companionName} />
+              <GlobalSearch companionName={companionName} />
             </div>
             <div className="col-start-3 row-start-1 ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
-              <span className="pill hidden bg-amber/15 text-amber xl:inline-flex" aria-label="Saldo 12450 XP Demo"><Flame className="h-3.5 w-3.5" /> 12.450 XP</span>
-              <span className="pill hidden bg-brand-soft text-brand xl:inline-flex" aria-label="Saldo 3280 HP Demo">3.280 HP</span>
+              {session ? (
+                <>
+                  <span className="pill hidden bg-amber/15 text-amber xl:inline-flex" aria-label="Saldo 12450 XP Demo"><Flame className="h-3.5 w-3.5" /> 12.450 XP</span>
+                  <span className="pill hidden bg-brand-soft text-brand xl:inline-flex" aria-label="Saldo 3280 HP Demo">3.280 HP</span>
+                </>
+              ) : (
+                <div className="hidden lg:flex items-center gap-8 mr-6 text-sm font-medium text-muted-foreground">
+                  <Link href="/#cara-kerja" className="transition hover:text-brand">Cara kerja</Link>
+                  <Link href="/#tier" className="transition hover:text-brand">Tier &amp; liga</Link>
+                  <Link href="/#reward" className="transition hover:text-brand">Reward</Link>
+                  <Link href="/bantuan" className="transition hover:text-brand">Bantuan</Link>
+                </div>
+              )}
               <button onClick={toggleTheme} className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-secondary sm:h-9 sm:w-9" aria-label="Ganti tema">{dark ? <Sun className="h-[18px] w-[18px]" /> : <Moon className="h-[18px] w-[18px]" />}</button>
-              <div className="relative">
+              {session ? (
+                <>
+                  <div className="relative">
                 <button
                   onClick={() => { setNotificationsOpen((value) => !value); setProfileOpen(false); }}
                   className="relative grid h-8 w-8 place-items-center rounded-lg text-muted-foreground transition hover:bg-secondary hover:text-foreground sm:h-9 sm:w-9"
@@ -183,16 +203,25 @@ export function AppShell({ children }: { readonly children: React.ReactNode }) {
                   </div>
                 )}
               </div>
+                </>
+              ) : (
+                <div className="flex shrink-0 items-center gap-2">
+                  <Link href="/" className="btn btn-primary btn-sm font-bold shadow-soft"><UserRound className="h-4 w-4" /> Masuk</Link>
+                </div>
+              )}
             </div>
           </div>
         </header>
 
-        <main className="min-w-0 px-4 pb-[calc(6.5rem+env(safe-area-inset-bottom))] pt-[7.5rem] sm:px-6 sm:pb-[calc(6.5rem+env(safe-area-inset-bottom))] sm:pt-24 lg:px-8 lg:pb-8 lg:pt-24">{children}</main>
+        <main className={`min-w-0 px-4 pb-12 pt-[7.5rem] sm:px-6 sm:pb-12 sm:pt-24 lg:px-8 lg:pb-12 lg:pt-24 ${!session ? "max-w-7xl mx-auto" : ""}`}>{children}</main>
+        <Footer />
       </div>
 
-      <nav className="fixed inset-x-3 bottom-3 z-30 grid grid-cols-5 rounded-2xl border border-line bg-card/95 p-1.5 shadow-2xl backdrop-blur-xl lg:hidden" aria-label="Navigasi utama mobile">
-        {MOBILE_NAV.map((item) => { const Icon = item.icon; const active = isActive(pathname, item.href); return <Link key={item.href} href={item.href} className={`flex min-w-0 flex-col items-center gap-1 rounded-xl px-1 py-2 text-[9px] font-bold transition ${active ? "bg-brand-soft text-brand" : "text-muted-foreground"}`}><Icon className="h-[18px] w-[18px]" /><span className="truncate">{item.label}</span></Link>; })}
-      </nav>
+      {session && (
+        <nav className="fixed inset-x-3 bottom-3 z-30 grid grid-cols-5 rounded-2xl border border-line bg-card/95 p-1.5 shadow-2xl backdrop-blur-xl lg:hidden" aria-label="Navigasi utama mobile">
+          {MOBILE_NAV.map((item) => { const Icon = item.icon; const active = isActive(pathname, item.href); return <Link key={item.href} href={item.href} className={`flex min-w-0 flex-col items-center gap-1 rounded-xl px-1 py-2 text-[9px] font-bold transition ${active ? "bg-brand-soft text-brand" : "text-muted-foreground"}`}><Icon className="h-[18px] w-[18px]" /><span className="truncate">{item.label}</span></Link>; })}
+        </nav>
+      )}
     </div>
   );
 }

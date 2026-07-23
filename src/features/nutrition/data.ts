@@ -1,38 +1,48 @@
-import { FoodAnalysis, UpgradedFoodEntry } from "@/lib/food";
+import { FoodAnalysis, UpgradedFoodEntry, getHealthIndicator } from "@/lib/food";
 
+const bNutr = { kcal: 430, protein: 24, carbs: 49, fat: 15, fiber: 7, sugar: 4, sodium: 320, vitamins: "A, B1, B6, Potassium" };
 export const primaryBreakfastAnalysis: FoodAnalysis = {
-  nutrition: { kcal: 430, protein: 24, carbs: 49, fat: 15, fiber: 7, sugar: 4, sodium: 320, vitamins: "A, B1, B6, Potassium" },
+  nutrition: bNutr,
   burn: { run: 43, bike: 61, walk: 108 },
   activityRec: "Jalan kaki santai selama 108 menit untuk mengimbangi porsi sarapan seimbang ini.",
-  insight: "Porsi sarapan seimbang kaya protein dan serat, sangat baik untuk mendukung metabolisme pagi hari."
+  insight: "Porsi sarapan seimbang kaya protein dan serat, sangat baik untuk mendukung metabolisme pagi hari.",
+  healthIndicator: getHealthIndicator(bNutr)
 };
 
+const cNutr = { kcal: 520, protein: 38, carbs: 58, fat: 12, fiber: 6, sugar: 2, sodium: 640, vitamins: "B3, B12, Iron" };
 export const chickenRiceAnalysis: FoodAnalysis = {
-  nutrition: { kcal: 520, protein: 38, carbs: 58, fat: 12, fiber: 6, sugar: 2, sodium: 640, vitamins: "B3, B12, Iron" },
+  nutrition: cNutr,
   burn: { run: 52, bike: 74, walk: 130 },
   activityRec: "Gowes sepeda santai 74 menit atau lari 52 menit untuk mengimbangi porsi makan siang ini.",
-  insight: "Sangat tinggi protein kompleks, membantu memulihkan jaringan otot setelah berolahraga."
+  insight: "Sangat tinggi protein kompleks, membantu memulihkan jaringan otot setelah berolahraga.",
+  healthIndicator: getHealthIndicator(cNutr)
 };
 
+const vNutr = { kcal: 220, protein: 8, carbs: 35, fat: 4, fiber: 9, sugar: 5, sodium: 580, vitamins: "A, C, K, Folate" };
 export const vegetableSoupAnalysis: FoodAnalysis = {
-  nutrition: { kcal: 220, protein: 8, carbs: 35, fat: 4, fiber: 9, sugar: 5, sodium: 580, vitamins: "A, C, K, Folate" },
+  nutrition: vNutr,
   burn: { run: 22, bike: 31, walk: 55 },
   activityRec: "Jalan kaki santai 55 menit sudah cukup untuk membakar kalori sup sayuran ini.",
-  insight: "Rendah kalori namun sangat kaya serat dan mikronutrisi penting untuk kesehatan jangka panjang."
+  insight: "Rendah kalori namun sangat kaya serat dan mikronutrisi penting untuk kesehatan jangka panjang.",
+  healthIndicator: getHealthIndicator(vNutr)
 };
 
+const yNutr = { kcal: 190, protein: 15, carbs: 28, fat: 2, fiber: 2, sugar: 18, sodium: 80, vitamins: "Calcium, Vitamin D" };
 export const yogurtFruitAnalysis: FoodAnalysis = {
-  nutrition: { kcal: 190, protein: 15, carbs: 28, fat: 2, fiber: 2, sugar: 18, sodium: 80, vitamins: "Calcium, Vitamin D" },
+  nutrition: yNutr,
   burn: { run: 19, bike: 27, walk: 48 },
   activityRec: "Jalan kaki santai 48 menit untuk membakar kalori cemilan yogurt buah ini.",
-  insight: "Kombinasi yang baik antara protein yogurt Yunani dan antioksidan dari buah segar."
+  insight: "Kombinasi yang baik antara protein yogurt Yunani dan antioksidan dari buah segar.",
+  healthIndicator: getHealthIndicator(yNutr)
 };
 
+const tNutr = { kcal: 380, protein: 22, carbs: 25, fat: 18, fiber: 8, sugar: 3, sodium: 420, vitamins: "B12, Magnesium, Zinc" };
 export const tempehPlateAnalysis: FoodAnalysis = {
-  nutrition: { kcal: 380, protein: 22, carbs: 25, fat: 18, fiber: 8, sugar: 3, sodium: 420, vitamins: "B12, Magnesium, Zinc" },
+  nutrition: tNutr,
   burn: { run: 38, bike: 54, walk: 95 },
   activityRec: "Lari santai 38 menit atau bersepeda 54 menit untuk membakar kalori sepiring tempe ini.",
-  insight: "Menu nabati padat protein kedelai fermentasi dan zat besi untuk memelihara kesehatan tubuh."
+  insight: "Menu nabati padat protein kedelai fermentasi dan zat besi untuk memelihara kesehatan tubuh.",
+  healthIndicator: getHealthIndicator(tNutr)
 };
 
 export const deterministicFoodEntries: UpgradedFoodEntry[] = [

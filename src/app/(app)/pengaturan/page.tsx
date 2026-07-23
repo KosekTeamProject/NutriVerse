@@ -8,7 +8,9 @@ export default function PengaturanPage() {
         <p className="mt-1 text-sm text-muted-foreground">Kelola profil, target, tampilan, notifikasi, dan privasi akunmu.</p>
       </div>
 
-      <SettingsPanel />
+      <div data-tour="settings-area">
+        <SettingsPanel />
+      </div>
     </div>
   );
 }

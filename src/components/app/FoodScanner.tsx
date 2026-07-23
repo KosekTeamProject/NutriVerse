@@ -285,9 +285,47 @@ export function FoodScanner({ onAdd }: { onAdd?: (entry: LoggedFood) => void }) 
               <p className="text-xs text-muted-foreground mt-0.5">Porsi: {portion}x {currentFood.portion} &middot; estimasi catatan AI</p>
             </div>
             <div className="flex flex-col items-end gap-1.5">
-              <span className={`pill text-[10px] font-bold uppercase ${toneClass[v.tone]}`}><Flame className="h-3.5 w-3.5" /> {v.label}</span>
+              <span className={`pill text-[10px] font-extrabold uppercase tracking-wider border px-2.5 py-1 ${result.healthIndicator.badgeClass}`}>
+                ● {result.healthIndicator.label}
+              </span>
               <NutritionTrustBadge trust={confirmedIdentity ? "confirmed" : "simulated"} />
-              <span className="pill border border-line bg-secondary text-[10px] font-bold text-muted-foreground">SCAN MAKANAN · 0 XP</span>
+            </div>
+          </div>
+
+          {/* Health Indicator & Reasons Card */}
+          <div className="rounded-2xl border border-brand/20 bg-gradient-to-br from-card to-brand-soft/20 p-4 space-y-3 shadow-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-brand uppercase tracking-wider">Health Indicator</span>
+              <span className={`pill text-[9px] font-bold ${result.healthIndicator.badgeClass}`}>
+                {result.healthIndicator.label}
+              </span>
+            </div>
+
+            {/* Reasons Chips */}
+            <div className="flex flex-wrap gap-1.5">
+              {result.healthIndicator.reasons.map((r, idx) => (
+                <span key={idx} className="pill bg-secondary text-foreground text-[10px] font-bold border border-line">
+                  ✓ {r}
+                </span>
+              ))}
+            </div>
+
+            {/* Educational Grid: Insight, Alternative, Portion */}
+            <div className="grid gap-2.5 sm:grid-cols-3 pt-2 text-xs">
+              <div className="rounded-xl border border-line bg-card p-3 space-y-1">
+                <p className="text-[10px] font-bold text-brand uppercase tracking-wider">Nutrition Insight</p>
+                <p className="text-muted-foreground leading-relaxed">{result.healthIndicator.nutritionInsight}</p>
+              </div>
+
+              <div className="rounded-xl border border-line bg-card p-3 space-y-1">
+                <p className="text-[10px] font-bold text-sky uppercase tracking-wider">Healthy Alternative</p>
+                <p className="text-muted-foreground leading-relaxed">{result.healthIndicator.healthyAlternative}</p>
+              </div>
+
+              <div className="rounded-xl border border-line bg-card p-3 space-y-1">
+                <p className="text-[10px] font-bold text-amber uppercase tracking-wider">Portion Advice</p>
+                <p className="text-muted-foreground leading-relaxed">{result.healthIndicator.portionAdvice}</p>
+              </div>
             </div>
           </div>
 

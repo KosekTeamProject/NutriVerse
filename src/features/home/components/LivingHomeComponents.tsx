@@ -15,30 +15,109 @@ import { JourneyRecord } from "../../journey/types";
 import { CompanionWeeklyLetter } from "../../companion/types";
 import { useCompanionName } from "@/hooks/useCompanionName";
 import { useAuthSession } from "@/hooks/useAuthSession";
+import { Sparkles } from "lucide-react";
+import { useMemo } from "react";
 
-// 1. LivingHomeHeader
-export function LivingHomeHeader({ traveler }: { traveler: DemoTraveler }) {
+// 1. DashboardHero (Replaces LivingHomeHeader and ProactiveNoraBanner)
+export function DashboardHero({ traveler }: { readonly traveler: DemoTraveler }) {
   const session = useAuthSession();
-  const displayName = session?.name ?? traveler.name;
+  const { displayName } = useCompanionName();
+  const userName = (session?.name ?? traveler.name).split(" ")[0];
+
+  const isReturningUser = useMemo(() => {
+    if (!session?.lastLoginTimestamp) return false;
+    const twoDaysMs = 2 * 24 * 60 * 60 * 1000;
+    return Date.now() - session.lastLoginTimestamp >= twoDaysMs;
+  }, [session]);
+
+  const getProactiveContent = () => {
+    if (isReturningUser) {
+      return {
+        title: `Aku sempat khawatir, ${userName}`,
+        message: `Senang melihat kamu kembali 😊 Mari kita mulai lagi dari satu tindakan kecil hari ini tanpa tekanan.`,
+        actionLabel: "Mulai Aktivitas GPS",
+        actionHref: "/aktivitas"
+      };
+    }
+
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) {
+      return {
+        title: `Selamat pagi, ${userName}`,
+        message: `Aku melihat hari ini cuaca cukup cerah. Bagaimana kalau kita mulai dengan jalan santai 15 menit?`,
+        actionLabel: "Mulai Jalan 15m",
+        actionHref: "/aktivitas"
+      };
+    } else if (hour >= 12 && hour < 17) {
+      return {
+        title: `Selamat siang, ${userName}`,
+        message: `Sudah pertengahan hari! Jangan lupa minum 2 gelas air dan selipkan regangan tubuh ringan ya.`,
+        actionLabel: "Catat Air Minum",
+        actionHref: "/todays-journey"
+      };
+    } else if (hour >= 17 && hour < 21) {
+      return {
+        title: `Selamat sore, ${userName}`,
+        message: `Waktu yang tepat untuk jalan santai sore atau merenggangkan otot setelah beraktivitas seharian.`,
+        actionLabel: "Mulai Aktivitas",
+        actionHref: "/aktivitas"
+      };
+    } else {
+      return {
+        title: `Selamat malam, ${userName}`,
+        message: `Istirahat yang cukup malam ini agar energi dan Health Pulse kamu kembali segar besok pagi.`,
+        actionLabel: "Lihat Jurnal Sehat",
+        actionHref: "/journey"
+      };
+    }
+  };
+
+  const content = getProactiveContent();
+
   return (
-    <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between border-b border-line/40 pb-5">
-      <div>
-        <h1 className="font-display text-2xl font-extrabold tracking-tight sm:text-3xl">
-          Halo, {displayName}!
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Tindakan kecil mulai menjadi bagian dari perjalanan Anda.
-        </p>
+    <section className="card relative min-w-0 overflow-hidden border-line/60 bg-card shadow-soft animate-fade-up group">
+      {/* Background Image for Desktop/Tablet */}
+      <div className="absolute inset-x-0 top-0 h-48 sm:h-auto sm:inset-y-0 sm:left-1/3 z-0 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-b sm:bg-gradient-to-r from-card via-card/70 to-transparent z-10" />
+        <img 
+          src="/images/dashboard-hero.png" 
+          alt="Aktivitas sehat pagi hari" 
+          className="h-full w-full object-cover object-[center_30%] opacity-50 sm:opacity-90 mix-blend-overlay sm:mix-blend-normal transition-transform duration-1000 group-hover:scale-105" 
+        />
       </div>
-      <div className="flex items-center gap-2.5 self-start md:self-center">
-        <span className="eyebrow bg-brand-soft/30 border-brand/20 text-brand">
-          <Calendar className="h-3.5 w-3.5" /> Hari ke-{traveler.journeyDay}
-        </span>
-        <span className="pill bg-amber/15 text-amber font-semibold">
-          <Flame className="h-3.5 w-3.5" /> Streak {traveler.currentStreak} Hari
-        </span>
+
+      <div className="relative z-20 flex flex-col gap-6 pt-24 pb-6 px-5 sm:p-8 sm:w-[70%]">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <span className="eyebrow bg-brand-soft border-brand/20 text-brand text-[10px] py-0.5 px-2.5 backdrop-blur-md">
+            Proaktif AI Companion &middot; {displayName}
+          </span>
+          <span className="pill bg-amber/15 text-amber text-[10px] font-bold shadow-sm backdrop-blur-md">
+            <Flame className="h-3 w-3" /> Streak {traveler.currentStreak} Hari
+          </span>
+          <span className="pill bg-secondary/80 text-foreground text-[10px] font-semibold backdrop-blur-md hidden sm:flex">
+            <Calendar className="h-3 w-3" /> Hari ke-{traveler.journeyDay}
+          </span>
+        </div>
+
+        <div className="space-y-2 max-w-lg">
+          <h1 className="font-display text-2xl font-extrabold tracking-tight sm:text-3xl text-foreground">
+            {content.title}
+          </h1>
+          <p className="text-sm sm:text-base leading-relaxed text-muted-foreground font-medium">
+            {content.message}
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3 pt-2">
+          <Link href={content.actionHref} className="btn btn-primary text-xs shadow-soft px-5 py-2.5">
+            {content.actionLabel} <ArrowRight className="h-4 w-4" />
+          </Link>
+          <Link href="/companion" className="btn btn-ghost text-xs bg-secondary/50 hover:bg-secondary border border-line/50 backdrop-blur-md px-5 py-2.5">
+            Tanya {displayName}
+          </Link>
+        </div>
       </div>
-    </div>
+    </section>
   );
 }
 

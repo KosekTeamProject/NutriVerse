@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import Link from "next/link";
 import { Sparkles, ArrowRight, ShieldCheck, HelpCircle, Calendar, MessageSquareHeart } from "lucide-react";
 import { CompanionInsight, CompanionWeeklyLetter } from "../types";
@@ -264,3 +265,4 @@ export function CompanionInsightFilters({ activeFilter, onFilterChange }: Compan
     </div>
   );
 }
+

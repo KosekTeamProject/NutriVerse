@@ -16,7 +16,9 @@ export default function ScanPage() {
         <p>Fitur ini <span className="font-semibold text-foreground">informatif</span> dan tidak menambah XP. Tujuannya membantumu sadar asupan lalu mengarahkan ke aktivitas fisik sebagai sumber XP.</p>
       </div>
 
-      <FoodLogger />
+      <div data-tour="scan-demo">
+        <FoodLogger />
+      </div>
     </div>
   );
 }
