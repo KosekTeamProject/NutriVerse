@@ -5,11 +5,13 @@ import {
   Play, Pause, Square, RotateCcw, Footprints, Bike, Timer, Gauge, Zap,
   TriangleAlert, ShieldCheck, MapPin, Save, Check, Navigation, Radio,
   Car, ClockAlert, Scale, Accessibility, MoonStar, MessageSquareText,
+  Download,
 } from "lucide-react";
 import {
   ACTIVITY, haversine, formatTime, paceMinPerKm, speedKmh, computeXp,
   applyDailyXpPolicy, XP_SAFETY_POLICY, type ActivityKind, type LatLng,
 } from "@/lib/activity";
+import { downloadActivityPng } from "@/features/activity/export-activity-png";
 
 type Status = "idle" | "tracking" | "paused" | "finished";
 
@@ -68,6 +70,8 @@ export function ActivityTracker() {
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [reviewRequested, setReviewRequested] = useState(false);
+  const [downloadingPng, setDownloadingPng] = useState(false);
+  const [pngDownloaded, setPngDownloaded] = useState(false);
 
   const watchId = useRef<number | null>(null);
   const timerId = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -157,7 +161,7 @@ export function ActivityTracker() {
 
   function startSim() {
     if (!sim.current) sim.current = { lat: -6.9147, lng: 107.6098, heading: Math.random() * Math.PI * 2 };
-    const mps = kindRef.current === "run" ? 2.8 : 6.0;
+    const mps = kindRef.current === "walk" ? 1.4 : kindRef.current === "run" ? 2.8 : 6.0;
     simId.current = setInterval(() => {
       const s = sim.current!;
       s.heading += (Math.random() - 0.5) * 0.4;
@@ -195,6 +199,7 @@ export function ActivityTracker() {
     setStatus("idle"); setDistance(0); setElapsed(0); setRoute([]); setRejected(0);
     setLocationJumps(0); setGpsQualityRejected(0); setSampleGaps(0); setTimestampIssues(0);
     setError(null); setSaved(false); setReviewRequested(false);
+    setDownloadingPng(false); setPngDownloaded(false);
     lastPoint.current = null; lastTs.current = null; sim.current = null;
   }
 
@@ -212,6 +217,31 @@ export function ActivityTracker() {
     { label: "Kualitas GPS", icon: Radio, issue: gpsQualityRejected >= 5, detail: `${gpsQualityRejected} sampel ditolak` },
     { label: "Kontinuitas data", icon: ClockAlert, issue: sampleGaps >= 2 || timestampIssues > 0, detail: `${sampleGaps + timestampIssues} masalah` },
   ];
+
+  async function handleDownloadPng() {
+    if (route.length < 2 || downloadingPng) return;
+    setDownloadingPng(true);
+    setError(null);
+    try {
+      await downloadActivityPng({
+        kind,
+        route,
+        distanceKm: km,
+        elapsedLabel: formatTime(elapsed),
+        paceLabel: paceMinPerKm(distance, elapsed),
+        speedKmh: spd,
+        estimatedXp: xp,
+        isSimulation: useSim,
+        needsReview: suspicious,
+      });
+      setPngDownloaded(true);
+      window.setTimeout(() => setPngDownloaded(false), 2_000);
+    } catch {
+      setError("Gagal membuat gambar aktivitas. Coba ulangi dari browser terbaru.");
+    } finally {
+      setDownloadingPng(false);
+    }
+  }
 
   return (
     <div className="card card-pad">
@@ -409,6 +439,15 @@ export function ActivityTracker() {
                 <MessageSquareText className="h-5 w-5" /> Ajukan peninjauan
               </button>
             ))}
+            <button
+              onClick={handleDownloadPng}
+              disabled={route.length < 2 || downloadingPng}
+              title={route.length < 2 ? "Rute belum memiliki cukup titik" : "Download ringkasan sebagai PNG"}
+              className="btn btn-outline btn-lg disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Download className="h-5 w-5" />
+              {downloadingPng ? "Membuat PNG..." : pngDownloaded ? "PNG Terunduh" : "Download Foto"}
+            </button>
             <button onClick={reset} className="btn btn-ghost btn-lg"><RotateCcw className="h-5 w-5" /> Aktivitas baru</button>
           </>
         )}

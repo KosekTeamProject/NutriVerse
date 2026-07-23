@@ -35,14 +35,20 @@ async function main() {
   });
 
   // 2. Seed Initial Challenge
-  const challenge1 = await prisma.challenge.create({
-    data: {
-      title: 'Tantangan Jalan 10.000 Langkah',
-      description: 'Capai total 10.000 langkah dalam seminggu untuk mendapatkan bonus XP dan HP.',
+  const challenge1 = await prisma.challenge.upsert({
+    where: { id: 'challenge-weekly-walk-10km' },
+    update: {},
+    create: {
+      id: 'challenge-weekly-walk-10km',
+      title: 'Tantangan Jalan 10 Kilometer',
+      description: 'Capai total 10 kilometer berjalan dalam seminggu untuk mendapatkan bonus XP dan HP.',
       type: 'WEEKLY',
+      category: 'MOBILITY',
       trustLevel: 'GPS_VERIFIED_ONLY',
+      metric: 'DISTANCE_METERS',
+      activityType: 'WALK',
       targetValue: 10000,
-      targetUnit: 'STEPS',
+      targetUnit: 'METERS',
       bonusXp: 500,
       bonusHp: 50,
       startDate: new Date(),

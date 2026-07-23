@@ -101,6 +101,7 @@ export default function OnboardingPage() {
   const [onboardingStep, setOnboardingStep] = useState<number>(0);
   const [showPassword, setShowPassword] = useState(false);
   const [provider, setProvider] = useState<"password" | "google">("password");
+  const [oauthError, setOauthError] = useState("");
 
   // Chat typing states for navigation delay
   const [noraTyping, setNoraTyping] = useState(false);
@@ -128,6 +129,48 @@ export default function OnboardingPage() {
   const [selectedFoods, setSelectedFoods] = useState<string[]>(["Salad & Sayuran", "Ayam & Daging Panggang"]);
   const [selectedActivities, setSelectedActivities] = useState<string[]>(["Jalan Santai", "Bersepeda"]);
   const [selectedWorkoutTime, setSelectedWorkoutTime] = useState<string>("Pagi Hari (06:00 - 09:00)");
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("oauth") !== "complete") return;
+
+    let cancelled = false;
+    fetch("/api/auth/session", { cache: "no-store" })
+      .then(async (response) => {
+        const result = (await response.json()) as {
+          success?: boolean;
+          user?: { name?: string; email?: string };
+          error?: string;
+        };
+        if (!response.ok || !result.success || !result.user?.email) {
+          throw new Error(result.error ?? "Session Google tidak dapat dibaca.");
+        }
+        if (cancelled) return;
+
+        setProvider("google");
+        setAccount({
+          name: result.user.name?.trim() || result.user.email.split("@")[0],
+          email: result.user.email,
+          password: "google-oauth-session",
+        });
+        window.history.replaceState(null, "", "/onboarding");
+        setNoraTyping(true);
+        setOnboardingStep(1);
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          setOauthError(
+            error instanceof Error
+              ? error.message
+              : "Login Google belum dapat diselesaikan.",
+          );
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Account form validation
   const accountValid = account.name.trim().length >= 2 && account.email.includes("@") && account.password.length >= 8;
@@ -161,9 +204,7 @@ export default function OnboardingPage() {
   }, [healthData, selectedGoal]);
 
   function handleGoogleLogin() {
-    setProvider("google");
-    setAccount({ name: "Fathan Mubarak", email: "fathan.mubarak@gmail.com", password: "google-oauth-demo" });
-    nextStep(1);
+    window.location.assign("/api/auth/google?next=/onboarding?oauth=complete");
   }
 
   function handleAccountSubmit(e: React.FormEvent) {
@@ -305,6 +346,11 @@ export default function OnboardingPage() {
               </div>
 
               {/* Google Register Button */}
+              {oauthError && (
+                <p className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                  {oauthError}
+                </p>
+              )}
               <button 
                 type="button" 
                 onClick={handleGoogleLogin} 

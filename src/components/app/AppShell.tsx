@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import NextImage from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { Activity, Bell, CalendarCheck, Flame, Gift, Heart, Home, LayoutDashboard, LogIn, LogOut, Menu, Moon, ScanLine, Settings, Sparkles, Sun, Trophy, UserRound, UsersRound, X } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuthSession } from "@/hooks/useAuthSession";
-import { clearAuthSession } from "@/features/auth/session";
+import { clearAuthSession, readAuthSession, saveAuthSession } from "@/features/auth/session";
 import { WellbeingReminder } from "@/components/app/WellbeingReminder";
 import { GlobalSearch } from "@/components/app/GlobalSearch";
 import { BrandLogo } from "@/components/brand/BrandLogo";
@@ -83,11 +83,64 @@ export function AppShell({ children }: { readonly children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
   const { dark, toggleTheme } = useTheme();
 
   const isPublicPage = pathname === "/onboarding" || pathname.startsWith("/bantuan");
 
+  useEffect(() => {
+    let cancelled = false;
+
+    fetch("/api/auth/session", { cache: "no-store" })
+      .then(async (response) => {
+        const result = (await response.json().catch(() => null)) as {
+          success?: boolean;
+          user?: {
+            name: string;
+            email: string;
+            avatarUrl?: string | null;
+          };
+        } | null;
+
+        if (cancelled) return;
+        const current = readAuthSession();
+        if (response.ok && result?.success && result.user) {
+          saveAuthSession({
+            ...current,
+            name: result.user.name,
+            email: result.user.email,
+            username: result.user.email.split("@")[0] || "nutriverse-user",
+            companionName: current?.companionName || "Nora",
+            avatarUrl: result.user.avatarUrl || current?.avatarUrl,
+            provider: "google",
+            createdAt: current?.createdAt || new Date().toISOString(),
+            lastLoginTimestamp: Date.now(),
+          });
+        } else if (current?.provider === "google") {
+          clearAuthSession();
+        }
+      })
+      .catch(() => {
+        // Keep the current UI state during transient development-server errors.
+      })
+      .finally(() => {
+        if (!cancelled) setAuthChecked(true);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   if (pathname === "/onboarding") return children;
+
+  if (!authChecked && !session && !isPublicPage) {
+    return (
+      <div className="grid min-h-screen place-items-center bg-background text-foreground">
+        <p className="text-sm font-semibold text-muted-foreground">Memeriksa sesi...</p>
+      </div>
+    );
+  }
 
   if (!session && !isPublicPage) {
     return (
@@ -105,7 +158,8 @@ export function AppShell({ children }: { readonly children: React.ReactNode }) {
   const initials = session?.name ? session.name.split(" ").filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase() : "";
   const companionName = session?.companionName || "Nora";
 
-  function logout() {
+  async function logout() {
+    await fetch("/api/auth/sign-out", { method: "POST" }).catch(() => null);
     clearAuthSession();
     setProfileOpen(false);
     setMobileOpen(false);

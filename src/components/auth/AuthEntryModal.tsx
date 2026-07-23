@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, Eye, EyeOff, LogIn, UserPlus, X } from "lucide-react";
-import { createDemoLogin, createGoogleDemoLogin, saveAuthSession } from "@/features/auth/session";
+import { createDemoLogin, saveAuthSession } from "@/features/auth/session";
 import { BrandLogo } from "@/components/brand/BrandLogo";
 
 type View = "choice" | "login";
@@ -27,9 +27,8 @@ export function AuthEntryModal({ open, onClose, initialView = "choice" }: { read
   }
 
   function loginWithGoogle() {
-    saveAuthSession(createGoogleDemoLogin());
     onClose();
-    router.push("/dashboard");
+    window.location.assign("/api/auth/google?next=/dashboard");
   }
 
   return (
@@ -91,7 +90,7 @@ export function AuthEntryModal({ open, onClose, initialView = "choice" }: { read
                 </div>
               </div>
               <button type="submit" className="btn btn-primary w-full">Masuk ke NutriVerse <ArrowRight className="h-4 w-4" /></button>
-              <p className="text-center text-[10px] leading-relaxed text-muted-foreground">Simulasi frontend: kata sandi tidak disimpan. Google OAuth memakai akun demo hingga Client ID dan backend autentikasi disambungkan.</p>
+              <p className="text-center text-[10px] leading-relaxed text-muted-foreground">Login Google menggunakan Supabase Auth. Login email masih dalam tahap penyambungan backend.</p>
             </form>
           )}
         </div>
