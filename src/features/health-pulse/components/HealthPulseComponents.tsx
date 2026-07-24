@@ -134,7 +134,7 @@ export function HealthPulseCard({
   const [animatedScore, setAnimatedScore] = useState(snapshot.previousScore);
 
   useEffect(() => {
-    let start = snapshot.previousScore;
+    const start = snapshot.previousScore;
     const target = snapshot.score;
     const duration = 1000; // 1s
     const startTime = performance.now();

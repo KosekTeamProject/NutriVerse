@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, Eye, EyeOff, LogIn, UserPlus, X } from "lucide-react";
-import { createDemoLogin, saveAuthSession } from "@/features/auth/session";
+import { saveAuthSession } from "@/features/auth/session";
 import { BrandLogo } from "@/components/brand/BrandLogo";
 
 type View = "choice" | "login";
@@ -12,18 +12,76 @@ type View = "choice" | "login";
 export function AuthEntryModal({ open, onClose, initialView = "choice" }: { readonly open: boolean; readonly onClose: () => void; readonly initialView?: View }) {
   const router = useRouter();
   const [view, setView] = useState<View>(initialView);
-  const [email, setEmail] = useState("fathan@nutriverse.id");
-  const [password, setPassword] = useState("demo1234");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
 
   if (!open) return null;
 
-  function login(event: React.FormEvent) {
+  async function login(event: React.FormEvent) {
     event.preventDefault();
-    if (!email.trim() || !password.trim()) return;
-    saveAuthSession(createDemoLogin(email.trim()));
-    onClose();
-    router.push("/dashboard");
+    if (!email.trim() || password.length < 8 || pending) return;
+    setPending(true);
+    setError("");
+    setNotice("");
+    try {
+      const response = await fetch("/api/auth/sign-in", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), password }),
+      });
+      const result = (await response.json()) as {
+        success?: boolean;
+        error?: string;
+        user?: { name: string; email: string; avatarUrl?: string | null };
+      };
+      if (!response.ok || !result.success || !result.user) {
+        throw new Error(result.error || "Login gagal.");
+      }
+      saveAuthSession({
+        name: result.user.name,
+        email: result.user.email,
+        username: result.user.email.split("@")[0] || "nutriverse-user",
+        companionName: "Nora",
+        avatarUrl: result.user.avatarUrl || undefined,
+        provider: "password",
+        createdAt: new Date().toISOString(),
+        lastLoginTimestamp: Date.now(),
+      });
+      onClose();
+      router.push("/dashboard");
+      router.refresh();
+    } catch (loginError) {
+      setError(loginError instanceof Error ? loginError.message : "Login gagal.");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function forgotPassword() {
+    if (!email.includes("@") || pending) {
+      setError("Isi alamat email terlebih dahulu.");
+      return;
+    }
+    setPending(true);
+    setError("");
+    try {
+      const response = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const result = (await response.json()) as { message?: string; error?: string };
+      if (!response.ok) throw new Error(result.error || "Permintaan gagal.");
+      setNotice(result.message || "Tautan pemulihan telah dikirim.");
+    } catch (forgotError) {
+      setError(forgotError instanceof Error ? forgotError.message : "Permintaan gagal.");
+    } finally {
+      setPending(false);
+    }
   }
 
   function loginWithGoogle() {
@@ -71,7 +129,7 @@ export function AuthEntryModal({ open, onClose, initialView = "choice" }: { read
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand">Mode Login</p>
                 <h2 id="auth-title" className="mt-2 font-display text-2xl font-extrabold text-foreground">Selamat datang kembali</h2>
-                <p className="mt-1 text-sm text-muted-foreground">Gunakan akun demo untuk melihat sinkronisasi pengalaman login.</p>
+                <p className="mt-1 text-sm text-muted-foreground">Masuk menggunakan akun Supabase yang sudah terdaftar.</p>
               </div>
               <button type="button" onClick={loginWithGoogle} className="flex w-full items-center justify-center gap-3 rounded-xl border border-line bg-card px-4 py-3 text-sm font-bold text-foreground shadow-sm transition hover:border-brand/35 hover:bg-secondary">
                 <span className="grid h-6 w-6 place-items-center rounded-full bg-white font-sans text-sm font-black text-[#4285F4] shadow-sm">G</span>
@@ -88,9 +146,16 @@ export function AuthEntryModal({ open, onClose, initialView = "choice" }: { read
                   <input id="login-password" type={showPassword ? "text" : "password"} value={password} onChange={(event) => setPassword(event.target.value)} className="input pr-11" required />
                   <button type="button" onClick={() => setShowPassword((value) => !value)} className="absolute right-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-lg text-muted-foreground hover:bg-secondary" aria-label={showPassword ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"}>{showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>
                 </div>
+                <button type="button" onClick={forgotPassword} className="mt-2 text-xs font-bold text-brand hover:underline">
+                  Lupa kata sandi?
+                </button>
               </div>
-              <button type="submit" className="btn btn-primary w-full">Masuk ke NutriVerse <ArrowRight className="h-4 w-4" /></button>
-              <p className="text-center text-[10px] leading-relaxed text-muted-foreground">Login Google menggunakan Supabase Auth. Login email masih dalam tahap penyambungan backend.</p>
+              {error && <p className="rounded-xl bg-destructive/10 p-3 text-xs text-destructive">{error}</p>}
+              {notice && <p className="rounded-xl bg-brand-soft p-3 text-xs text-brand">{notice}</p>}
+              <button type="submit" disabled={pending} className="btn btn-primary w-full disabled:opacity-60">
+                {pending ? "Memproses..." : "Masuk ke NutriVerse"} <ArrowRight className="h-4 w-4" />
+              </button>
+              <p className="text-center text-[10px] leading-relaxed text-muted-foreground">Login Google dan email diproses oleh Supabase Auth menggunakan cookie aman.</p>
             </form>
           )}
         </div>

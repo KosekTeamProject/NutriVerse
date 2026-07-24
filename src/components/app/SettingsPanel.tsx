@@ -28,6 +28,18 @@ import {
   type BreakReminderPreference,
 } from "@/components/app/WellbeingReminder";
 import { useAuthSession } from "@/hooks/useAuthSession";
+import { updateAuthSession } from "@/features/auth/session";
+
+type ProfileDraft = {
+  name: string;
+  username: string;
+  bio: string;
+};
+
+type ProfileFeedback = {
+  tone: "success" | "error";
+  message: string;
+};
 
 function Switch({ on, onToggle, ariaLabel }: { readonly on: boolean; readonly onToggle: () => void; readonly ariaLabel: string }) {
   return (
@@ -101,6 +113,13 @@ export function SettingsPanel() {
   const session = useAuthSession();
   const { dark, toggleTheme } = useTheme();
   const companionName = useCompanionName();
+  const [profileDraft, setProfileDraft] = useState<ProfileDraft>({
+    name: session?.name ?? "",
+    username: session?.username ?? "",
+    bio: "",
+  });
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileFeedback, setProfileFeedback] = useState<ProfileFeedback | null>(null);
   
   // Local state toggles (MVP simulations)
   const [notif, setNotif] = useState({ aktivitas: true, leaderboard: true, sosial: false });
@@ -128,6 +147,35 @@ export function SettingsPanel() {
   const [breakReminder, setBreakReminder] = useState<BreakReminderPreference>({ enabled: false, intervalMinutes: 60 });
 
   useEffect(() => {
+    if (!session?.email) return;
+    let cancelled = false;
+
+    fetch("/api/profile", { cache: "no-store" })
+      .then(async (response) => {
+        const result = (await response.json().catch(() => null)) as {
+          profile?: {
+            name: string;
+            username: string | null;
+            bio: string | null;
+          };
+        } | null;
+        if (!response.ok || !result?.profile || cancelled) return;
+        setProfileDraft({
+          name: result.profile.name,
+          username: result.profile.username ?? session.username,
+          bio: result.profile.bio ?? "",
+        });
+      })
+      .catch(() => {
+        // Data session tetap dapat dipakai jika profil belum dapat dimuat.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.email, session?.name, session?.username]);
+
+  useEffect(() => {
     const timer = window.setTimeout(() => {
       try {
         const saved = window.localStorage.getItem(BREAK_REMINDER_KEY);
@@ -145,25 +193,134 @@ export function SettingsPanel() {
     window.dispatchEvent(new Event(BREAK_REMINDER_EVENT));
   }
 
+  async function saveProfile() {
+    const name = profileDraft.name.trim();
+    const username = profileDraft.username.trim().toLowerCase();
+    const bio = profileDraft.bio.trim();
+
+    if (name.length < 2) {
+      setProfileFeedback({ tone: "error", message: "Nama minimal 2 karakter." });
+      return;
+    }
+    if (!/^[a-z0-9._-]{3,30}$/.test(username)) {
+      setProfileFeedback({
+        tone: "error",
+        message:
+          "Username 3-30 karakter dan hanya boleh memakai huruf, angka, titik, garis bawah, atau tanda hubung.",
+      });
+      return;
+    }
+
+    setProfileSaving(true);
+    setProfileFeedback(null);
+    try {
+      const response = await fetch("/api/profile", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ name, username, bio }),
+      });
+      const result = (await response.json().catch(() => null)) as {
+        profile?: { name: string; username: string | null; bio: string | null };
+        error?: string;
+      } | null;
+      if (!response.ok || !result?.profile) {
+        throw new Error(result?.error || "Profil belum dapat diperbarui.");
+      }
+
+      const savedProfile = {
+        name: result.profile.name,
+        username: result.profile.username ?? username,
+        bio: result.profile.bio ?? "",
+      };
+      setProfileDraft(savedProfile);
+      updateAuthSession({
+        name: savedProfile.name,
+        username: savedProfile.username,
+      });
+      setProfileFeedback({
+        tone: "success",
+        message: "Nama, username, dan bio berhasil disimpan.",
+      });
+    } catch (error) {
+      setProfileFeedback({
+        tone: "error",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Profil belum dapat diperbarui.",
+      });
+    } finally {
+      setProfileSaving(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* 1. Profile section */}
       <SectionCard icon={User} title="Profil">
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label className="label text-xs font-bold uppercase text-muted-foreground">Nama Lengkap</label>
-            <input className="input mt-1.5" defaultValue={session?.name ?? "Fathan Mubarak"} />
+            <label htmlFor="settings-profile-name" className="label text-xs font-bold uppercase text-muted-foreground">Nama Lengkap</label>
+            <input
+              id="settings-profile-name"
+              className="input mt-1.5"
+              value={profileDraft.name}
+              onChange={(event) => {
+                setProfileDraft((current) => ({ ...current, name: event.target.value }));
+                setProfileFeedback(null);
+              }}
+              autoComplete="name"
+              maxLength={100}
+            />
           </div>
           <div>
-            <label className="label text-xs font-bold uppercase text-muted-foreground">Username</label>
-            <input className="input mt-1.5" defaultValue={session?.username ?? "fathan.mubarak"} />
+            <label htmlFor="settings-profile-username" className="label text-xs font-bold uppercase text-muted-foreground">Username</label>
+            <input
+              id="settings-profile-username"
+              className="input mt-1.5"
+              value={profileDraft.username}
+              onChange={(event) => {
+                setProfileDraft((current) => ({ ...current, username: event.target.value }));
+                setProfileFeedback(null);
+              }}
+              autoCapitalize="none"
+              autoComplete="username"
+              minLength={3}
+              maxLength={30}
+            />
           </div>
           <div className="sm:col-span-2">
-            <label className="label text-xs font-bold uppercase text-muted-foreground">Bio</label>
-            <input className="input mt-1.5" defaultValue="Membangun kebiasaan sehat melalui langkah kecil yang konsisten." />
+            <label htmlFor="settings-profile-bio" className="label text-xs font-bold uppercase text-muted-foreground">Bio</label>
+            <input
+              id="settings-profile-bio"
+              className="input mt-1.5"
+              value={profileDraft.bio}
+              onChange={(event) => {
+                setProfileDraft((current) => ({ ...current, bio: event.target.value }));
+                setProfileFeedback(null);
+              }}
+              maxLength={300}
+            />
           </div>
         </div>
-        <SaveButton />
+        <button
+          type="button"
+          onClick={saveProfile}
+          disabled={profileSaving}
+          className="btn btn-primary btn-sm mt-4 font-bold disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {profileSaving ? "Menyimpan..." : <><Check className="h-4 w-4" /> Simpan Perubahan</>}
+        </button>
+        {profileFeedback && (
+          <p
+            className={`mt-2 text-xs font-semibold ${
+              profileFeedback.tone === "success" ? "text-brand" : "text-destructive"
+            }`}
+            role={profileFeedback.tone === "error" ? "alert" : "status"}
+          >
+            {profileFeedback.message}
+          </p>
+        )}
       </SectionCard>
 
       {/* 2. Target harian section */}

@@ -16,7 +16,7 @@ import {
   challengeContributionAmount,
 } from "@/server/challenges/challenge-policy";
 
-export async function applyVerifiedActivityToChallenges(activitySessionId: string) {
+async function runApplyVerifiedActivityToChallenges(activitySessionId: string) {
   return prisma.$transaction(
     async (transaction) => {
       const activity = await transaction.activitySession.findUnique({
@@ -110,8 +110,30 @@ export async function applyVerifiedActivityToChallenges(activitySessionId: strin
       }
       return results;
     },
-    { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    {
+      isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+      maxWait: 10_000,
+      timeout: 20_000,
+    },
   );
+}
+
+export async function applyVerifiedActivityToChallenges(activitySessionId: string) {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      return await runApplyVerifiedActivityToChallenges(activitySessionId);
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        (error.code === "P2002" || error.code === "P2034") &&
+        attempt < 2
+      ) {
+        continue;
+      }
+      throw error;
+    }
+  }
+  throw new Error("CHALLENGE_TRANSACTION_RETRY_EXHAUSTED");
 }
 
 export async function claimChallengeReward(challengeProgressId: string) {
@@ -223,6 +245,10 @@ export async function claimChallengeReward(challengeProgressId: string) {
 
       return { xpGrant, hpEntry, economy, idempotentReplay: false as const };
     },
-    { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    {
+      isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+      maxWait: 10_000,
+      timeout: 20_000,
+    },
   );
 }

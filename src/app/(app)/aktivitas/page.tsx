@@ -5,10 +5,18 @@ import { GpsConsent } from "@/components/app/GpsConsent";
 import { getPrimaryCompanionInsight } from "@/features/companion/helpers";
 import { CompanionCard } from "@/features/companion/components/CompanionComponents";
 import { getVerificationStatusLabel } from "@/features/activity/helpers";
-import { deterministicActivities } from "@/lib/activity";
+import { requireCurrentUser } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
-export default function AktivitasPage() {
+export default async function AktivitasPage() {
   const activityReflection = getPrimaryCompanionInsight("activity");
+  const user = await requireCurrentUser();
+  const activities = await prisma.activitySession.findMany({
+    where: { userId: user.id },
+    include: { verificationResult: true, xpGrants: true },
+    orderBy: { startTime: "desc" },
+    take: 20,
+  });
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
@@ -50,19 +58,22 @@ export default function AktivitasPage() {
       <div className="card card-pad">
         <div className="flex items-center justify-between pb-3 border-b border-line/40 mb-4">
           <h2 className="font-display text-lg font-bold">Riwayat aktivitas</h2>
-          <span className="chip"><Database className="h-3.5 w-3.5" /> Data Demo</span>
+          <span className="chip"><Database className="h-3.5 w-3.5" /> Database</span>
         </div>
         <div className="space-y-3">
-          {deterministicActivities.map((act) => {
-            const Icon = act.type === "walk" ? Footprints : act.type === "run" ? Footprints : Bike;
-            const xp = Math.floor(act.distanceKm * (act.type === "walk" ? 60 : act.type === "run" ? 100 : 45));
+          {!activities.length && <p className="text-sm text-muted-foreground">Belum ada aktivitas tersimpan.</p>}
+          {activities.map((act) => {
+            const kind = act.activityType === "WALK" ? "walk" : act.activityType === "RUN" ? "run" : "bike";
+            const Icon = kind === "bike" ? Bike : Footprints;
+            const xp = act.xpGrants.reduce((total, grant) => total + grant.amount, 0);
+            const status = act.verificationStatus.toLowerCase().replaceAll("_", "-");
             const statusColors = {
               verified: "bg-brand-soft text-brand border-brand/20",
               "needs-review": "bg-amber/10 text-amber border-amber/20",
               "not-verified": "bg-secondary text-muted-foreground border-line",
               pending: "bg-secondary text-muted-foreground border-line",
               "manual-review": "bg-amber/10 text-amber border-line"
-            }[act.verification?.status || "verified"];
+            }[status] ?? "bg-secondary text-muted-foreground border-line";
 
             return (
               <div key={act.id} className="flex items-center gap-4 rounded-2xl border border-line p-3.5 hover:border-brand/40 transition">
@@ -72,18 +83,16 @@ export default function AktivitasPage() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <Link href={`/aktivitas/${act.id}`} className="text-sm font-bold hover:text-brand transition truncate">
-                      {act.title} {act.distanceKm.toFixed(2)} km
+                      {act.activityType === "WALK" ? "Jalan Kaki" : act.activityType === "RUN" ? "Lari" : "Bersepeda"} {(act.distanceMeters / 1000).toFixed(2)} km
                     </Link>
-                    {act.verification && (
-                      <span className={`pill text-[8px] font-bold uppercase py-0 ${statusColors}`}>
-                        {getVerificationStatusLabel(act.verification.status)}
-                      </span>
-                    )}
+                    <span className={`pill text-[8px] font-bold uppercase py-0 ${statusColors}`}>
+                      {getVerificationStatusLabel(status)}
+                    </span>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-0.5">Sumber: dataset demo &middot; {act.type} &middot; {formatDuration(act.durationSeconds)}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Sumber: {act.isSimulated ? "simulasi" : "GPS"} &middot; {kind} &middot; {formatDuration(act.durationSeconds)}</p>
                 </div>
                 <div className="text-right">
-                  <span className="pill bg-amber/15 text-amber text-xs font-bold">+{xp} XP potensial</span>
+                  <span className="pill bg-amber/15 text-amber text-xs font-bold">+{xp} XP</span>
                 </div>
               </div>
             );

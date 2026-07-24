@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Play, Pause, Square, RotateCcw, Footprints, Bike, Timer, Gauge, Zap,
   TriangleAlert, ShieldCheck, MapPin, Save, Check, Navigation, Radio,
@@ -14,6 +15,14 @@ import {
 import { downloadActivityPng } from "@/features/activity/export-activity-png";
 
 type Status = "idle" | "tracking" | "paused" | "finished";
+type TelemetryPoint = {
+  sequenceNumber: number;
+  timestamp: string;
+  latitude: number;
+  longitude: number;
+  accuracy: number | null;
+  speed: number | null;
+};
 
 const DEMO_XP_EARNED_TODAY = 120;
 const MAX_SESSION_SECONDS = 4 * 60 * 60;
@@ -56,6 +65,7 @@ function RoutePath({ points }: { points: LatLng[] }) {
 }
 
 export function ActivityTracker() {
+  const router = useRouter();
   const [kind, setKind] = useState<ActivityKind>("run");
   const [status, setStatus] = useState<Status>("idle");
   const [useSim, setUseSim] = useState(false);
@@ -69,6 +79,8 @@ export function ActivityTracker() {
   const [timestampIssues, setTimestampIssues] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [serverAwardXp, setServerAwardXp] = useState<number | null>(null);
   const [reviewRequested, setReviewRequested] = useState(false);
   const [downloadingPng, setDownloadingPng] = useState(false);
   const [pngDownloaded, setPngDownloaded] = useState(false);
@@ -79,6 +91,8 @@ export function ActivityTracker() {
   const lastPoint = useRef<LatLng | null>(null);
   const lastTs = useRef<number | null>(null);
   const sim = useRef<{ lat: number; lng: number; heading: number } | null>(null);
+  const telemetry = useRef<TelemetryPoint[]>([]);
+  const sessionStartedAt = useRef<Date | null>(null);
   const kindRef = useRef<ActivityKind>(kind);
   kindRef.current = kind;
 
@@ -93,7 +107,15 @@ export function ActivityTracker() {
     if (simId.current) { clearInterval(simId.current); simId.current = null; }
   }
 
-  function ingest(p: LatLng, ts: number, accuracy?: number) {
+  function ingest(p: LatLng, ts: number, accuracy?: number, reportedSpeed?: number | null) {
+    telemetry.current.push({
+      sequenceNumber: telemetry.current.length,
+      timestamp: new Date(ts).toISOString(),
+      latitude: p.lat,
+      longitude: p.lng,
+      accuracy: typeof accuracy === "number" ? accuracy : null,
+      speed: typeof reportedSpeed === "number" ? reportedSpeed : null,
+    });
     const cfg = ACTIVITY[kindRef.current];
     const prev = lastPoint.current;
 
@@ -147,7 +169,8 @@ export function ActivityTracker() {
       (pos) => ingest(
         { lat: pos.coords.latitude, lng: pos.coords.longitude },
         pos.timestamp,
-        pos.coords.accuracy
+        pos.coords.accuracy,
+        pos.coords.speed,
       ),
       (err) => {
         if (err.code === err.PERMISSION_DENIED)
@@ -177,6 +200,8 @@ export function ActivityTracker() {
     setDistance(0); setElapsed(0); setRoute([]); setRejected(0);
     setLocationJumps(0); setGpsQualityRejected(0); setSampleGaps(0); setTimestampIssues(0);
     lastPoint.current = null; lastTs.current = null; sim.current = null;
+    telemetry.current = [];
+    sessionStartedAt.current = new Date();
     if (useSim) startSim();
     else if (!startReal()) return;
     startTimer();
@@ -200,7 +225,9 @@ export function ActivityTracker() {
     setLocationJumps(0); setGpsQualityRejected(0); setSampleGaps(0); setTimestampIssues(0);
     setError(null); setSaved(false); setReviewRequested(false);
     setDownloadingPng(false); setPngDownloaded(false);
+    setSaving(false); setServerAwardXp(null);
     lastPoint.current = null; lastTs.current = null; sim.current = null;
+    telemetry.current = []; sessionStartedAt.current = null;
   }
 
   const durationTooLong = elapsed > MAX_SESSION_SECONDS;
@@ -240,6 +267,71 @@ export function ActivityTracker() {
       setError("Gagal membuat gambar aktivitas. Coba ulangi dari browser terbaru.");
     } finally {
       setDownloadingPng(false);
+    }
+  }
+
+  async function saveActivity() {
+    if (saving || saved || !sessionStartedAt.current) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const startResponse = await fetch("/api/activities/start", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          activityType: kind === "walk" ? "WALK" : kind === "run" ? "RUN" : "CYCLED",
+          startTime: sessionStartedAt.current.toISOString(),
+          isSimulated: useSim,
+          clientSessionId: crypto.randomUUID(),
+        }),
+      });
+      const startResult = (await startResponse.json()) as {
+        success?: boolean;
+        error?: string;
+        session?: { id: string };
+      };
+      if (!startResponse.ok || !startResult.session) {
+        throw new Error(startResult.error || "Aktivitas tidak dapat dibuat.");
+      }
+
+      for (let offset = 0; offset < telemetry.current.length; offset += 500) {
+        const telemetryResponse = await fetch(
+          `/api/activities/${startResult.session.id}/telemetry`,
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ samples: telemetry.current.slice(offset, offset + 500) }),
+          },
+        );
+        const telemetryResult = (await telemetryResponse.json()) as { error?: string };
+        if (!telemetryResponse.ok) {
+          throw new Error(telemetryResult.error || "Telemetry gagal dikirim.");
+        }
+      }
+
+      const finishResponse = await fetch(
+        `/api/activities/${startResult.session.id}/finish`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ endTime: new Date().toISOString() }),
+        },
+      );
+      const finishResult = (await finishResponse.json()) as {
+        success?: boolean;
+        error?: string;
+        reward?: { xpGrant?: { amount?: number } } | null;
+      };
+      if (!finishResponse.ok || !finishResult.success) {
+        throw new Error(finishResult.error || "Aktivitas gagal diselesaikan.");
+      }
+      setServerAwardXp(finishResult.reward?.xpGrant?.amount ?? 0);
+      setSaved(true);
+      router.refresh();
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : "Aktivitas belum dapat disimpan.");
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -428,8 +520,8 @@ export function ActivityTracker() {
             {saved ? (
               <span className="btn bg-brand-soft text-brand"><Check className="h-5 w-5" /> {suspicious ? "Riwayat pribadi tersimpan" : "Tersimpan (demo)"}</span>
             ) : (
-              <button onClick={() => setSaved(true)} className="btn btn-primary btn-lg">
-                <Save className="h-5 w-5" /> {suspicious ? "Simpan sebagai riwayat pribadi" : `Simpan (Estimasi +${xp} XP)`}
+              <button onClick={saveActivity} disabled={saving} className="btn btn-primary btn-lg disabled:opacity-60">
+                <Save className="h-5 w-5" /> {saving ? "Mengirim..." : suspicious ? "Simpan sebagai riwayat pribadi" : `Simpan (Estimasi +${xp} XP)`}
               </button>
             )}
             {suspicious && (reviewRequested ? (
@@ -457,7 +549,9 @@ export function ActivityTracker() {
         <p className="mt-4 text-center text-xs text-muted-foreground leading-normal">
           {suspicious
             ? "Sesi tetap dapat disimpan sebagai riwayat pribadi, tetapi belum memberi XP sampai peninjauan selesai."
-            : `Kerja bagus. Kamu menempuh ${km.toFixed(2)} km. Estimasi setelah pengaman harian: ${xp} XP.`}
+            : saved && serverAwardXp !== null
+              ? `Aktivitas tersimpan. Reward server: ${serverAwardXp} XP.`
+              : `Kerja bagus. Kamu menempuh ${km.toFixed(2)} km. Estimasi setelah pengaman harian: ${xp} XP.`}
         </p>
       )}
 

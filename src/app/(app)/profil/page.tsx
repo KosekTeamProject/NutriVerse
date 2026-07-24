@@ -199,13 +199,20 @@ export default function ProfilPage() {
     return () => clearInterval(interval);
   }, []);
 
-  function saveCompanionName() {
+  async function saveCompanionName() {
     if (companionDraftValue.trim().length < 2) return;
-    companionName.setDisplayName(companionDraftValue);
-    updateAuthSession({ companionName: companionDraftValue.trim() });
-    setCompanionDraft(null);
-    setCompanionSaved(true);
-    window.setTimeout(() => setCompanionSaved(false), 1800);
+    const response = await fetch("/api/profile", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ companionName: companionDraftValue.trim() }),
+    });
+    if (response.ok) {
+      companionName.setDisplayName(companionDraftValue);
+      updateAuthSession({ companionName: companionDraftValue.trim() });
+      setCompanionDraft(null);
+      setCompanionSaved(true);
+      window.setTimeout(() => setCompanionSaved(false), 1800);
+    }
   }
 
   function resetCompanionName() {
@@ -236,7 +243,26 @@ export default function ProfilPage() {
     setImageSaving(true);
     try {
       const imageUrl = await renderProfileImage(imageEditor);
-      updateAuthSession(imageEditor.field === "avatarUrl" ? { avatarUrl: imageUrl } : { coverUrl: imageUrl });
+      if (imageEditor.field === "avatarUrl") {
+        const imageBlob = await fetch(imageUrl).then((response) => response.blob());
+        const form = new FormData();
+        form.set("bucket", "avatars");
+        form.set("file", new File([imageBlob], imageEditor.filename, { type: imageBlob.type || "image/png" }));
+        const uploadResponse = await fetch("/api/storage/upload", { method: "POST", body: form });
+        const uploadResult = (await uploadResponse.json()) as { publicUrl?: string; error?: string };
+        if (!uploadResponse.ok || !uploadResult.publicUrl) {
+          throw new Error(uploadResult.error || "Upload avatar gagal.");
+        }
+        const profileResponse = await fetch("/api/profile", {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ avatarUrl: uploadResult.publicUrl }),
+        });
+        if (!profileResponse.ok) throw new Error("Profil belum dapat diperbarui.");
+        updateAuthSession({ avatarUrl: uploadResult.publicUrl });
+      } else {
+        updateAuthSession({ coverUrl: imageUrl });
+      }
       setImageFeedback(imageEditor.field === "avatarUrl" ? "Foto profil berhasil diperbarui." : "Latar profil berhasil diperbarui.");
       setImageEditor(null);
     } catch {

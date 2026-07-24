@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { bootstrapUser } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { requestOrigin, safeRedirectPath } from "@/server/auth/oauth";
+import { prisma } from "@/lib/prisma";
 
 export async function GET(request: NextRequest) {
   const origin = requestOrigin(request);
@@ -23,7 +24,14 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    await bootstrapUser(data.user);
+    const user = await bootstrapUser(data.user);
+    const profile = await prisma.healthProfile.findUnique({
+      where: { userId: user.id },
+      select: { onboardingCompleted: true },
+    });
+    if (!profile?.onboardingCompleted && next === "/dashboard") {
+      return NextResponse.redirect(new URL("/onboarding?oauth=complete", origin));
+    }
   } catch (error) {
     console.error("Failed to synchronize the Supabase user profile.", error);
     await supabase.auth.signOut();

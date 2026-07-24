@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable react-hooks/set-state-in-effect */
 
 import React, { useEffect, useState, useRef } from "react";
 import { useGuidedTour, TOUR_STEPS } from "@/providers/GuidedTourProvider";

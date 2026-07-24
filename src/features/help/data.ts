@@ -11,14 +11,15 @@ import {
   Gift, 
   Settings, 
   ShieldCheck, 
-  Bell 
+  Bell,
+  type LucideIcon,
 } from "lucide-react";
 
 export type HelpCategory = {
   id: string;
   title: string;
   description: string;
-  icon: any;
+  icon: LucideIcon;
   articleCount: number;
 };
 

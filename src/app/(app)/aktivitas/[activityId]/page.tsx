@@ -9,10 +9,12 @@ import {
   AlertTriangle,
   Compass
 } from "lucide-react";
-import { getActivitySummaryById, ACTIVITY, formatTime, computeXp } from "@/lib/activity";
+import { getActivitySummaryById, ACTIVITY, formatTime, computeXp, type ActivityRiskSignal, type UpgradedActivitySummary } from "@/lib/activity";
 import { ActivityVerificationCard } from "@/features/activity/components/ActivityVerificationComponents";
 import { companionInsights } from "@/features/companion/data";
 import { CompanionGuidanceSection } from "@/features/companion/components/CompanionGuidanceSection";
+import { requireCurrentUser } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
 interface ActivityDetailPageProps {
   readonly params: Promise<{ readonly activityId: string }>;
@@ -20,7 +22,72 @@ interface ActivityDetailPageProps {
 
 export default async function ActivityDetailPage({ params }: ActivityDetailPageProps) {
   const { activityId } = await params;
-  const activity = getActivitySummaryById(activityId);
+  let activity = getActivitySummaryById(activityId);
+
+  if (!activity) {
+    const user = await requireCurrentUser();
+    const stored = await prisma.activitySession.findFirst({
+      where: { id: activityId, userId: user.id },
+      include: { verificationResult: true },
+    });
+    if (stored) {
+      const type = stored.activityType === "WALK" ? "walk" : stored.activityType === "RUN" ? "run" : "bike";
+      const verification = stored.verificationResult;
+      const paceMinutes = Math.floor(stored.averagePace / 60);
+      const paceSeconds = Math.floor(stored.averagePace % 60);
+      const status = stored.verificationStatus.toLowerCase().replaceAll("_", "-") as "pending" | "verified" | "needs-review" | "not-verified" | "manual-review";
+      activity = {
+        id: stored.id,
+        travelerId: user.id,
+        type,
+        title: stored.activityType === "WALK" ? "Jalan Kaki" : stored.activityType === "RUN" ? "Lari" : "Bersepeda",
+        startedAt: stored.startTime.toISOString(),
+        endedAt: (stored.endTime ?? stored.startTime).toISOString(),
+        durationSeconds: stored.durationSeconds,
+        activeDurationSeconds: verification?.trustedDurationSeconds ?? stored.durationSeconds,
+        pausedDurationSeconds: Math.max(0, stored.durationSeconds - (verification?.trustedDurationSeconds ?? stored.durationSeconds)),
+        distanceKm: stored.distanceMeters / 1000,
+        averagePace: `${paceMinutes}:${String(paceSeconds).padStart(2, "0")}`,
+        averageSpeedKmh: stored.durationSeconds > 0 ? (stored.distanceMeters / 1000) / (stored.durationSeconds / 3600) : 0,
+        status: "completed",
+        sourceMode: stored.isSimulated ? "simulation" : "live-gps",
+        personalRecordAllowed: true,
+        isSimulation: stored.isSimulated,
+        version: "1.0.0",
+        verification: verification ? {
+          activityId: stored.id,
+          status,
+          riskLevel: verification.riskScore >= 80 ? "critical" : verification.riskScore >= 50 ? "high" : verification.riskScore >= 20 ? "medium" : verification.riskScore > 0 ? "low" : "none",
+          signals: verification.reasonCodes.map((code) => code.toLowerCase().replaceAll("_", "-") as ActivityRiskSignal),
+          recommendation: status === "verified" ? "accept" : status.includes("review") ? "review" : "keep-personal-record",
+          samples: {
+            sampleCount: verification.sampleCount,
+            acceptedSampleCount: verification.acceptedSampleCount,
+            excludedSampleCount: verification.discardedSampleCount,
+            activeDurationSeconds: verification.trustedDurationSeconds,
+            pausedDurationSeconds: Math.max(0, stored.durationSeconds - verification.trustedDurationSeconds),
+            calculatedDistanceKm: verification.trustedDistanceMeters / 1000,
+            averageAccuracyMeters: 0,
+            largestSampleGapSeconds: verification.largestSampleGapSeconds,
+            locationDataAvailable: verification.sampleCount > 0,
+          },
+          eligibility: {
+            eligible: status === "verified",
+            xpEligible: status === "verified",
+            hpEligible: status === "verified",
+            challengeEligible: status === "verified",
+            journeyEligible: true,
+            healthyDayEligible: status === "verified",
+            healthPulseEligible: status === "verified",
+            reason: status === "verified" ? "Aktivitas lolos pemeriksaan server." : "Aktivitas disimpan sebagai riwayat pribadi.",
+          },
+          explanation: verification.reasonCodes.length
+            ? `Pemeriksaan server: ${verification.reasonCodes.join(", ")}.`
+            : "Aktivitas lolos seluruh pemeriksaan server.",
+        } : undefined,
+      } satisfies UpgradedActivitySummary;
+    }
+  }
 
   if (!activity) {
     notFound();
@@ -126,7 +193,7 @@ export default async function ActivityDetailPage({ params }: ActivityDetailPageP
       <div className="flex items-start gap-2.5 rounded-2xl bg-secondary/50 p-4 text-[10px] text-muted-foreground border border-line/30">
         <AlertTriangle className="h-4 w-4 shrink-0 text-muted-foreground mt-0.5" />
         <p>
-          Hasil verifikasi aktivitas pada MVP ini merupakan simulasi deterministik untuk memperagakan pengalaman keamanan yang direncanakan.
+          Hasil verifikasi aktivitas ini diproses oleh engine backend. Aktivitas simulasi tetap disimpan sebagai riwayat pribadi dan tidak memperoleh reward.
         </p>
       </div>
     </div>

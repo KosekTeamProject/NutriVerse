@@ -149,7 +149,11 @@ async function runActivityAwardTransaction(activitySessionId: string) {
 
       return { xpGrant, hpEntry, economy, idempotentReplay: false as const };
     },
-    { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    {
+      isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+      maxWait: 10_000,
+      timeout: 20_000,
+    },
   );
 }
 

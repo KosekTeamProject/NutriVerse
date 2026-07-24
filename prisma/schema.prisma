@@ -1,5 +1,5 @@
 datasource db {
-  provider  = "postgresql"
+  provider = "postgresql"
 }
 
 generator client {
@@ -158,62 +158,75 @@ model User {
   id         String   @id @default(uuid())
   authUserId String?  @unique // ID from Supabase Auth; nullable while legacy/demo rows are migrated.
   email      String   @unique
+  username   String?  @unique
   name       String
-  avatarUrl String?
-  role      UserRole @default(USER)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  bio        String?
+  avatarUrl  String?
+  role       UserRole @default(USER)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   // Relationships
-  healthProfile        HealthProfile?
-  companionPreference  CompanionPreference?
-  settings             UserSettings?
-  economy              UserEconomy?
-  activitySessions     ActivitySession[]
-  appeals              Appeal[]
-  xpGrants             XPGrant[]
-  hpLedgerEntries      HPLedgerEntry[]
-  challengeProgresses  ChallengeProgress[]
+  healthProfile          HealthProfile?
+  companionPreference    CompanionPreference?
+  settings               UserSettings?
+  economy                UserEconomy?
+  activitySessions       ActivitySession[]
+  appeals                Appeal[]
+  xpGrants               XPGrant[]
+  hpLedgerEntries        HPLedgerEntry[]
+  challengeProgresses    ChallengeProgress[]
   challengeContributions ChallengeContribution[]
-  badges               UserBadge[]
-  rankings             Ranking[]
-  redemptions          Redemption[]
-  journeyEntries       JourneyEntry[]
-  journalEntries       JournalEntry[]
-  nutritionEntries     NutritionEntry[]
-  waterLogs            WaterLog[]
-  customFoodItems      CustomFoodItem[]
-  healthPulses         HealthPulse[]
-  moments              Moment[]
-  reportsSubmitted     ContentReport[]        @relation("ReportedBy")
-  auditLogs            AuditLog[]             @relation("ActorUser")
-  notifications        UserNotification[]
-  deviceTokens         UserDeviceToken[]
+  badges                 UserBadge[]
+  rankings               Ranking[]
+  redemptions            Redemption[]
+  journeyEntries         JourneyEntry[]
+  journalEntries         JournalEntry[]
+  nutritionEntries       NutritionEntry[]
+  waterLogs              WaterLog[]
+  customFoodItems        CustomFoodItem[]
+  healthPulses           HealthPulse[]
+  healthMetrics          HealthMetric[]
+  moments                Moment[]
+  reportsSubmitted       ContentReport[]         @relation("ReportedBy")
+  auditLogs              AuditLog[]              @relation("ActorUser")
+  notifications          UserNotification[]
+  deviceTokens           UserDeviceToken[]
   companionConversations CompanionConversation[]
-  companionMemories    CompanionMemory[]
-  weeklyLetters        WeeklyLetterArchive[]
-  journalReactions     JournalReaction[]
-  guildsLed            Guild[]                @relation("GuildLeader")
-  guildMemberships     GuildMember[]
-  posts                Post[]
-  postComments         PostComment[]
-  postReactions        PostReaction[]
+  companionMemories      CompanionMemory[]
+  weeklyLetters          WeeklyLetterArchive[]
+  journalReactions       JournalReaction[]
+  guildsLed              Guild[]                 @relation("GuildLeader")
+  guildMemberships       GuildMember[]
+  posts                  Post[]
+  postComments           PostComment[]
+  postReactions          PostReaction[]
 
   @@map("users")
 }
 
 model HealthProfile {
-  id              String    @id @default(uuid())
-  userId          String    @unique
-  birthDate       DateTime?
-  gender          Gender    @default(PREFER_NOT_TO_SAY)
-  heightCm        Float?
-  weightKg        Float?
-  activityLevel   String?   // Baseline tingkat aktivitas
-  healthGoals     String?   // Tujuan kesehatan
-  dailyStepTarget Int       @default(8000)
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id                      String    @id @default(uuid())
+  userId                  String    @unique
+  birthDate               DateTime?
+  gender                  Gender    @default(PREFER_NOT_TO_SAY)
+  heightCm                Float?
+  weightKg                Float?
+  targetWeightKg          Float?
+  activityLevel           String? // Baseline tingkat aktivitas
+  healthGoals             String? // Tujuan kesehatan
+  preferredActivities     String[]  @default([])
+  dietaryPreferences      String[]  @default([])
+  allergies               String[]  @default([])
+  favoriteFoods           String[]  @default([])
+  favoriteWorkoutTime     String?
+  onboardingCompleted     Boolean   @default(false)
+  dailyStepTarget         Int       @default(8000)
+  dailyProteinTargetGrams Int       @default(80)
+  dailyWaterTargetMl      Int       @default(2000)
+  dailySleepTargetHours   Float     @default(8)
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -224,6 +237,7 @@ model CompanionPreference {
   id                           String   @id @default(uuid())
   userId                       String   @unique
   companionName                String   @default("Nora") // Hanya diubah di Profil
+  companionAvatarId            String   @default("sparkles")
   morningBriefEnabled          Boolean  @default(true)
   weeklyLetterEnabled          Boolean  @default(true)
   breakReminderEnabled         Boolean  @default(false) // Default off
@@ -237,16 +251,27 @@ model CompanionPreference {
 }
 
 model UserSettings {
-  id                        String       @id @default(uuid())
-  userId                    String       @unique
-  profileVisibility        PrivacyLevel @default(PUBLIC)
-  pulseVisibility          PrivacyLevel @default(PRIVATE)
-  activityVisibility       PrivacyLevel @default(CIRCLE)
-  locationPermissionGranted Boolean      @default(false)
-  darkTheme                 Boolean      @default(true)
-  timezone                  String       @default("Asia/Jakarta")
-  createdAt                 DateTime     @default(now())
-  updatedAt                 DateTime     @updatedAt
+  id                          String       @id @default(uuid())
+  userId                      String       @unique
+  profileVisibility           PrivacyLevel @default(PUBLIC)
+  pulseVisibility             PrivacyLevel @default(PRIVATE)
+  activityVisibility          PrivacyLevel @default(CIRCLE)
+  locationPermissionGranted   Boolean      @default(false)
+  darkTheme                   Boolean      @default(true)
+  leaderboardVisible          Boolean      @default(true)
+  challengeProgressVisible    Boolean      @default(true)
+  notificationsActivity       Boolean      @default(true)
+  notificationsLeaderboard    Boolean      @default(true)
+  notificationsSocial         Boolean      @default(false)
+  companionInsightsEnabled    Boolean      @default(true)
+  companionSafetyNotesEnabled Boolean      @default(true)
+  useDemoData                 Boolean      @default(true)
+  showSimulationLabels        Boolean      @default(true)
+  gpsSimulationEnabled        Boolean      @default(true)
+  foodSimulationEnabled       Boolean      @default(true)
+  timezone                    String       @default("Asia/Jakarta")
+  createdAt                   DateTime     @default(now())
+  updatedAt                   DateTime     @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -313,9 +338,9 @@ model XPGrant {
   effectiveAt        DateTime @default(now())
   createdAt          DateTime @default(now())
 
-  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  activitySession ActivitySession? @relation(fields: [activitySessionId], references: [id], onDelete: SetNull)
-  challenge       Challenge?       @relation(fields: [challengeId], references: [id], onDelete: SetNull)
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activitySession   ActivitySession?   @relation(fields: [activitySessionId], references: [id], onDelete: SetNull)
+  challenge         Challenge?         @relation(fields: [challengeId], references: [id], onDelete: SetNull)
   claimedByProgress ChallengeProgress? @relation("ClaimedXpGrant")
 
   @@index([userId, createdAt])
@@ -326,24 +351,24 @@ model XPGrant {
 }
 
 model HPLedgerEntry {
-  id                String     @id @default(uuid())
-  userId            String
-  type              LedgerType
+  id                 String     @id @default(uuid())
+  userId             String
+  type               LedgerType
   idempotencyKey     String     @unique // Mencegah transaksi ganda
-  amount            Int        // Positif (Grant) atau Negatif (Redeem)
-  activitySessionId String?
-  challengeId       String?
-  redemptionId      String?
-  description       String
-  capApplied        Boolean    @default(false)
-  diminishingApplied Boolean   @default(false)
-  effectiveAt       DateTime   @default(now())
-  createdAt         DateTime   @default(now())
+  amount             Int // Positif (Grant) atau Negatif (Redeem)
+  activitySessionId  String?
+  challengeId        String?
+  redemptionId       String?
+  description        String
+  capApplied         Boolean    @default(false)
+  diminishingApplied Boolean    @default(false)
+  effectiveAt        DateTime   @default(now())
+  createdAt          DateTime   @default(now())
 
-  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  activitySession ActivitySession? @relation(fields: [activitySessionId], references: [id], onDelete: SetNull)
-  challenge       Challenge?       @relation(fields: [challengeId], references: [id], onDelete: SetNull)
-  redemption      Redemption?      @relation(fields: [redemptionId], references: [id], onDelete: SetNull)
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activitySession   ActivitySession?   @relation(fields: [activitySessionId], references: [id], onDelete: SetNull)
+  challenge         Challenge?         @relation(fields: [challengeId], references: [id], onDelete: SetNull)
+  redemption        Redemption?        @relation(fields: [redemptionId], references: [id], onDelete: SetNull)
   claimedByProgress ChallengeProgress? @relation("ClaimedHpLedger")
 
   @@index([userId, createdAt])
@@ -359,31 +384,31 @@ model HPLedgerEntry {
 // ==========================================
 
 model ActivitySession {
-  id                 String             @id @default(uuid())
-  userId             String
-  clientSessionId    String?
-  activityType       ActivityType
-  startTime          DateTime
-  endTime            DateTime?
-  durationSeconds    Int                @default(0)
-  distanceMeters     Float              @default(0)
-  averagePace        Float              @default(0) // detik per km
-  caloriesBurned     Float              @default(0)
-  verificationStatus VerificationStatus @default(PENDING)
-  isSimulated        Boolean            @default(false)
-  deviceAttestationVerified Boolean     @default(false)
-  telemetryDigest    String?            @unique
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
+  id                        String             @id @default(uuid())
+  userId                    String
+  clientSessionId           String?
+  activityType              ActivityType
+  startTime                 DateTime
+  endTime                   DateTime?
+  durationSeconds           Int                @default(0)
+  distanceMeters            Float              @default(0)
+  averagePace               Float              @default(0) // detik per km
+  caloriesBurned            Float              @default(0)
+  verificationStatus        VerificationStatus @default(PENDING)
+  isSimulated               Boolean            @default(false)
+  deviceAttestationVerified Boolean            @default(false)
+  telemetryDigest           String?            @unique
+  createdAt                 DateTime           @default(now())
+  updatedAt                 DateTime           @updatedAt
 
-  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  telemetrySamples   TelemetrySample[]
-  verificationResult VerificationResult?
-  appeals            Appeal[]
-  xpGrants           XPGrant[]
-  hpLedgerEntries    HPLedgerEntry[]
-  moments            Moment[]
-  journeyEntries     JourneyEntry[]
+  user                   User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  telemetrySamples       TelemetrySample[]
+  verificationResult     VerificationResult?
+  appeals                Appeal[]
+  xpGrants               XPGrant[]
+  hpLedgerEntries        HPLedgerEntry[]
+  moments                Moment[]
+  journeyEntries         JourneyEntry[]
   challengeContributions ChallengeContribution[]
 
   @@unique([userId, clientSessionId])
@@ -400,8 +425,8 @@ model TelemetrySample {
   latitude          Float
   longitude         Float
   altitude          Float?
-  accuracy          Float?   // Akurasi sinyal GPS
-  speed             Float?   // Kecepatan dalam m/s
+  accuracy          Float? // Akurasi sinyal GPS
+  speed             Float? // Kecepatan dalam m/s
   createdAt         DateTime @default(now())
 
   activitySession ActivitySession @relation(fields: [activitySessionId], references: [id], onDelete: Cascade)
@@ -412,22 +437,22 @@ model TelemetrySample {
 }
 
 model VerificationResult {
-  id                     String             @id @default(uuid())
-  activitySessionId      String             @unique
-  verificationStatus     VerificationStatus
-  reasonCodes            String[]           // Array kode alasan netral
-  riskScore              Float              @default(0) // 0 - 100
-  trustedDistanceMeters  Float              @default(0)
-  trustedDurationSeconds Int                @default(0)
-  eligibleXp             Int                @default(0)
-  eligibleHp             Int                @default(0)
-  sampleCount            Int                @default(0)
-  acceptedSampleCount    Int                @default(0)
-  discardedSampleCount   Int                @default(0)
-  maxSpeedKmh            Float              @default(0)
-  largestSampleGapSeconds Float             @default(0)
-  deviceAttestationVerified Boolean         @default(false)
-  processedAt            DateTime           @default(now())
+  id                        String             @id @default(uuid())
+  activitySessionId         String             @unique
+  verificationStatus        VerificationStatus
+  reasonCodes               String[] // Array kode alasan netral
+  riskScore                 Float              @default(0) // 0 - 100
+  trustedDistanceMeters     Float              @default(0)
+  trustedDurationSeconds    Int                @default(0)
+  eligibleXp                Int                @default(0)
+  eligibleHp                Int                @default(0)
+  sampleCount               Int                @default(0)
+  acceptedSampleCount       Int                @default(0)
+  discardedSampleCount      Int                @default(0)
+  maxSpeedKmh               Float              @default(0)
+  largestSampleGapSeconds   Float              @default(0)
+  deviceAttestationVerified Boolean            @default(false)
+  processedAt               DateTime           @default(now())
 
   activitySession ActivitySession @relation(fields: [activitySessionId], references: [id], onDelete: Cascade)
 
@@ -438,7 +463,7 @@ model Appeal {
   id                String       @id @default(uuid())
   activitySessionId String
   userId            String
-  reason            String       // Alasan pengajuan banding pengguna
+  reason            String // Alasan pengajuan banding pengguna
   status            AppealStatus @default(PENDING)
   reviewerAdminId   String?
   reviewNotes       String?
@@ -472,7 +497,7 @@ model CompanionConversation {
 model CompanionMemory {
   id          String   @id @default(uuid())
   userId      String
-  memoryKey   String   // Misal: "user_allergy", "favorite_workout"
+  memoryKey   String // Misal: "user_allergy", "favorite_workout"
   memoryValue String
   category    String   @default("GENERAL")
   importance  Int      @default(1)
@@ -504,50 +529,50 @@ model WeeklyLetterArchive {
 // ==========================================
 
 model Challenge {
-  id          String              @id @default(uuid())
-  title       String
-  description String
-  type        ChallengeType
-  category    ChallengeCategory   @default(CARDIO)
-  trustLevel  ChallengeTrustLevel @default(GPS_VERIFIED_ONLY)
-  metric      ChallengeMetric     @default(DISTANCE_METERS)
+  id           String              @id @default(uuid())
+  title        String
+  description  String
+  type         ChallengeType
+  category     ChallengeCategory   @default(CARDIO)
+  trustLevel   ChallengeTrustLevel @default(GPS_VERIFIED_ONLY)
+  metric       ChallengeMetric     @default(DISTANCE_METERS)
   activityType ActivityType?
-  targetValue Float               // Misal 5.0 (km)
-  targetUnit  String              // "km", "minutes", "days"
-  bonusXp     Int                 @default(0)
-  bonusHp     Int                 @default(0)
-  startDate   DateTime
-  endDate     DateTime
-  isActive    Boolean             @default(true)
-  createdAt   DateTime            @default(now())
-  updatedAt   DateTime            @updatedAt
+  targetValue  Float // Misal 5.0 (km)
+  targetUnit   String // "km", "minutes", "days"
+  bonusXp      Int                 @default(0)
+  bonusHp      Int                 @default(0)
+  startDate    DateTime
+  endDate      DateTime
+  isActive     Boolean             @default(true)
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
 
-  progresses ChallengeProgress[]
-  contributions ChallengeContribution[]
-  xpGrants   XPGrant[]
+  progresses      ChallengeProgress[]
+  contributions   ChallengeContribution[]
+  xpGrants        XPGrant[]
   hpLedgerEntries HPLedgerEntry[]
 
   @@map("challenges")
 }
 
 model ChallengeProgress {
-  id                String    @id @default(uuid())
-  userId            String
-  challengeId       String
-  currentValue      Float     @default(0)
-  isCompleted       Boolean   @default(false)
-  completedAt       DateTime?
-  claimedXpGrantId  String?   @unique
-  claimedHpLedgerEntryId String? @unique
-  lastContributedAt DateTime?
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  id                     String    @id @default(uuid())
+  userId                 String
+  challengeId            String
+  currentValue           Float     @default(0)
+  isCompleted            Boolean   @default(false)
+  completedAt            DateTime?
+  claimedXpGrantId       String?   @unique
+  claimedHpLedgerEntryId String?   @unique
+  lastContributedAt      DateTime?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
 
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  challenge Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
-  claimedXpGrant XPGrant? @relation("ClaimedXpGrant", fields: [claimedXpGrantId], references: [id], onDelete: SetNull)
-  claimedHpLedgerEntry HPLedgerEntry? @relation("ClaimedHpLedger", fields: [claimedHpLedgerEntryId], references: [id], onDelete: SetNull)
-  contributions ChallengeContribution[]
+  user                 User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  challenge            Challenge               @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  claimedXpGrant       XPGrant?                @relation("ClaimedXpGrant", fields: [claimedXpGrantId], references: [id], onDelete: SetNull)
+  claimedHpLedgerEntry HPLedgerEntry?          @relation("ClaimedHpLedger", fields: [claimedHpLedgerEntryId], references: [id], onDelete: SetNull)
+  contributions        ChallengeContribution[]
 
   @@unique([userId, challengeId])
   @@map("challenge_progresses")
@@ -567,7 +592,7 @@ model ChallengeContribution {
   challengeProgress ChallengeProgress @relation(fields: [challengeProgressId], references: [id], onDelete: Cascade)
   activitySession   ActivitySession   @relation(fields: [activitySessionId], references: [id], onDelete: Cascade)
 
-  @@unique([challengeId, userId, activitySessionId])
+  @@unique([challengeId, userId, activitySessionId], map: "challenge_contributions_challengeId_userId_activitySessionId_ke")
   @@index([challengeProgressId, createdAt])
   @@index([activitySessionId])
   @@map("challenge_contributions")
@@ -587,10 +612,10 @@ model Badge {
 }
 
 model UserBadge {
-  id        String   @id @default(uuid())
-  userId    String
-  badgeId   String
-  earnedAt  DateTime @default(now())
+  id       String   @id @default(uuid())
+  userId   String
+  badgeId  String
+  earnedAt DateTime @default(now())
 
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
   badge Badge @relation(fields: [badgeId], references: [id], onDelete: Cascade)
@@ -605,7 +630,7 @@ model UserBadge {
 
 model LeaderboardSeason {
   id        String   @id @default(uuid())
-  name      String   // Misal "Season 1 - Summer 2026"
+  name      String // Misal "Season 1 - Summer 2026"
   startDate DateTime
   endDate   DateTime
   isActive  Boolean  @default(true)
@@ -699,7 +724,7 @@ model JourneyEntry {
 model JournalEntry {
   id        String   @id @default(uuid())
   userId    String
-  content   String   // Jurnal privat pengguna
+  content   String // Jurnal privat pengguna
   mood      String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -713,10 +738,10 @@ model JournalEntry {
 }
 
 model JournalAttachment {
-  id             String       @id @default(uuid())
+  id             String @id @default(uuid())
   journalEntryId String
   fileUrl        String
-  fileType       String       @default("IMAGE")
+  fileType       String @default("IMAGE")
 
   journalEntry JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
 
@@ -724,11 +749,11 @@ model JournalAttachment {
 }
 
 model JournalReaction {
-  id             String       @id @default(uuid())
+  id             String   @id @default(uuid())
   journalEntryId String
   userId         String
-  reaction       String       // LIKES, SUPPORT, CELEBRATE
-  createdAt      DateTime     @default(now())
+  reaction       String // LIKES, SUPPORT, CELEBRATE
+  createdAt      DateTime @default(now())
 
   journalEntry JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -749,7 +774,7 @@ model NutritionEntry {
   fat                Float    @default(0)
   confidenceScore    Float    @default(0) // Estimasi keandalan AI
   imageUrl           String?
-  recommendationText String?  // Saran langkah kecil
+  recommendationText String? // Saran langkah kecil
   createdAt          DateTime @default(now())
 
   user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -762,21 +787,21 @@ model NutritionEntry {
 }
 
 model FoodItem {
-  id                  String   @id @default(uuid())
-  source              String   @default("LOCAL")
-  externalId          String?
-  name                String
-  brand               String?
-  caloriesPer100g     Float
-  proteinPer100g      Float    @default(0)
-  carbsPer100g        Float    @default(0)
-  fatPer100g          Float    @default(0)
-  fiberPer100g        Float    @default(0)
-  sugarPer100g        Float    @default(0)
-  sodiumMgPer100g     Float    @default(0)
-  isVerified          Boolean  @default(false)
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  id              String   @id @default(uuid())
+  source          String   @default("LOCAL")
+  externalId      String?
+  name            String
+  brand           String?
+  caloriesPer100g Float
+  proteinPer100g  Float    @default(0)
+  carbsPer100g    Float    @default(0)
+  fatPer100g      Float    @default(0)
+  fiberPer100g    Float    @default(0)
+  sugarPer100g    Float    @default(0)
+  sodiumMgPer100g Float    @default(0)
+  isVerified      Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   nutritionEntries NutritionEntry[]
 
@@ -843,6 +868,21 @@ model HealthPulse {
   @@map("health_pulses")
 }
 
+model HealthMetric {
+  id         String   @id @default(uuid())
+  userId     String
+  weightKg   Float?
+  heightCm   Float?
+  bmi        Float?
+  recordedAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, recordedAt])
+  @@map("health_metrics")
+}
+
 // ==========================================
 // 9. KOMUNITAS, EVENTS & NUTRIVERSE MOMENTS
 // ==========================================
@@ -903,8 +943,8 @@ model Post {
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 
-  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  guild     Guild?         @relation(fields: [guildId], references: [id], onDelete: SetNull)
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  guild     Guild?          @relation(fields: [guildId], references: [id], onDelete: SetNull)
   comments  PostComment[]
   reactions PostReaction[]
   reports   ContentReport[]
@@ -953,7 +993,7 @@ model Moment {
   id                String       @id @default(uuid())
   userId            String
   activitySessionId String?
-  imageUrl          String       // Foto kamera langsung
+  imageUrl          String // Foto kamera langsung
   caption           String?
   privacyLevel      PrivacyLevel @default(PUBLIC)
   reportCount       Int          @default(0)
@@ -996,8 +1036,8 @@ model ContentReport {
 model AuditLog {
   id          String   @id @default(uuid())
   actorUserId String
-  action      String   // Misal: "APPROVE_APPEAL", "GRANT_MANUAL_XP"
-  entityName  String   // Misal: "ActivitySession", "Reward"
+  action      String // Misal: "APPROVE_APPEAL", "GRANT_MANUAL_XP"
+  entityName  String // Misal: "ActivitySession", "Reward"
   entityId    String
   beforeState Json?
   afterState  Json?

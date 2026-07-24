@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Award, Crown, Frame, Sparkles, Utensils, Dumbbell, Ticket, GlassWater, Shirt,
   Heart, Check, Gift, Store, ShieldAlert, Activity, Gauge, PackageCheck, CalendarClock
 } from "lucide-react";
-import { REWARDS, CAT_STYLE, type Reward, type RewardCategory } from "@/lib/rewards";
+import { CAT_STYLE, type Reward, type RewardCategory } from "@/lib/rewards";
 
 const ICONS: Record<string, typeof Award> = {
   award: Award, crown: Crown, frame: Frame, sparkles: Sparkles,
@@ -55,7 +55,7 @@ function RewardCard({
           </p>
         )}
         <p className="mt-2 text-[10px] font-semibold text-muted-foreground">
-          Stok: {isPartnerReward ? "menunggu integrasi mitra" : "tersedia untuk simulasi digital"}
+          Stok dikelola dan diperiksa oleh server sebelum penukaran
         </p>
       </div>
 
@@ -77,7 +77,7 @@ function RewardCard({
             disabled={!afford}
             className="btn btn-primary btn-xs font-bold disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            {afford ? "Simulasikan Penukaran" : "HP Kurang"}
+            {afford ? "Tukar Reward" : "HP Kurang"}
           </button>
         )}
       </div>
@@ -86,16 +86,66 @@ function RewardCard({
 }
 
 export function RewardStore() {
-  const [balance, setBalance] = useState(3280);
+  const [balance, setBalance] = useState(0);
   const [filter, setFilter] = useState<Filter>("Semua");
   const [redeemed, setRedeemed] = useState<Set<string>>(new Set());
+  const [rewards, setRewards] = useState<Reward[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const list = filter === "Semua" ? REWARDS : REWARDS.filter((r) => r.category === filter);
+  useEffect(() => {
+    fetch("/api/rewards", { cache: "no-store" })
+      .then(async (response) => {
+        const result = (await response.json()) as {
+          success?: boolean;
+          error?: string;
+          currentHp?: number;
+          rewards?: Array<{
+            id: string;
+            title: string;
+            description: string;
+            partnerName: string;
+            hpCost: number;
+          }>;
+        };
+        if (!response.ok || !result.success) throw new Error(result.error || "Reward gagal dimuat.");
+        setBalance(result.currentHp ?? 0);
+        setRewards(
+          (result.rewards ?? []).map((reward) => ({
+            id: reward.id,
+            name: reward.title,
+            desc: reward.description,
+            category: reward.partnerName === "NutriVerse" ? "Frame" : "Voucher",
+            hp: reward.hpCost,
+            icon: reward.partnerName === "NutriVerse" ? "frame" : "ticket",
+            partner: reward.partnerName,
+          })),
+        );
+      })
+      .catch((loadError: unknown) => {
+        setError(loadError instanceof Error ? loadError.message : "Reward gagal dimuat.");
+      })
+      .finally(() => setLoading(false));
+  }, []);
 
-  function redeem(r: Reward) {
+  const list = filter === "Semua" ? rewards : rewards.filter((r) => r.category === filter);
+
+  async function redeem(r: Reward) {
     if (balance < r.hp || redeemed.has(r.id)) return;
-    setBalance((b) => b - r.hp);
-    setRedeemed((prev) => new Set(prev).add(r.id));
+    setError("");
+    try {
+      const response = await fetch(`/api/rewards/${r.id}/claim`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ idempotencyKey: crypto.randomUUID() }),
+      });
+      const result = (await response.json()) as { success?: boolean; error?: string };
+      if (!response.ok || !result.success) throw new Error(result.error || "Penukaran gagal.");
+      setBalance((current) => current - r.hp);
+      setRedeemed((previous) => new Set(previous).add(r.id));
+    } catch (redeemError) {
+      setError(redeemError instanceof Error ? redeemError.message : "Penukaran gagal.");
+    }
   }
 
   return (
@@ -105,14 +155,12 @@ export function RewardStore() {
         <div className="flex items-center gap-3">
           <span className="grid h-12 w-12 place-items-center rounded-2xl bg-white/20"><Store className="h-6 w-6" /></span>
           <div className="flex-1">
-            <p className="text-xs text-white/80 font-bold uppercase tracking-wider">Saldo HP Demo (Simulasi)</p>
+            <p className="text-xs text-white/80 font-bold uppercase tracking-wider">Saldo Health Points</p>
             <p className="stat-num text-3xl font-extrabold">{balance.toLocaleString("id-ID")} <span className="text-base text-white/80 font-normal">HP</span></p>
           </div>
           <Heart className="h-8 w-8 text-white/40 fill-white/10" />
         </div>
-        <p className="text-[10px] text-white/70 italic mt-3 leading-normal border-t border-white/20 pt-2">
-          * Sinkronisasi saldo produksi belum tersedia. Transaksi disimulasikan secara lokal.
-        </p>
+        <p className="text-[10px] text-white/70 mt-3 leading-normal border-t border-white/20 pt-2">Saldo dan transaksi dibaca dari ledger server NutriVerse.</p>
       </div>
 
       <div>
@@ -142,15 +190,7 @@ export function RewardStore() {
         </div>
       </div>
 
-      {/* Demo Rewards Disclaimer */}
-      <div className="card card-pad bg-secondary/35 border-line/65 space-y-3">
-        <h3 className="font-display text-sm font-bold text-foreground flex items-center gap-1.5">
-          <ShieldAlert className="h-4.5 w-4.5 text-brand" /> Hadiah masih simulasi
-        </h3>
-        <p className="text-xs text-muted-foreground leading-relaxed leading-normal">
-          Saldo dan penukaran pada MVP ini berlangsung lokal. Hadiah produksi memerlukan aktivitas tepercaya, catatan saldo yang aman, batas perolehan, pemeriksaan stok, dan validasi pemenuhan.
-        </p>
-      </div>
+      {error && <div className="card card-pad border-destructive/25 bg-destructive/10 text-sm text-destructive"><ShieldAlert className="mr-2 inline h-4 w-4" />{error}</div>}
 
       {/* filters */}
       <div className="flex flex-wrap gap-2 pb-2 border-b border-line/20">
@@ -169,6 +209,8 @@ export function RewardStore() {
 
       {/* grid */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {loading && <p className="text-sm text-muted-foreground">Memuat reward...</p>}
+        {!loading && !list.length && !error && <p className="text-sm text-muted-foreground">Belum ada reward aktif.</p>}
         {list.map((r) => (
           <RewardCard key={r.id} r={r} balance={balance} redeemed={redeemed.has(r.id)} onRedeem={redeem} />
         ))}

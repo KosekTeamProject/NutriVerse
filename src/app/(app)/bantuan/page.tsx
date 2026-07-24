@@ -131,7 +131,7 @@ export default function HelpCenterPage() {
             <Search className="h-8 w-8" />
           </div>
           <h3 className="font-bold text-xl">Tidak ada hasil yang ditemukan</h3>
-          <p className="mt-2 text-muted-foreground">Coba gunakan kata kunci lain seperti "XP", "Dashboard", atau "Nora".</p>
+          <p className="mt-2 text-muted-foreground">Coba gunakan kata kunci lain seperti &quot;XP&quot;, &quot;Dashboard&quot;, atau &quot;Nora&quot;.</p>
         </div>
       )}
 

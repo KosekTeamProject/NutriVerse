@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { Suspense, useEffect, useState, useRef } from "react";
 import Link from "next/link";
-import { ArrowRight, Play, Check, Trophy, Flame, ScanLine, Activity, HeartPulse, Moon, Sun, UserRound } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { AlertTriangle, ArrowRight, Play, Check, Trophy, Flame, ScanLine, Activity, HeartPulse, Moon, Sun, UserRound } from "lucide-react";
 import { RankCrest } from "@/components/brand/RankCrest";
 import { BrandLogo } from "@/components/brand/BrandLogo";
 import { AuthEntryModal } from "@/components/auth/AuthEntryModal";
@@ -317,6 +318,36 @@ function FooterCol({ title, links }: { readonly title: string; readonly links: s
   );
 }
 
+const AUTH_ERROR_MESSAGES: Readonly<Record<string, string>> = {
+  session_required: "Sesi Anda telah berakhir. Silakan masuk kembali untuk membuka halaman personal.",
+  missing_oauth_code: "Google tidak mengirimkan kode autentikasi. Silakan coba masuk kembali.",
+  oauth_code_exchange_failed: "Sesi Google tidak dapat diproses. Silakan coba kembali.",
+  profile_sync_failed: "Akun Google berhasil dikenali, tetapi profil NutriVerse belum dapat disinkronkan.",
+  google_oauth_start_failed: "Proses masuk dengan Google belum dapat dimulai. Periksa konfigurasi lalu coba kembali.",
+  admin_required: "Akun Anda tidak memiliki role administrator.",
+};
+
+function AuthStatusNotice({ onLogin }: { readonly onLogin: () => void }) {
+  const searchParams = useSearchParams();
+  const code = searchParams.get("auth_error");
+  const message = code ? AUTH_ERROR_MESSAGES[code] : null;
+
+  if (!message) return null;
+
+  return (
+    <div className="fixed inset-x-3 top-3 z-[90] mx-auto flex max-w-2xl items-start gap-3 rounded-2xl border border-amber/35 bg-card p-4 shadow-2xl sm:top-5">
+      <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber" />
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-bold text-foreground">Autentikasi perlu diperbarui</p>
+        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{message}</p>
+      </div>
+      <button type="button" onClick={onLogin} className="btn btn-primary btn-sm shrink-0">
+        Masuk
+      </button>
+    </div>
+  );
+}
+
 export default function Home() {
   const session = useAuthSession();
   const { dark, toggleTheme } = useTheme();
@@ -372,6 +403,9 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
       <AuthEntryModal key={`${authView}-${authOpen}`} open={authOpen} initialView={authView} onClose={() => setAuthOpen(false)} />
+      <Suspense fallback={null}>
+        <AuthStatusNotice onLogin={() => openAuth("choice")} />
+      </Suspense>
       {/* Background radial gradient animations */}
       <div aria-hidden className="pointer-events-none fixed inset-0 -z-20 overflow-hidden">
         <div className="absolute -left-24 -top-24 h-96 w-96 rounded-full bg-brand/10 blur-[80px] animate-[float_12s_ease-in-out_infinite]" />

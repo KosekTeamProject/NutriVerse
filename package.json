@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:backend": "tsx --test --test-concurrency=1 src/server/**/*.test.ts"
+    "test:backend": "tsx --test --test-concurrency=1 src/server/**/*.test.ts",
+    "test:integration": "tsx scripts/backend-integration-smoke.ts"
   },
   "dependencies": {
     "@hugeicons/core-free-icons": "^4.2.2",

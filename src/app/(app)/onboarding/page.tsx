@@ -37,7 +37,7 @@ import { BrandLogo } from "@/components/brand/BrandLogo";
 import { NoraDialogueBubble, NoraAvatar } from "@/features/companion/components/NoraDialogueBubble";
 import { Bot, Ghost, Cat, Bird, Trees } from "lucide-react";
 
-export const COMPANION_AVATARS = [
+const COMPANION_AVATARS = [
   { id: "sparkles", icon: Sparkles, label: "Sparkles" },
   { id: "bot", icon: Bot, label: "Robot" },
   { id: "ghost", icon: Ghost, label: "Ghost" },
@@ -102,6 +102,7 @@ export default function OnboardingPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [provider, setProvider] = useState<"password" | "google">("password");
   const [oauthError, setOauthError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   // Chat typing states for navigation delay
   const [noraTyping, setNoraTyping] = useState(false);
@@ -207,11 +208,35 @@ export default function OnboardingPage() {
     window.location.assign("/api/auth/google?next=/onboarding?oauth=complete");
   }
 
-  function handleAccountSubmit(e: React.FormEvent) {
+  async function handleAccountSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!accountValid) return;
-    setProvider("password");
-    nextStep(1);
+    if (!accountValid || submitting) return;
+    setSubmitting(true);
+    setOauthError("");
+    try {
+      const response = await fetch("/api/auth/sign-up", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(account),
+      });
+      const result = (await response.json()) as {
+        success?: boolean;
+        error?: string;
+        requiresEmailConfirmation?: boolean;
+      };
+      if (!response.ok || !result.success) throw new Error(result.error || "Pendaftaran gagal.");
+      if (result.requiresEmailConfirmation) {
+        throw new Error("Akun dibuat. Konfirmasi email terlebih dahulu, lalu masuk untuk melanjutkan onboarding.");
+      }
+      setProvider("password");
+      nextStep(1);
+    } catch (registrationError) {
+      setOauthError(
+        registrationError instanceof Error ? registrationError.message : "Pendaftaran gagal.",
+      );
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   function toggleAllergy(allergy: string) {
@@ -249,7 +274,7 @@ export default function OnboardingPage() {
     setOnboardingStep(targetStep);
   }
 
-  function finishOnboardingAndEnterDashboard() {
+  async function finishOnboardingAndEnterDashboard() {
     const finalBaseline: HealthBaseline = baseline || {
       heightCm: 170,
       weightKg: 65,
@@ -264,7 +289,38 @@ export default function OnboardingPage() {
       estimatedDailyCalories: 2100
     };
 
-    setDisplayName(companionData.name || "Nora");
+    setSubmitting(true);
+    setOauthError("");
+    try {
+      const response = await fetch("/api/onboarding", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          name: account.name.trim(),
+          username: account.email.split("@")[0],
+          age: finalBaseline.age,
+          gender: finalBaseline.gender,
+          heightCm: finalBaseline.heightCm,
+          weightKg: finalBaseline.weightKg,
+          targetWeightKg: finalBaseline.targetWeightKg,
+          healthGoals: finalBaseline.goal,
+          activityLevel: finalBaseline.activityLevel,
+          dailyStepTarget: finalBaseline.stepGoal,
+          preferredActivities: selectedActivities,
+          dietaryPreferences: isVegetarian ? ["VEGETARIAN"] : [],
+          allergies: selectedAllergies.filter((item) => item !== "Tidak Ada"),
+          favoriteFoods: selectedFoods,
+          favoriteWorkoutTime: selectedWorkoutTime,
+          companionName: companionData.name || "Nora",
+          companionAvatarId: companionData.avatarId,
+        }),
+      });
+      const result = (await response.json()) as { success?: boolean; error?: string };
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Profil belum dapat disimpan.");
+      }
+
+      setDisplayName(companionData.name || "Nora");
     saveAuthSession({
       name: account.name.trim() || "Fathan Mubarak",
       email: account.email.trim() || "fathan.mubarak@gmail.com",
@@ -288,6 +344,12 @@ export default function OnboardingPage() {
     });
 
     router.replace("/dashboard");
+      router.refresh();
+    } catch (saveError) {
+      setOauthError(saveError instanceof Error ? saveError.message : "Profil belum dapat disimpan.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   // Dynamic Ambient Background based on Step
@@ -717,11 +779,12 @@ export default function OnboardingPage() {
                 type="button"
                 onClick={() => {
                   window.localStorage.setItem("nutriverse.needs_tour", "true");
-                  finishOnboardingAndEnterDashboard();
+                  void finishOnboardingAndEnterDashboard();
                 }}
-                className="btn btn-primary btn-lg mt-8 shadow-premium animate-pulse-soft animate-fade-up text-lg px-8 py-4"
+                disabled={submitting}
+                className="btn btn-primary btn-lg mt-8 shadow-premium animate-pulse-soft animate-fade-up text-lg px-8 py-4 disabled:opacity-60"
               >
-                Ayo Berkeliling <ArrowRight className="h-6 w-6 ml-2" />
+                {submitting ? "Menyimpan..." : "Ayo Berkeliling"} <ArrowRight className="h-6 w-6 ml-2" />
               </button>
             )}
           </section>

@@ -24,78 +24,67 @@ function avatarUrl(user: SupabaseUser) {
 const identitySelect = {
   id: true,
   email: true,
+  username: true,
   name: true,
   avatarUrl: true,
+  role: true,
 } satisfies Prisma.UserSelect;
-
-function missingAuthIdentityColumn(error: unknown) {
-  if (
-    error instanceof Prisma.PrismaClientKnownRequestError &&
-    error.code === "P2022"
-  ) {
-    return true;
-  }
-
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    "code" in error &&
-    error.code === "P2022"
-  );
-}
-
-async function bootstrapLegacyUser(authUser: SupabaseUser) {
-  const email = authUser.email!;
-  const name = displayName(authUser);
-  const avatar = avatarUrl(authUser);
-  const users = await prisma.$queryRaw<
-    Array<{ id: string; email: string; name: string; avatarUrl: string | null }>
-  >(Prisma.sql`
-    INSERT INTO "users" ("id", "email", "name", "avatarUrl", "createdAt", "updatedAt")
-    VALUES (${authUser.id}, ${email}, ${name}, ${avatar}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-    ON CONFLICT ("email") DO UPDATE
-      SET "name" = EXCLUDED."name",
-          "avatarUrl" = EXCLUDED."avatarUrl",
-          "updatedAt" = CURRENT_TIMESTAMP
-    RETURNING "id", "email", "name", "avatarUrl"
-  `);
-
-  const user = users[0];
-  if (!user) throw new ApiAuthError("Profil pengguna gagal dibuat.");
-  return user;
-}
 
 /** Creates the domain profile once and keeps basic identity data in sync with Supabase Auth. */
 export async function bootstrapUser(authUser: SupabaseUser) {
   if (!authUser.email) throw new ApiAuthError("Akun autentikasi tidak memiliki alamat email.");
+  const email = authUser.email;
 
-  try {
-    return await prisma.user.upsert({
-      where: { authUserId: authUser.id },
-      update: {
-        email: authUser.email,
-        name: displayName(authUser),
-        avatarUrl: avatarUrl(authUser),
-      },
-      create: {
+  const existingByEmail = await prisma.user.findUnique({
+    where: { email },
+    select: { id: true, authUserId: true },
+  });
+
+  if (
+    existingByEmail?.authUserId &&
+    existingByEmail.authUserId !== authUser.id
+  ) {
+    throw new ApiAuthError(
+      "Email ini sudah terhubung dengan identitas autentikasi lain.",
+    );
+  }
+
+  if (existingByEmail) {
+    return prisma.user.update({
+      where: { id: existingByEmail.id },
+      data: {
         authUserId: authUser.id,
-        email: authUser.email,
+        email,
         name: displayName(authUser),
         avatarUrl: avatarUrl(authUser),
-        healthProfile: { create: {} },
-        companionPreference: { create: {} },
-        settings: { create: {} },
-        economy: { create: {} },
+        healthProfile: { upsert: { create: {}, update: {} } },
+        companionPreference: { upsert: { create: {}, update: {} } },
+        settings: { upsert: { create: {}, update: {} } },
+        economy: { upsert: { create: {}, update: {} } },
       },
       select: identitySelect,
     });
-  } catch (error) {
-    if (!missingAuthIdentityColumn(error)) throw error;
-
-    // Temporary compatibility for the shared database until the pending
-    // Supabase identity migration is reconciled and applied by the team.
-    return bootstrapLegacyUser(authUser);
   }
+
+  return prisma.user.upsert({
+    where: { authUserId: authUser.id },
+    update: {
+      email,
+      name: displayName(authUser),
+      avatarUrl: avatarUrl(authUser),
+    },
+    create: {
+      authUserId: authUser.id,
+      email,
+      name: displayName(authUser),
+      avatarUrl: avatarUrl(authUser),
+      healthProfile: { create: {} },
+      companionPreference: { create: {} },
+      settings: { create: {} },
+      economy: { create: {} },
+    },
+    select: identitySelect,
+  });
 }
 
 /** Verifies the bearer session against Supabase Auth and resolves the application user. */
@@ -104,6 +93,14 @@ export async function requireCurrentUser() {
   const { data, error } = await supabase.auth.getUser();
   if (error || !data.user) throw new ApiAuthError();
   return bootstrapUser(data.user);
+}
+
+export async function requireAdminUser() {
+  const user = await requireCurrentUser();
+  if (user.role !== "ADMIN" && user.role !== "MODERATOR") {
+    throw new ApiAuthError("Akun ini tidak memiliki akses administrator.");
+  }
+  return user;
 }
 
 export function authErrorResponse(error: unknown) {

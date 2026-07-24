@@ -84,6 +84,7 @@ export function AppShell({ children }: { readonly children: React.ReactNode }) {
   const [profileOpen, setProfileOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
+  const [economy, setEconomy] = useState({ totalXp: 0, currentHp: 0 });
   const { dark, toggleTheme } = useTheme();
 
   const isPublicPage = pathname === "/onboarding" || pathname.startsWith("/bantuan");
@@ -98,7 +99,11 @@ export function AppShell({ children }: { readonly children: React.ReactNode }) {
           user?: {
             name: string;
             email: string;
+            username?: string | null;
             avatarUrl?: string | null;
+            companionName?: string;
+            companionAvatarId?: string;
+            economy?: { totalXp: number; currentHp: number } | null;
           };
         } | null;
 
@@ -109,14 +114,22 @@ export function AppShell({ children }: { readonly children: React.ReactNode }) {
             ...current,
             name: result.user.name,
             email: result.user.email,
-            username: result.user.email.split("@")[0] || "nutriverse-user",
-            companionName: current?.companionName || "Nora",
+            username:
+              result.user.username ||
+              result.user.email.split("@")[0] ||
+              "nutriverse-user",
+            companionName: result.user.companionName || current?.companionName || "Nora",
+            companionAvatarId: result.user.companionAvatarId || current?.companionAvatarId,
             avatarUrl: result.user.avatarUrl || current?.avatarUrl,
             provider: "google",
             createdAt: current?.createdAt || new Date().toISOString(),
             lastLoginTimestamp: Date.now(),
           });
-        } else if (current?.provider === "google") {
+          setEconomy({
+            totalXp: result.user.economy?.totalXp ?? 0,
+            currentHp: result.user.economy?.currentHp ?? 0,
+          });
+        } else if (response.status === 401 && current?.provider === "google") {
           clearAuthSession();
         }
       })
@@ -197,8 +210,8 @@ export function AppShell({ children }: { readonly children: React.ReactNode }) {
             <div className="col-start-3 row-start-1 ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
               {session ? (
                 <>
-                  <span className="pill hidden bg-amber/15 text-amber xl:inline-flex" aria-label="Saldo 12450 XP Demo"><Flame className="h-3.5 w-3.5" /> 12.450 XP</span>
-                  <span className="pill hidden bg-brand-soft text-brand xl:inline-flex" aria-label="Saldo 3280 HP Demo">3.280 HP</span>
+                  <span className="pill hidden bg-amber/15 text-amber xl:inline-flex" aria-label={`Saldo ${economy.totalXp} XP`}><Flame className="h-3.5 w-3.5" /> {economy.totalXp.toLocaleString("id-ID")} XP</span>
+                  <span className="pill hidden bg-brand-soft text-brand xl:inline-flex" aria-label={`Saldo ${economy.currentHp} HP`}>{economy.currentHp.toLocaleString("id-ID")} HP</span>
                 </>
               ) : (
                 <div className="hidden lg:flex items-center gap-8 mr-6 text-sm font-medium text-muted-foreground">

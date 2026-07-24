@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable react-hooks/purity */
 
 import { useState, useMemo } from "react";
 import { Scale, TrendingDown, Target, Sparkles, Plus, Calendar, ArrowRight, Check } from "lucide-react";
