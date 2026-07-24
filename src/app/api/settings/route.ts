@@ -38,7 +38,34 @@ export async function PATCH(request: NextRequest) {
         data[field] = body[field] as PrivacyLevel;
       }
     }
-    if (typeof body.timezone === "string" && body.timezone.length <= 80) data.timezone = body.timezone;
+    if (typeof body.timezone === "string" && body.timezone.length <= 80) {
+      try {
+        new Intl.DateTimeFormat("id-ID", { timeZone: body.timezone }).format();
+        data.timezone = body.timezone;
+      } catch {
+        return NextResponse.json(
+          { success: false, error: "Zona waktu tidak valid." },
+          { status: 400 },
+        );
+      }
+    }
+    if (body.leaderboardRegion === null || body.leaderboardRegion === "") {
+      data.leaderboardRegion = null;
+    } else if (
+      typeof body.leaderboardRegion === "string" &&
+      body.leaderboardRegion.trim().length >= 2 &&
+      body.leaderboardRegion.trim().length <= 80
+    ) {
+      data.leaderboardRegion = body.leaderboardRegion.trim().toUpperCase();
+    }
+    if (
+      typeof body.rawGpsRetentionDays === "number" &&
+      Number.isInteger(body.rawGpsRetentionDays) &&
+      body.rawGpsRetentionDays >= 1 &&
+      body.rawGpsRetentionDays <= 3650
+    ) {
+      data.rawGpsRetentionDays = body.rawGpsRetentionDays;
+    }
     const settings = await prisma.userSettings.upsert({
       where: { userId: user.id },
       create: { ...(data as Prisma.UserSettingsUncheckedCreateInput), userId: user.id },

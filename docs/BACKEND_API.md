@@ -1,8 +1,8 @@
 # NutriVerse Backend API
 
-Semua endpoint personal menggunakan cookie Supabase dan memvalidasi user pada server. Request mutasi harus berasal dari origin aplikasi. Respons error menyertakan `code` dan `requestId`.
+Semua endpoint personal memakai cookie Supabase dan memvalidasi pengguna pada server. Request mutasi wajib berasal dari origin aplikasi. Respons error memakai `code`, `error`, dan `requestId`.
 
-## Authentication
+## Authentication dan pengguna
 
 - `GET /api/auth/google`
 - `GET /api/auth/callback`
@@ -12,29 +12,27 @@ Semua endpoint personal menggunakan cookie Supabase dan memvalidasi user pada se
 - `POST /api/auth/sign-out`
 - `POST /api/auth/forgot-password`
 - `POST /api/auth/reset-password`
-
-## User
-
 - `GET|PUT /api/onboarding`
 - `GET|PATCH /api/profile`
 - `GET|PATCH /api/settings`
-- `GET /api/me`
+- `GET|PATCH /api/me`
 - `GET /api/economy`
 - `GET /api/badges`
-- `GET /api/notifications`
-- `PATCH /api/notifications/:notificationId/read`
 
-## Activity and GPS
+## Aktivitas GPS dan anti-cheat
 
-- `POST /api/activities/start`
-- `POST /api/activities/:activityId/telemetry` — maksimal 500 titik per batch
-- `POST /api/activities/:activityId/finish`
 - `GET /api/activities`
-- `GET /api/activities/:activityId`
+- `POST /api/activities/start`
+- `GET|DELETE /api/activities/:activityId`
+- `POST /api/activities/:activityId/telemetry`
+- `POST /api/activities/:activityId/finish`
+- `GET|POST /api/activities/:activityId/appeals`
 
-Penyelesaian aktivitas menjalankan verifikasi telemetry, reward XP/HP idempoten, kontribusi challenge, streak, tier, dan evaluasi badge. Aktivitas simulasi disimpan sebagai riwayat namun tidak memperoleh reward.
+Telemetry dibatasi 500 titik per batch dan 50.000 titik per aktivitas. Penyimpanan batch, finish, verifikasi, reward, challenge, dan badge dibuat idempoten serta aman terhadap request paralel. Verifikasi memeriksa urutan, timestamp, akurasi, gap, teleportasi, kecepatan per jenis aktivitas, pause/resume, simulasi, replay telemetry, dan opsional device attestation.
 
-## Health and nutrition
+Aktifkan `REQUIRE_ACTIVITY_DEVICE_ATTESTATION=true` hanya jika aplikasi native/wearable sudah mengirim attestation yang tervalidasi server. Browser biasa tidak menyediakan attestation hardware yang dapat dipercaya.
+
+## Health, nutrisi, jurnal, dan Journey
 
 - `GET|POST /api/health/metrics`
 - `PATCH|DELETE /api/health/metrics/:metricId`
@@ -47,19 +45,28 @@ Penyelesaian aktivitas menjalankan verifikasi telemetry, reward XP/HP idempoten,
 - `GET /api/nutrition/search`
 - `GET|POST /api/journal`
 - `PATCH|DELETE /api/journal/:entryId`
+- `POST /api/journal/:entryId/attachments`
+- `DELETE /api/journal/:entryId/attachments/:attachmentId`
+- `GET|POST /api/journey`
+- `PATCH|DELETE /api/journey/:journeyId`
 
-## Challenge, leaderboard, and rewards
+Health Pulse dan ringkasan nutrisi memakai batas hari menurut `settings.timezone`, bukan UTC mentah. Pencarian USDA memiliki rate limit dan cache database.
+
+## Challenge, leaderboard, dan reward
 
 - `GET /api/challenges`
 - `GET /api/challenges/:challengeId`
 - `POST /api/challenges/:challengeId/join`
 - `POST /api/challenges/:challengeId/claim`
-- `GET /api/leaderboard`
+- `GET /api/leaderboard?scope=LEAGUE|FRIENDS|LOCAL`
 - `GET /api/rewards`
-- `POST /api/rewards/:rewardId/claim` — wajib memakai `idempotencyKey`
+- `POST /api/rewards/:rewardId/claim`
 - `GET /api/rewards/history`
+- `POST /api/rewards/redemptions/:redemptionId/cancel`
 
-## Community and guild
+Klaim reward wajib memakai `idempotencyKey`. Pembatalan/kedaluwarsa mengembalikan stok dan HP satu kali saja. Refund lebih dulu melunasi `hpDebt` yang muncul bila reward anti-cheat dibatalkan setelah HP telanjur dipakai.
+
+## Community, Moments, koneksi, dan event
 
 - `GET|POST /api/community/posts`
 - `PATCH|DELETE /api/community/posts/:postId`
@@ -68,28 +75,77 @@ Penyelesaian aktivitas menjalankan verifikasi telemetry, reward XP/HP idempoten,
 - `POST /api/community/reports`
 - `GET|POST /api/guilds`
 - `POST|DELETE /api/guilds/:guildId/membership`
+- `GET|POST /api/moments`
+- `PATCH|DELETE /api/moments/:momentId`
+- `PUT|DELETE /api/moments/:momentId/reaction`
+- `GET|POST /api/connections`
+- `PATCH|DELETE /api/connections/:connectionId`
+- `GET /api/events`
+- `POST|DELETE /api/events/:eventId/registration`
 
-## Storage
+Konten `CIRCLE` hanya dapat dibaca koneksi berstatus `ACCEPTED`. Post, komentar, reaksi, report, dan RLS memakai aturan akses yang sama.
 
+## Notifikasi, storage, dan privasi
+
+- `GET /api/notifications`
+- `PATCH /api/notifications/:notificationId/read`
+- `GET|POST|DELETE /api/notifications/devices`
 - `POST|DELETE /api/storage/upload`
+- `GET /api/storage/signed-url`
+- `GET /api/privacy/export`
+- `DELETE /api/privacy/location-history`
+- `DELETE /api/privacy/account`
 
-Bucket yang disiapkan: `avatars`, `post-images`, dan `activity-shares`. Folder pertama harus sama dengan Supabase Auth user ID. Ukuran dan MIME type dibatasi oleh API dan Storage policy.
+Bucket: `avatars`, `post-images`, `activity-shares`, dan `journal-attachments`. Gambar divalidasi berdasarkan isi biner, dibatasi dimensinya, lalu di-encode ulang tanpa EXIF. File privat diakses melalui signed URL 10 menit.
+
+Penghapusan akun memerlukan body `{ "confirmation": "DELETE" }` dan `SUPABASE_SERVICE_ROLE_KEY` pada server.
 
 ## Admin
 
-Endpoint berikut memerlukan role `ADMIN` atau `MODERATOR`:
+Role `ADMIN` atau `MODERATOR`:
 
 - `GET /api/admin/overview`
+- `GET /api/admin/activities`
+- `POST /api/admin/activities/:activityId/retry`
 - `PATCH /api/admin/activities/:activityId/review`
+- `GET /api/admin/appeals`
+- `PATCH /api/admin/appeals/:appealId/review`
+- `GET /api/admin/reports`
 - `PATCH /api/admin/reports/:reportId`
+- `GET /api/admin/audit-logs`
+- `GET|POST /api/admin/challenges`
+- `PATCH|DELETE /api/admin/challenges/:challengeId`
+- `GET|POST /api/admin/events`
+- `PATCH|DELETE /api/admin/events/:eventId`
+- `GET /api/admin/events/:eventId/registrations`
+- `PATCH /api/admin/events/:eventId/registrations/:registrationId`
+- `GET|POST /api/admin/rewards`
+- `PATCH|DELETE /api/admin/rewards/:rewardId`
+- `GET /api/admin/redemptions`
+- `PATCH /api/admin/redemptions/:redemptionId`
+- `GET|POST /api/admin/leaderboard-seasons`
+- `PATCH /api/admin/leaderboard-seasons/:seasonId`
 
-Semua keputusan review menghasilkan audit log.
+Khusus role `ADMIN`:
 
-## Verification commands
+- `GET /api/admin/users`
+- `PATCH /api/admin/users/:userId`
+
+Review aktivitas yang ditolak membalik XP, HP, progress/claim challenge, tier, streak, dan badge secara idempoten. Semua keputusan administratif dicatat di audit log.
+
+## Maintenance
+
+- `GET|POST /api/internal/maintenance`
+
+Endpoint memakai `Authorization: Bearer <MAINTENANCE_SECRET>` atau `x-maintenance-secret`. Jalankan terjadwal untuk membersihkan cache/rate bucket, token perangkat usang, GPS melewati retensi, sesi aktivitas terlantar, redemption kedaluwarsa, dan membangun snapshot leaderboard.
+
+Perintah:
 
 ```bash
+pnpm maintenance:preview
+pnpm maintenance:backend
+pnpm validate:migration
 pnpm exec prisma migrate status
-pnpm exec prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code
 pnpm exec tsc --noEmit
 pnpm test:backend
 pnpm test:integration

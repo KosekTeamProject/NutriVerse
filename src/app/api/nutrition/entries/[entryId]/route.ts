@@ -1,11 +1,13 @@
-import { NextResponse } from "next/server";
-import { authErrorResponse, requireCurrentUser } from "@/lib/auth";
+import { NextRequest, NextResponse } from "next/server";
+import { apiErrorResponse, assertSameOrigin } from "@/lib/api";
+import { requireCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 type RouteContext = { params: Promise<{ entryId: string }> };
 
-export async function DELETE(_request: Request, context: RouteContext) {
+export async function DELETE(request: NextRequest, context: RouteContext) {
   try {
+    assertSameOrigin(request);
     const user = await requireCurrentUser();
     const { entryId } = await context.params;
     const result = await prisma.nutritionEntry.deleteMany({
@@ -16,6 +18,6 @@ export async function DELETE(_request: Request, context: RouteContext) {
     }
     return NextResponse.json({ success: true });
   } catch (error) {
-    return authErrorResponse(error);
+    return apiErrorResponse(error);
   }
 }

@@ -170,7 +170,9 @@ export async function claimChallengeReward(challengeProgressId: string) {
           where: {
             userId: progress.userId,
             effectiveAt: { gte: bounds.start, lt: bounds.end },
-            amount: { gt: 0 },
+            type: {
+              in: [LedgerType.XP_GRANT, LedgerType.XP_REVERSAL],
+            },
           },
           _sum: { amount: true },
         }),
@@ -178,8 +180,9 @@ export async function claimChallengeReward(challengeProgressId: string) {
           where: {
             userId: progress.userId,
             effectiveAt: { gte: bounds.start, lt: bounds.end },
-            type: LedgerType.HP_GRANT,
-            amount: { gt: 0 },
+            type: {
+              in: [LedgerType.HP_GRANT, LedgerType.HP_REVERSAL],
+            },
           },
           _sum: { amount: true },
         }),
@@ -201,12 +204,20 @@ export async function claimChallengeReward(challengeProgressId: string) {
         progress.user.economy ??
         (await transaction.userEconomy.create({ data: { userId: progress.userId } }));
       const totalXp = currentEconomy.totalXp + xpAward.awardedAmount;
+      const hpDebtPaid = Math.min(
+        currentEconomy.hpDebt,
+        hpAward.awardedAmount,
+      );
+      const hpBalanceIncrease = hpAward.awardedAmount - hpDebtPaid;
+      const versionSuffix =
+        progress.claimVersion > 0 ? `:v${progress.claimVersion}` : "";
 
       const xpGrant = await transaction.xPGrant.create({
         data: {
           userId: progress.userId,
           challengeId: progress.challengeId,
-          idempotencyKey: xpKey,
+          idempotencyKey: `${xpKey}${versionSuffix}`,
+          type: LedgerType.XP_GRANT,
           amount: xpAward.awardedAmount,
           capApplied: xpAward.capApplied,
           diminishingApplied: xpAward.diminishingApplied,
@@ -218,7 +229,7 @@ export async function claimChallengeReward(challengeProgressId: string) {
         data: {
           userId: progress.userId,
           challengeId: progress.challengeId,
-          idempotencyKey: hpKey,
+          idempotencyKey: `${hpKey}${versionSuffix}`,
           type: LedgerType.HP_GRANT,
           amount: hpAward.awardedAmount,
           capApplied: hpAward.capApplied,
@@ -231,7 +242,8 @@ export async function claimChallengeReward(challengeProgressId: string) {
         where: { userId: progress.userId },
         data: {
           totalXp,
-          currentHp: { increment: hpAward.awardedAmount },
+          currentHp: { increment: hpBalanceIncrease },
+          hpDebt: { decrement: hpDebtPaid },
           currentTier: tierForTotalXp(totalXp),
         },
       });
@@ -240,6 +252,7 @@ export async function claimChallengeReward(challengeProgressId: string) {
         data: {
           claimedXpGrantId: xpGrant.id,
           claimedHpLedgerEntryId: hpEntry.id,
+          rewardReversedAt: null,
         },
       });
 

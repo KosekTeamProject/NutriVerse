@@ -5,7 +5,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 export async function POST(request: NextRequest) {
   try {
     assertSameOrigin(request);
-    enforceRateLimit(request, "auth:reset", 6, 15 * 60_000);
+    await enforceRateLimit(request, "auth:reset", 6, 15 * 60_000);
     const body = (await request.json().catch(() => null)) as { password?: unknown } | null;
     const password = typeof body?.password === "string" ? body.password : "";
     if (password.length < 8 || password.length > 72) {

@@ -124,15 +124,38 @@ function localMidnightAsUtc(dayKey: string, timezone: string) {
   }
 }
 
-export function utcDayBounds(date: Date, timezone: string) {
-  const currentKey = calendarDayKey(date, timezone);
-  const [year, month, day] = currentKey.split("-").map(Number);
+export function isCalendarDayKey(value: unknown): value is string {
+  if (
+    typeof value !== "string" ||
+    !/^\d{4}-\d{2}-\d{2}$/.test(value)
+  ) {
+    return false;
+  }
+  const [year, month, day] = value.split("-").map(Number);
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+  return (
+    parsed.getUTCFullYear() === year &&
+    parsed.getUTCMonth() === month - 1 &&
+    parsed.getUTCDate() === day
+  );
+}
+
+export function utcDayBoundsForKey(dayKey: string, timezone: string) {
+  if (!isCalendarDayKey(dayKey)) {
+    throw new Error("INVALID_CALENDAR_DAY");
+  }
+  const [year, month, day] = dayKey.split("-").map(Number);
   const nextDate = new Date(Date.UTC(year, month - 1, day + 1));
   const nextKey = nextDate.toISOString().slice(0, 10);
   return {
-    start: localMidnightAsUtc(currentKey, timezone),
+    start: localMidnightAsUtc(dayKey, timezone),
     end: localMidnightAsUtc(nextKey, timezone),
   };
+}
+
+export function utcDayBounds(date: Date, timezone: string) {
+  const currentKey = calendarDayKey(date, timezone);
+  return utcDayBoundsForKey(currentKey, timezone);
 }
 
 export function nextStreakDays(

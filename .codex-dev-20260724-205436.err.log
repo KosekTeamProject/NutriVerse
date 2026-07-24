@@ -1,0 +1,25 @@
+$ next dev --webpack
+⚠ Fast Refresh had to perform a full reload due to a runtime error.
+⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+[browser] Error: AJAXError: Failed to fetch (0): https://tiles.openfreemap.org/natural_earth/ne2sr/4/10/8.png
+    at Generator.throw (<anonymous>) (<anonymous>)
+[browser] Error: AJAXError: Failed to fetch (0): https://tiles.openfreemap.org/natural_earth/ne2sr/4/11/8.png
+    at Generator.throw (<anonymous>) (<anonymous>)
+[browser] Error: AJAXError: Failed to fetch (0): https://tiles.openfreemap.org/natural_earth/ne2sr/4/15/8.png
+    at Generator.throw (<anonymous>) (<anonymous>)
+[browser] Error: AJAXError: Failed to fetch (0): https://tiles.openfreemap.org/natural_earth/ne2sr/4/15/7.png
+    at Generator.throw (<anonymous>) (<anonymous>)
+[browser] Error: AJAXError: Failed to fetch (0): https://tiles.openfreemap.org/natural_earth/ne2sr/4/10/7.png
+    at Generator.throw (<anonymous>) (<anonymous>)
+[browser] Error: AJAXError: Failed to fetch (0): https://tiles.openfreemap.org/natural_earth/ne2sr/4/9/8.png
+    at Generator.throw (<anonymous>) (<anonymous>)
+[browser] Error: AJAXError: Failed to fetch (0): https://tiles.openfreemap.org/natural_earth/ne2sr/4/11/7.png
+    at Generator.throw (<anonymous>) (<anonymous>)
+[browser] Image "sports_centre" could not be loaded. Please make sure you have added the image with map.addImage() or a "sprite" property in your style. You can provide missing images by listening for the "styleimagemissing" map event. (<anonymous>)
+[browser] Image "office" could not be loaded. Please make sure you have added the image with map.addImage() or a "sprite" property in your style. You can provide missing images by listening for the "styleimagemissing" map event. (<anonymous>)
+[browser] Image "lift_gate" could not be loaded. Please make sure you have added the image with map.addImage() or a "sprite" property in your style. You can provide missing images by listening for the "styleimagemissing" map event. (<anonymous>)
+[browser] Image "bollard" could not be loaded. Please make sure you have added the image with map.addImage() or a "sprite" property in your style. You can provide missing images by listening for the "styleimagemissing" map event. (<anonymous>)
+[browser] Image "gate" could not be loaded. Please make sure you have added the image with map.addImage() or a "sprite" property in your style. You can provide missing images by listening for the "styleimagemissing" map event. (<anonymous>)
+[browser] Image "atm" could not be loaded. Please make sure you have added the image with map.addImage() or a "sprite" property in your style. You can provide missing images by listening for the "styleimagemissing" map event. (<anonymous>)
+[browser] Image "swimming_pool" could not be loaded. Please make sure you have added the image with map.addImage() or a "sprite" property in your style. You can provide missing images by listening for the "styleimagemissing" map event. (<anonymous>)
+[browser] Image "motorcycle_parking" could not be loaded. Please make sure you have added the image with map.addImage() or a "sprite" property in your style. You can provide missing images by listening for the "styleimagemissing" map event. (<anonymous>)

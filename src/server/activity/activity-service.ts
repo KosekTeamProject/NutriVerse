@@ -16,6 +16,7 @@ const XP_PER_KILOMETER: Record<ActivityType, number> = {
 function createTelemetryDigest(
   samples: readonly {
     sequenceNumber: number | null;
+    segmentNumber: number;
     timestamp: Date;
     latitude: number;
     longitude: number;
@@ -25,7 +26,7 @@ function createTelemetryDigest(
   for (const sample of samples) {
     hash.update(
       `${sample.sequenceNumber ?? ""}|${sample.timestamp.toISOString()}|` +
-        `${sample.latitude.toFixed(7)}|${sample.longitude.toFixed(7)}\n`,
+        `${sample.segmentNumber}|${sample.latitude.toFixed(7)}|${sample.longitude.toFixed(7)}\n`,
     );
   }
   return hash.digest("hex");
@@ -84,6 +85,7 @@ export async function verifyStoredActivity(
     activityType: session.activityType,
     startTime: session.startTime,
     endTime: session.endTime,
+    pausedDurationSeconds: session.pausedDurationSeconds,
     isSimulated: session.isSimulated,
     deviceAttestationVerified: session.deviceAttestationVerified,
     requireDeviceAttestation: options.requireDeviceAttestation,
@@ -91,9 +93,13 @@ export async function verifyStoredActivity(
   });
   if (replay) decision = duplicateDecision(decision);
 
-  const durationSeconds = Math.max(
+  const wallDurationSeconds = Math.max(
     0,
     Math.round((session.endTime.getTime() - session.startTime.getTime()) / 1000),
+  );
+  const activeDurationSeconds = Math.max(
+    0,
+    wallDurationSeconds - session.pausedDurationSeconds,
   );
   const distanceKilometers = decision.trustedDistanceMeters / 1000;
   const averagePace =
@@ -114,7 +120,8 @@ export async function verifyStoredActivity(
       where: { id: session.id },
       data: {
         endTime: session.endTime,
-        durationSeconds,
+        durationSeconds: activeDurationSeconds,
+        activeDurationSeconds,
         distanceMeters: decision.trustedDistanceMeters,
         averagePace,
         verificationStatus: decision.verificationStatus,

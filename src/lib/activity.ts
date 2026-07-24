@@ -16,14 +16,19 @@ export type ActivityRiskSignal =
   | "unusual-speed"
   | "sudden-location-change"
   | "low-accuracy"
+  | "invalid-coordinate"
   | "timestamp-order"
+  | "segment-order"
+  | "undeclared-segment-break"
   | "duplicate-sample"
   | "incomplete-samples"
   | "large-sample-gap"
   | "duplicate-activity"
   | "invalid-duration"
+  | "invalid-pause-duration"
   | "zero-movement"
-  | "simulation-source";
+  | "simulation-source"
+  | "attestation-missing";
 
 export interface ActivitySampleSummary {
   readonly sampleCount: number;

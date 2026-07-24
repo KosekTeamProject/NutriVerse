@@ -8,6 +8,7 @@ import {
 } from "@/lib/api";
 import { requireCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { ownedPublicStorageUrl } from "@/lib/storage-ownership";
 
 export async function GET() {
   try {
@@ -43,6 +44,19 @@ export async function PATCH(request: NextRequest) {
         "INVALID_USERNAME",
       );
     }
+    const avatarUrl =
+      body.avatarUrl === undefined || body.avatarUrl === ""
+        ? body.avatarUrl
+        : ownedPublicStorageUrl(body.avatarUrl, user.authUserId, [
+            "avatars",
+          ]);
+    if (body.avatarUrl !== undefined && body.avatarUrl !== "" && !avatarUrl) {
+      throw new ApiRequestError(
+        "Avatar harus berasal dari upload milik pengguna.",
+        400,
+        "INVALID_AVATAR_URL",
+      );
+    }
     const profile = await prisma.$transaction(async (transaction) => {
       const updated = await transaction.user.update({
         where: { id: user.id },
@@ -52,8 +66,8 @@ export async function PATCH(request: NextRequest) {
         ...(body.bio !== undefined
           ? { bio: body.bio === "" ? null : stringValue(body.bio, "Bio", { max: 300 }) }
           : {}),
-        ...(body.avatarUrl !== undefined
-          ? { avatarUrl: body.avatarUrl === "" ? null : stringValue(body.avatarUrl, "Avatar URL", { max: 2000 }) }
+        ...(avatarUrl !== undefined
+          ? { avatarUrl: avatarUrl === "" ? null : avatarUrl }
           : {}),
         },
         select: { id: true, email: true, username: true, name: true, bio: true, avatarUrl: true },

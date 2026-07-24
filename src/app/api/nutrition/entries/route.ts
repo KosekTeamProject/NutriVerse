@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
-import { authErrorResponse, requireCurrentUser } from "@/lib/auth";
+import { NextRequest, NextResponse } from "next/server";
+import { apiErrorResponse, assertSameOrigin } from "@/lib/api";
+import { requireCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 type NutritionPayload = {
@@ -47,12 +48,13 @@ export async function GET(request: Request) {
       nextCursor: hasMore ? page.at(-1)?.id : null,
     });
   } catch (error) {
-    return authErrorResponse(error);
+    return apiErrorResponse(error);
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    assertSameOrigin(request);
     const user = await requireCurrentUser();
     const body = (await request.json().catch(() => null)) as NutritionPayload | null;
     if (!body) {
@@ -112,6 +114,6 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, entry }, { status: 201 });
   } catch (error) {
-    return authErrorResponse(error);
+    return apiErrorResponse(error);
   }
 }

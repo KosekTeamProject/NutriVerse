@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ApiRequestError, apiErrorResponse, assertSameOrigin, stringValue } from "@/lib/api";
+import {
+  ApiRequestError,
+  apiErrorResponse,
+  assertSameOrigin,
+  enforceRateLimit,
+  stringValue,
+} from "@/lib/api";
 import { requireCurrentUser } from "@/lib/auth";
 import { redeemReward } from "@/server/rewards/reward-service";
 
@@ -8,6 +14,7 @@ type RouteContext = { params: Promise<{ rewardId: string }> };
 export async function POST(request: NextRequest, context: RouteContext) {
   try {
     assertSameOrigin(request);
+    await enforceRateLimit(request, "reward:claim", 10, 60 * 60_000);
     const user = await requireCurrentUser();
     const { rewardId } = await context.params;
     const body = (await request.json().catch(() => null)) as { idempotencyKey?: unknown } | null;

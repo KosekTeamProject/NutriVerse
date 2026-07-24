@@ -8,7 +8,7 @@ type SignInPayload = { email?: unknown; password?: unknown };
 export async function POST(request: NextRequest) {
  try {
   assertSameOrigin(request);
-  enforceRateLimit(request, "auth:sign-in", 10, 15 * 60_000);
+  await enforceRateLimit(request, "auth:sign-in", 10, 15 * 60_000);
   const body = (await request.json().catch(() => null)) as SignInPayload | null;
   const email = typeof body?.email === "string" ? body.email.trim().toLowerCase() : "";
   const password = typeof body?.password === "string" ? body.password : "";

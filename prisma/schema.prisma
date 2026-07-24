@@ -38,6 +38,14 @@ enum VerificationStatus {
   MANUAL_REVIEW
 }
 
+enum ActivityProcessingStatus {
+  TRACKING
+  VERIFYING
+  REWARDING
+  COMPLETED
+  FAILED
+}
+
 enum ChallengeType {
   DAILY
   WEEKLY
@@ -88,6 +96,7 @@ enum LedgerType {
   XP_REVERSAL
   HP_GRANT
   HP_REDEEM
+  HP_REFUND
   HP_EXPIRED
   HP_REVERSAL
 }
@@ -136,6 +145,9 @@ enum NotificationType {
   CHEAT_ALERT
   WEEKLY_LETTER
   REWARD
+  SOCIAL
+  EVENT
+  ACTIVITY
 }
 
 enum GuildRole {
@@ -150,21 +162,36 @@ enum PostReactionType {
   CELEBRATE
 }
 
+enum EventRegistrationStatus {
+  JOINED
+  CANCELLED
+  ATTENDED
+}
+
+enum ConnectionStatus {
+  PENDING
+  ACCEPTED
+  BLOCKED
+}
+
 // ==========================================
 // 1. AKUN, PROFIL, PREFERENSI & SETTINGS
 // ==========================================
 
 model User {
-  id         String   @id @default(uuid())
-  authUserId String?  @unique // ID from Supabase Auth; nullable while legacy/demo rows are migrated.
-  email      String   @unique
-  username   String?  @unique
-  name       String
-  bio        String?
-  avatarUrl  String?
-  role       UserRole @default(USER)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id               String    @id @default(uuid())
+  authUserId       String?   @unique // ID from Supabase Auth; nullable while legacy/demo rows are migrated.
+  email            String    @unique
+  username         String?   @unique
+  name             String
+  bio              String?
+  avatarUrl        String?
+  role             UserRole  @default(USER)
+  isSuspended      Boolean   @default(false)
+  suspendedAt      DateTime?
+  suspensionReason String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   // Relationships
   healthProfile          HealthProfile?
@@ -201,6 +228,11 @@ model User {
   posts                  Post[]
   postComments           PostComment[]
   postReactions          PostReaction[]
+  momentReactions        MomentReaction[]
+  eventRegistrations     EventRegistration[]
+  connectionsSent        UserConnection[]        @relation("ConnectionRequester")
+  connectionsReceived    UserConnection[]        @relation("ConnectionAddressee")
+  connectionsBlocked     UserConnection[]        @relation("ConnectionBlocker")
 
   @@map("users")
 }
@@ -270,6 +302,8 @@ model UserSettings {
   gpsSimulationEnabled        Boolean      @default(true)
   foodSimulationEnabled       Boolean      @default(true)
   timezone                    String       @default("Asia/Jakarta")
+  leaderboardRegion           String?
+  rawGpsRetentionDays         Int          @default(30)
   createdAt                   DateTime     @default(now())
   updatedAt                   DateTime     @updatedAt
 
@@ -299,9 +333,11 @@ model UserDeviceToken {
   fcmToken   String     @unique
   deviceType DeviceType @default(ANDROID)
   createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId, updatedAt])
   @@map("user_device_tokens")
 }
 
@@ -314,6 +350,7 @@ model UserEconomy {
   userId         String    @unique
   totalXp        Int       @default(0) // XP akumulatif (tidak berkurang)
   currentHp      Int       @default(0) // HP dapat dibelanjakan
+  hpDebt         Int       @default(0) // Reversal yang belum tertutup oleh grant HP berikutnya
   currentTier    Tier      @default(SPROUT)
   streakDays     Int       @default(0)
   lastActiveDate DateTime?
@@ -326,17 +363,18 @@ model UserEconomy {
 }
 
 model XPGrant {
-  id                 String   @id @default(uuid())
+  id                 String     @id @default(uuid())
   userId             String
   activitySessionId  String?
   challengeId        String?
-  idempotencyKey     String   @unique // Mencegah pendelegasian ganda
+  idempotencyKey     String     @unique // Mencegah pendelegasian ganda
+  type               LedgerType @default(XP_GRANT)
   amount             Int
-  capApplied         Boolean  @default(false) // Penanda cap harian
-  diminishingApplied Boolean  @default(false) // Penanda diminishing return
+  capApplied         Boolean    @default(false) // Penanda cap harian
+  diminishingApplied Boolean    @default(false) // Penanda diminishing return
   reason             String
-  effectiveAt        DateTime @default(now())
-  createdAt          DateTime @default(now())
+  effectiveAt        DateTime   @default(now())
+  createdAt          DateTime   @default(now())
 
   user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   activitySession   ActivitySession?   @relation(fields: [activitySessionId], references: [id], onDelete: SetNull)
@@ -384,22 +422,34 @@ model HPLedgerEntry {
 // ==========================================
 
 model ActivitySession {
-  id                        String             @id @default(uuid())
+  id                        String                   @id @default(uuid())
   userId                    String
   clientSessionId           String?
   activityType              ActivityType
   startTime                 DateTime
   endTime                   DateTime?
-  durationSeconds           Int                @default(0)
-  distanceMeters            Float              @default(0)
-  averagePace               Float              @default(0) // detik per km
-  caloriesBurned            Float              @default(0)
-  verificationStatus        VerificationStatus @default(PENDING)
-  isSimulated               Boolean            @default(false)
-  deviceAttestationVerified Boolean            @default(false)
-  telemetryDigest           String?            @unique
-  createdAt                 DateTime           @default(now())
-  updatedAt                 DateTime           @updatedAt
+  durationSeconds           Int                      @default(0)
+  activeDurationSeconds     Int                      @default(0)
+  pausedDurationSeconds     Int                      @default(0)
+  distanceMeters            Float                    @default(0)
+  averagePace               Float                    @default(0) // detik per km
+  caloriesBurned            Float                    @default(0)
+  verificationStatus        VerificationStatus       @default(PENDING)
+  isSimulated               Boolean                  @default(false)
+  deviceAttestationVerified Boolean                  @default(false)
+  processingStatus          ActivityProcessingStatus @default(TRACKING)
+  processingAttempts        Int                      @default(0)
+  lastProcessingError       String?
+  rewardProcessedAt         DateTime?
+  challengeProcessedAt      DateTime?
+  badgeProcessedAt          DateTime?
+  finalizedAt               DateTime?
+  processingLeaseToken      String?
+  processingLeaseUntil      DateTime?
+  telemetrySampleCount      Int                      @default(0)
+  telemetryDigest           String?                  @unique
+  createdAt                 DateTime                 @default(now())
+  updatedAt                 DateTime                 @updatedAt
 
   user                   User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
   telemetrySamples       TelemetrySample[]
@@ -414,6 +464,7 @@ model ActivitySession {
   @@unique([userId, clientSessionId])
   @@index([userId, startTime])
   @@index([verificationStatus, createdAt])
+  @@index([processingStatus, updatedAt])
   @@map("activity_sessions")
 }
 
@@ -421,6 +472,7 @@ model TelemetrySample {
   id                String   @id @default(uuid())
   activitySessionId String
   sequenceNumber    Int?
+  segmentNumber     Int      @default(0)
   timestamp         DateTime
   latitude          Float
   longitude         Float
@@ -433,6 +485,7 @@ model TelemetrySample {
 
   @@unique([activitySessionId, sequenceNumber])
   @@unique([activitySessionId, timestamp])
+  @@index([activitySessionId, segmentNumber, sequenceNumber], map: "telemetry_activity_segment_sequence_idx")
   @@map("telemetry_samples")
 }
 
@@ -564,6 +617,8 @@ model ChallengeProgress {
   completedAt            DateTime?
   claimedXpGrantId       String?   @unique
   claimedHpLedgerEntryId String?   @unique
+  claimVersion           Int       @default(0)
+  rewardReversedAt       DateTime?
   lastContributedAt      DateTime?
   createdAt              DateTime  @default(now())
   updatedAt              DateTime  @updatedAt
@@ -682,15 +737,19 @@ model Reward {
 }
 
 model Redemption {
-  id             String           @id @default(uuid())
-  userId         String
-  rewardId       String
-  hpSpent        Int
-  status         RedemptionStatus @default(PENDING)
-  redemptionCode String           @unique
-  fulfilledAt    DateTime?
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
+  id                   String           @id @default(uuid())
+  userId               String
+  rewardId             String
+  hpSpent              Int
+  status               RedemptionStatus @default(PENDING)
+  redemptionCode       String           @unique
+  fulfilledAt          DateTime?
+  cancelledAt          DateTime?
+  expiresAt            DateTime?
+  fulfillmentReference String?
+  statusReason         String?
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
 
   user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   reward          Reward          @relation(fields: [rewardId], references: [id], onDelete: Cascade)
@@ -895,9 +954,55 @@ model Event {
   startDate   DateTime
   endDate     DateTime
   location    String?
+  capacity    Int      @default(0)
+  bonusXp     Int      @default(0)
+  bonusHp     Int      @default(0)
+  isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
+  registrations EventRegistration[]
+
+  @@index([isActive, startDate])
   @@map("events")
+}
+
+model EventRegistration {
+  id         String                  @id @default(uuid())
+  eventId    String
+  userId     String
+  status     EventRegistrationStatus @default(JOINED)
+  joinedAt   DateTime                @default(now())
+  attendedAt DateTime?
+  updatedAt  DateTime                @updatedAt
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+  @@index([userId, status])
+  @@map("event_registrations")
+}
+
+model UserConnection {
+  id          String           @id @default(uuid())
+  pairKey     String           @unique
+  requesterId String
+  addresseeId String
+  blockedById String?
+  status      ConnectionStatus @default(PENDING)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  requester User  @relation("ConnectionRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  addressee User  @relation("ConnectionAddressee", fields: [addresseeId], references: [id], onDelete: Cascade)
+  blockedBy User? @relation("ConnectionBlocker", fields: [blockedById], references: [id], onDelete: SetNull)
+
+  @@unique([requesterId, addresseeId])
+  @@index([addresseeId, status])
+  @@index([requesterId, status])
+  @@index([blockedById])
+  @@map("user_connections")
 }
 
 model Guild {
@@ -997,13 +1102,34 @@ model Moment {
   caption           String?
   privacyLevel      PrivacyLevel @default(PUBLIC)
   reportCount       Int          @default(0)
+  isHidden          Boolean      @default(false)
   createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
 
   user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   activitySession ActivitySession? @relation(fields: [activitySessionId], references: [id], onDelete: SetNull)
   reports         ContentReport[]
+  reactions       MomentReaction[]
 
+  @@index([privacyLevel, createdAt])
+  @@index([userId, createdAt])
   @@map("moments")
+}
+
+model MomentReaction {
+  id        String           @id @default(uuid())
+  momentId  String
+  userId    String
+  type      PostReactionType @default(ENCOURAGE)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  moment Moment @relation(fields: [momentId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([momentId, userId])
+  @@index([userId, createdAt])
+  @@map("moment_reactions")
 }
 
 model ContentReport {
@@ -1023,6 +1149,9 @@ model ContentReport {
   post         Post?        @relation(fields: [postId], references: [id], onDelete: Cascade)
   comment      PostComment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
 
+  @@unique([reporterUserId, momentId])
+  @@unique([reporterUserId, postId])
+  @@unique([reporterUserId, commentId])
   @@index([reporterUserId, createdAt])
   @@index([postId])
   @@index([commentId])
@@ -1047,4 +1176,17 @@ model AuditLog {
   actorUser User @relation("ActorUser", fields: [actorUserId], references: [id], onDelete: Cascade)
 
   @@map("audit_logs")
+}
+
+model ApiRateLimitBucket {
+  id          String   @id @default(uuid())
+  bucketKey   String
+  windowStart DateTime
+  count       Int      @default(1)
+  expiresAt   DateTime
+  updatedAt   DateTime @updatedAt
+
+  @@unique([bucketKey, windowStart])
+  @@index([expiresAt])
+  @@map("api_rate_limit_buckets")
 }

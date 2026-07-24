@@ -4,9 +4,11 @@ import { Tier } from "@prisma/client";
 import {
   ECONOMY_POLICY,
   applyDailyAwardPolicy,
+  isCalendarDayKey,
   nextStreakDays,
   tierForTotalXp,
   utcDayBounds,
+  utcDayBoundsForKey,
 } from "@/server/economy/economy-policy";
 
 test("applies diminishing return after the full-rate XP threshold", () => {
@@ -33,6 +35,14 @@ test("calculates a Jakarta calendar-day boundary in UTC", () => {
   const bounds = utcDayBounds(new Date("2026-07-23T12:00:00.000Z"), "Asia/Jakarta");
   assert.equal(bounds.start.toISOString(), "2026-07-22T17:00:00.000Z");
   assert.equal(bounds.end.toISOString(), "2026-07-23T17:00:00.000Z");
+});
+
+test("calculates an explicitly requested Jakarta day and rejects rollover dates", () => {
+  const bounds = utcDayBoundsForKey("2026-07-24", "Asia/Jakarta");
+  assert.equal(bounds.start.toISOString(), "2026-07-23T17:00:00.000Z");
+  assert.equal(bounds.end.toISOString(), "2026-07-24T17:00:00.000Z");
+  assert.equal(isCalendarDayKey("2026-02-29"), false);
+  assert.equal(isCalendarDayKey("2024-02-29"), true);
 });
 
 test("increments, preserves, and resets streaks by local calendar day", () => {

@@ -75,7 +75,9 @@ async function runActivityAwardTransaction(activitySessionId: string) {
           where: {
             userId: activity.userId,
             effectiveAt: { gte: bounds.start, lt: bounds.end },
-            amount: { gt: 0 },
+            type: {
+              in: [LedgerType.XP_GRANT, LedgerType.XP_REVERSAL],
+            },
           },
           _sum: { amount: true },
         }),
@@ -83,8 +85,9 @@ async function runActivityAwardTransaction(activitySessionId: string) {
           where: {
             userId: activity.userId,
             effectiveAt: { gte: bounds.start, lt: bounds.end },
-            type: LedgerType.HP_GRANT,
-            amount: { gt: 0 },
+            type: {
+              in: [LedgerType.HP_GRANT, LedgerType.HP_REVERSAL],
+            },
           },
           _sum: { amount: true },
         }),
@@ -104,6 +107,11 @@ async function runActivityAwardTransaction(activitySessionId: string) {
         activity.user.economy ??
         (await transaction.userEconomy.create({ data: { userId: activity.userId } }));
       const totalXp = currentEconomy.totalXp + xpAward.awardedAmount;
+      const hpDebtPaid = Math.min(
+        currentEconomy.hpDebt,
+        hpAward.awardedAmount,
+      );
+      const hpBalanceIncrease = hpAward.awardedAmount - hpDebtPaid;
       const streakDays = nextStreakDays(
         currentEconomy.streakDays,
         currentEconomy.lastActiveDate,
@@ -116,6 +124,7 @@ async function runActivityAwardTransaction(activitySessionId: string) {
           userId: activity.userId,
           activitySessionId: activity.id,
           idempotencyKey: xpKey,
+          type: LedgerType.XP_GRANT,
           amount: xpAward.awardedAmount,
           capApplied: xpAward.capApplied,
           diminishingApplied: xpAward.diminishingApplied,
@@ -140,7 +149,8 @@ async function runActivityAwardTransaction(activitySessionId: string) {
         where: { userId: activity.userId },
         data: {
           totalXp,
-          currentHp: { increment: hpAward.awardedAmount },
+          currentHp: { increment: hpBalanceIncrease },
+          hpDebt: { decrement: hpDebtPaid },
           currentTier: tierForTotalXp(totalXp),
           streakDays,
           lastActiveDate: effectiveAt,

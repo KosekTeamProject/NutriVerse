@@ -20,7 +20,10 @@ export type VerificationReasonCode =
   | "INSUFFICIENT_SAMPLES"
   | "INCOMPLETE_SAMPLES"
   | "INVALID_DURATION"
+  | "INVALID_PAUSE_DURATION"
   | "TIMESTAMP_ORDER"
+  | "SEGMENT_ORDER"
+  | "UNDECLARED_SEGMENT_BREAK"
   | "DUPLICATE_SAMPLE"
   | "INVALID_COORDINATE"
   | "LOW_ACCURACY"
@@ -33,6 +36,7 @@ export type VerificationReasonCode =
 
 export type VerificationTelemetrySample = {
   readonly sequenceNumber?: number | null;
+  readonly segmentNumber?: number | null;
   readonly timestamp: Date;
   readonly latitude: number;
   readonly longitude: number;
@@ -44,6 +48,7 @@ export type VerifyActivityInput = {
   readonly activityType: ActivityType;
   readonly startTime: Date;
   readonly endTime: Date;
+  readonly pausedDurationSeconds?: number;
   readonly isSimulated: boolean;
   readonly deviceAttestationVerified: boolean;
   readonly requireDeviceAttestation?: boolean;
@@ -94,14 +99,27 @@ function addReason(reasons: Set<VerificationReasonCode>, reason: VerificationRea
 
 export function verifyActivityTelemetry(input: VerifyActivityInput): ActivityVerificationDecision {
   const reasons = new Set<VerificationReasonCode>();
-  const durationSeconds = (input.endTime.getTime() - input.startTime.getTime()) / 1000;
+  const wallDurationSeconds = (input.endTime.getTime() - input.startTime.getTime()) / 1000;
+  const pausedDurationSeconds = input.pausedDurationSeconds ?? 0;
+  const durationSeconds = wallDurationSeconds - pausedDurationSeconds;
   let riskScore = 0;
 
   if (input.isSimulated) {
     addReason(reasons, "SIMULATED_SOURCE");
     riskScore = 100;
   }
-  if (!Number.isFinite(durationSeconds) || durationSeconds < ACTIVITY_VERIFICATION_POLICY.minimumDurationSeconds) {
+  if (
+    !Number.isFinite(pausedDurationSeconds) ||
+    pausedDurationSeconds < 0 ||
+    pausedDurationSeconds > wallDurationSeconds
+  ) {
+    addReason(reasons, "INVALID_PAUSE_DURATION");
+    riskScore = 100;
+  }
+  if (
+    !Number.isFinite(durationSeconds) ||
+    durationSeconds < ACTIVITY_VERIFICATION_POLICY.minimumDurationSeconds
+  ) {
     addReason(reasons, "INVALID_DURATION");
     riskScore = 100;
   }
@@ -122,6 +140,7 @@ export function verifyActivityTelemetry(input: VerifyActivityInput): ActivityVer
     riskScore += 10;
   }
 
+  let segmentTransitionCount = 0;
   for (let index = 1; index < input.samples.length; index += 1) {
     const previous = input.samples[index - 1];
     const current = input.samples[index];
@@ -139,6 +158,33 @@ export function verifyActivityTelemetry(input: VerifyActivityInput): ActivityVer
       addReason(reasons, "DUPLICATE_SAMPLE");
       riskScore = 100;
     }
+    if (
+      hasSequenceForEverySample &&
+      (current.sequenceNumber ?? 0) > (previous.sequenceNumber ?? 0) + 1
+    ) {
+      addReason(reasons, "INCOMPLETE_SAMPLES");
+      riskScore += 10;
+    }
+    if (
+      (current.segmentNumber ?? 0) < (previous.segmentNumber ?? 0)
+    ) {
+      addReason(reasons, "SEGMENT_ORDER");
+      riskScore = 100;
+    }
+    if ((current.segmentNumber ?? 0) > (previous.segmentNumber ?? 0) + 1) {
+      addReason(reasons, "SEGMENT_ORDER");
+      riskScore = 100;
+    }
+    if ((current.segmentNumber ?? 0) !== (previous.segmentNumber ?? 0)) {
+      segmentTransitionCount += 1;
+    }
+  }
+  if (
+    segmentTransitionCount > 0 &&
+    pausedDurationSeconds < segmentTransitionCount
+  ) {
+    addReason(reasons, "UNDECLARED_SEGMENT_BREAK");
+    riskScore += 35;
   }
 
   const acceptedSamples: VerificationTelemetrySample[] = [];
@@ -173,6 +219,9 @@ export function verifyActivityTelemetry(input: VerifyActivityInput): ActivityVer
   for (let index = 1; index < acceptedSamples.length; index += 1) {
     const previous = acceptedSamples[index - 1];
     const current = acceptedSamples[index];
+    if ((current.segmentNumber ?? 0) !== (previous.segmentNumber ?? 0)) {
+      continue;
+    }
     const segmentDurationSeconds =
       (current.timestamp.getTime() - previous.timestamp.getTime()) / 1000;
     if (segmentDurationSeconds <= 0) continue;
@@ -231,7 +280,9 @@ export function verifyActivityTelemetry(input: VerifyActivityInput): ActivityVer
   const hardFailureReasons: readonly VerificationReasonCode[] = [
     "SIMULATED_SOURCE",
     "INVALID_DURATION",
+    "INVALID_PAUSE_DURATION",
     "TIMESTAMP_ORDER",
+    "SEGMENT_ORDER",
     "DUPLICATE_SAMPLE",
     "INSUFFICIENT_SAMPLES",
     "ZERO_MOVEMENT",
@@ -245,6 +296,7 @@ export function verifyActivityTelemetry(input: VerifyActivityInput): ActivityVer
       "LARGE_SAMPLE_GAP",
       "UNUSUAL_SPEED",
       "SUDDEN_LOCATION_CHANGE",
+      "UNDECLARED_SEGMENT_BREAK",
     ].includes(reason),
   );
 

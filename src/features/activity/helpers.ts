@@ -20,14 +20,19 @@ export function getRiskSignalLabel(signal: ActivityRiskSignal): string {
     case "unusual-speed": return "Kecepatan Gerakan Tidak Biasa";
     case "sudden-location-change": return "Diskontinuitas Posisi Mendadak";
     case "low-accuracy": return "Akurasi Sinyal GPS Rendah";
+    case "invalid-coordinate": return "Koordinat GPS Tidak Valid";
     case "timestamp-order": return "Urutan Timestamp Tidak Konsisten";
+    case "segment-order": return "Urutan Segmen Rute Tidak Konsisten";
+    case "undeclared-segment-break": return "Jeda Segmen Tidak Tercatat";
     case "duplicate-sample": return "Sampel Telemetri Duplikat";
     case "incomplete-samples": return "Aliran Sampel Tidak Lengkap";
     case "large-sample-gap": return "Gangguan Telemetri Signifikan";
     case "duplicate-activity": return "Rekaman Aktivitas Tumpang Tindih";
     case "invalid-duration": return "Durasi Aktivitas Tidak Cukup";
+    case "invalid-pause-duration": return "Durasi Jeda Tidak Valid";
     case "zero-movement": return "Perpindahan Terukur Nol";
     case "simulation-source": return "Sumber Data GPS Simulasi";
+    case "attestation-missing": return "Verifikasi Perangkat Tidak Tersedia";
     default: return signal;
   }
 }

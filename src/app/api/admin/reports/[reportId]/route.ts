@@ -26,6 +26,12 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       if (status === ReportStatus.ACTIONED) {
         if (existing.postId) await transaction.post.update({ where: { id: existing.postId }, data: { isHidden: true } });
         if (existing.commentId) await transaction.postComment.update({ where: { id: existing.commentId }, data: { isHidden: true } });
+        if (existing.momentId) {
+          await transaction.moment.update({
+            where: { id: existing.momentId },
+            data: { isHidden: true },
+          });
+        }
       }
       const updated = await transaction.contentReport.update({
         where: { id: reportId },

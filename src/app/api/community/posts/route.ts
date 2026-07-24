@@ -8,6 +8,8 @@ import {
 } from "@/lib/api";
 import { requireCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { ownedPublicStorageUrl } from "@/lib/storage-ownership";
+import { visiblePostWhere } from "@/server/community/post-access";
 
 export async function GET(request: Request) {
   try {
@@ -16,15 +18,7 @@ export async function GET(request: Request) {
     const limit = Math.min(Math.max(Number(searchParams.get("limit")) || 20, 1), 50);
     const cursor = searchParams.get("cursor") || undefined;
     const posts = await prisma.post.findMany({
-      where: {
-        isHidden: false,
-        OR: [
-          { userId: user.id },
-          { privacyLevel: PrivacyLevel.PUBLIC },
-          { privacyLevel: PrivacyLevel.CIRCLE },
-          { guild: { members: { some: { userId: user.id } } } },
-        ],
-      },
+      where: visiblePostWhere(user.id),
       include: {
         user: { select: { id: true, name: true, username: true, avatarUrl: true } },
         guild: { select: { id: true, name: true, emblemUrl: true } },
@@ -52,7 +46,7 @@ export async function GET(request: Request) {
 export async function POST(request: NextRequest) {
   try {
     assertSameOrigin(request);
-    enforceRateLimit(request, "community:post", 10, 60_000);
+    await enforceRateLimit(request, "community:post", 10, 60_000);
     const user = await requireCurrentUser();
     const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
     const privacyLevel =
@@ -67,15 +61,29 @@ export async function POST(request: NextRequest) {
       });
       if (!membership) return NextResponse.json({ success: false, error: "Anda bukan anggota guild." }, { status: 403 });
     }
+    const imageUrl =
+      body?.imageUrl === undefined ||
+      body.imageUrl === null ||
+      body.imageUrl === ""
+        ? null
+        : ownedPublicStorageUrl(body.imageUrl, user.authUserId, [
+            "post-images",
+          ]);
+    if (body?.imageUrl && !imageUrl) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Gambar post harus berasal dari upload pengguna sendiri.",
+        },
+        { status: 400 },
+      );
+    }
     const post = await prisma.post.create({
       data: {
         userId: user.id,
         guildId,
         content: stringValue(body?.content, "Konten", { min: 1, max: 2000 }),
-        imageUrl:
-          typeof body?.imageUrl === "string" && body.imageUrl.trim()
-            ? stringValue(body.imageUrl, "URL gambar", { max: 2000 })
-            : null,
+        imageUrl,
         privacyLevel,
       },
       include: { user: { select: { id: true, name: true, username: true, avatarUrl: true } } },

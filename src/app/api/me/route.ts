@@ -1,7 +1,9 @@
 import { Gender, Prisma, PrivacyLevel } from "@prisma/client";
-import { NextResponse } from "next/server";
-import { authErrorResponse, requireCurrentUser } from "@/lib/auth";
+import { NextRequest, NextResponse } from "next/server";
+import { apiErrorResponse, assertSameOrigin } from "@/lib/api";
+import { requireCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { ownedPublicStorageUrl } from "@/lib/storage-ownership";
 
 type JsonObject = Record<string, unknown>;
 
@@ -64,12 +66,13 @@ export async function GET() {
     });
     return NextResponse.json({ success: true, user });
   } catch (error) {
-    return authErrorResponse(error);
+    return apiErrorResponse(error);
   }
 }
 
-export async function PATCH(request: Request) {
+export async function PATCH(request: NextRequest) {
   try {
+    assertSameOrigin(request);
     const currentUser = await requireCurrentUser();
     const raw = await request.json().catch(() => null);
     if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
@@ -83,6 +86,23 @@ export async function PATCH(request: Request) {
 
     const name = optionalString(body.name, 100);
     const avatarUrl = optionalString(body.avatarUrl, 2048);
+    const validatedAvatarUrl =
+      avatarUrl === undefined || avatarUrl === null
+        ? avatarUrl
+        : ownedPublicStorageUrl(
+            avatarUrl,
+            currentUser.authUserId,
+            ["avatars"],
+          );
+    if (avatarUrl && !validatedAvatarUrl) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Avatar harus berasal dari upload milik pengguna.",
+        },
+        { status: 400 },
+      );
+    }
     const birthDate =
       health.birthDate === undefined
         ? undefined
@@ -97,7 +117,9 @@ export async function PATCH(request: Request) {
       where: { id: currentUser.id },
       data: {
         ...(name ? { name } : {}),
-        ...(avatarUrl !== undefined ? { avatarUrl } : {}),
+        ...(validatedAvatarUrl !== undefined
+          ? { avatarUrl: validatedAvatarUrl }
+          : {}),
         healthProfile: {
           upsert: {
             create: {
@@ -177,6 +199,6 @@ export async function PATCH(request: Request) {
     if (error instanceof Error && error.message === "INVALID_INPUT") {
       return NextResponse.json({ success: false, error: "Nilai profil tidak valid." }, { status: 400 });
     }
-    return authErrorResponse(error);
+    return apiErrorResponse(error);
   }
 }

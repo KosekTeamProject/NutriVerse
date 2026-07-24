@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { apiErrorResponse, assertSameOrigin } from "@/lib/api";
 import { requireCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { visiblePostWhere } from "@/server/community/post-access";
 
 type RouteContext = { params: Promise<{ postId: string }> };
 
@@ -16,6 +17,16 @@ export async function PUT(request: NextRequest, context: RouteContext) {
       typeof body?.type === "string" && Object.values(PostReactionType).includes(body.type as PostReactionType)
         ? (body.type as PostReactionType)
         : PostReactionType.ENCOURAGE;
+    const post = await prisma.post.findFirst({
+      where: visiblePostWhere(user.id, postId),
+      select: { id: true },
+    });
+    if (!post) {
+      return NextResponse.json(
+        { success: false, error: "Post tidak ditemukan." },
+        { status: 404 },
+      );
+    }
     const reaction = await prisma.postReaction.upsert({
       where: { postId_userId: { postId, userId: user.id } },
       create: { postId, userId: user.id, type },

@@ -3,17 +3,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { apiErrorResponse, assertSameOrigin, finiteNumber } from "@/lib/api";
 import { requireCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-
-function dayBounds(value: unknown) {
-  const date =
-    typeof value === "string" && value
-      ? new Date(`${value.slice(0, 10)}T00:00:00.000Z`)
-      : new Date(new Date().toISOString().slice(0, 10) + "T00:00:00.000Z");
-  if (Number.isNaN(date.getTime())) return null;
-  const end = new Date(date);
-  end.setUTCDate(end.getUTCDate() + 1);
-  return { start: date, end };
-}
+import {
+  calendarDayKey,
+  isCalendarDayKey,
+  utcDayBoundsForKey,
+} from "@/server/economy/economy-policy";
 
 export async function GET(request: Request) {
   try {
@@ -36,8 +30,22 @@ export async function POST(request: NextRequest) {
     assertSameOrigin(request);
     const user = await requireCurrentUser();
     const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
-    const bounds = dayBounds(body?.date);
-    if (!bounds) return NextResponse.json({ success: false, error: "Tanggal tidak valid." }, { status: 400 });
+    const settings = await prisma.userSettings.findUnique({
+      where: { userId: user.id },
+      select: { timezone: true },
+    });
+    const timezone = settings?.timezone ?? "Asia/Jakarta";
+    const currentDayKey = calendarDayKey(new Date(), timezone);
+    const dayKey =
+      body?.date === undefined ? currentDayKey : body.date;
+    if (!isCalendarDayKey(dayKey) || dayKey > currentDayKey) {
+      return NextResponse.json(
+        { success: false, error: "Tanggal tidak valid." },
+        { status: 400 },
+      );
+    }
+    const bounds = utcDayBoundsForKey(dayKey, timezone);
+    const pulseDate = new Date(`${dayKey}T00:00:00.000Z`);
     const sleepHours = finiteNumber(body?.sleepHours, "Durasi tidur", { min: 0, max: 24, optional: true });
     const hydrationLiters = finiteNumber(body?.hydrationLiters, "Hidrasi", { min: 0, max: 15, optional: true });
     const [profile, nutrition, activity] = await Promise.all([
@@ -75,10 +83,10 @@ export async function POST(request: NextRequest) {
     const overallScore =
       availableScores.reduce((total, score) => total + score, 0) / availableScores.length;
     const pulse = await prisma.healthPulse.upsert({
-      where: { userId_pulseDate: { userId: user.id, pulseDate: bounds.start } },
+      where: { userId_pulseDate: { userId: user.id, pulseDate } },
       create: {
         userId: user.id,
-        pulseDate: bounds.start,
+        pulseDate,
         overallScore,
         nutritionScore,
         activityScore,
@@ -87,7 +95,7 @@ export async function POST(request: NextRequest) {
       },
       update: { overallScore, nutritionScore, activityScore, sleepHours, hydrationLiters },
     });
-    return NextResponse.json({ success: true, pulse });
+    return NextResponse.json({ success: true, pulse, timezone });
   } catch (error) {
     return apiErrorResponse(error);
   }

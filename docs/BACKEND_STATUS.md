@@ -1,77 +1,55 @@
 # Status Backend NutriVerse
 
-Tanggal audit: 24 Juli 2026
+Audit dan implementasi terakhir: 24 Juli 2026.
 
 ## Selesai
 
-- Supabase Google OAuth dan email/password authentication.
-- Cookie session Supabase sebagai sumber autentikasi server.
-- Refresh session melalui Next.js 16 Proxy.
-- Proteksi halaman personal dan role admin.
-- Registrasi, login, logout, lupa kata sandi, dan reset kata sandi.
-- Sinkronisasi identitas Supabase ke profil domain Prisma.
-- Onboarding persisten beserta baseline kesehatan, preferensi, dan AI Companion.
-- Profil, pengaturan, avatar Storage, dan ekonomi user.
-- Activity start, batch telemetry, finish, verifikasi GPS, riwayat, dan detail rute.
-- Penolakan reward untuk data simulasi atau telemetry tidak valid.
-- XP/HP ledger, daily cap, diminishing return, tier, dan streak.
-- Idempotency dan retry transaksi serializable.
-- Challenge join, progress otomatis, completion, dan claim.
-- Badge otomatis.
-- Nutrition log, pencarian, custom food, ringkasan harian, dan water log.
-- Health metric, BMI, riwayat, dan Health Pulse.
-- Reward list, pemeriksaan saldo/stok, redeem, dan history.
-- Leaderboard database.
-- Community post, comment, reaction, report, dan guild membership.
-- Journal privat dan notifikasi.
-- Admin overview, review activity, moderation report, dan audit log.
-- Supabase RLS untuk seluruh tabel sensitif dan master.
-- Bucket `avatars`, `post-images`, dan `activity-shares` beserta policy.
-- Security headers, same-origin mutation checks, payload validation, request ID, dan rate limit auth/spam.
-- Seed idempoten untuk badge, challenge, season, reward, dan food master.
-- CI untuk install, Prisma generate, TypeScript, lint, unit test, dan build.
-- Dokumentasi endpoint di `docs/BACKEND_API.md`.
+- Supabase Auth email/password, Google OAuth, cookie session, refresh Proxy, proteksi halaman, role, dan suspend akun.
+- Onboarding, profil, pengaturan, target kesehatan, timezone, region leaderboard, serta preferensi retensi GPS.
+- Aktivitas GPS real-time: start, batch telemetry, pause/resume segment, finish, riwayat, detail rute, jarak, pace, kecepatan, dan MapLibre/OpenFreeMap.
+- Anti-cheat server: validasi koordinat, timestamp/urutan, akurasi, gap, teleportasi, batas kecepatan per aktivitas, simulasi, replay digest, dan opsi device attestation.
+- Lifecycle finalisasi dengan processing state, lease anti-race, retry admin, idempotensi, serta batas 50.000 telemetry.
+- XP/HP ledger, cap harian, diminishing return, tier, streak, `hpDebt`, rollback aktivitas, rollback challenge, reinstatement, dan rekonsiliasi badge.
+- Banding pengguna dan review admin dengan audit log serta notifikasi.
+- Challenge, badge, season, leaderboard LEAGUE/FRIENDS/LOCAL, dan snapshot maintenance.
+- Reward store lengkap: stok atomik, redeem idempoten, expiry, cancel, refund, fulfillment, dan administrasi reward/redemption.
+- Nutrisi, custom food, water, ringkasan timezone-aware, cache pencarian USDA, health metrics, BMI, dan Health Pulse.
+- Journal privat, lampiran privat, signed URL, serta Journey.
+- Post, comment, reaction, guild, report/moderasi, Moments, event/registrasi, dan koneksi/block.
+- Notifikasi database dan registrasi token perangkat.
+- Admin API untuk user, activity, appeal, report, challenge, event, reward, redemption, season, overview, dan audit.
+- Rate limit persisten dengan fallback memory, same-origin checks, request ID, validasi payload, dan akun tersuspensi.
+- Upload gambar dengan validasi isi, pembatasan pixel, re-encode, dan penghapusan EXIF.
+- Ekspor data, hapus koordinat GPS, hapus akun, retensi GPS per pengguna, dan maintenance.
+- RLS tabel baru serta koreksi akses PRIVATE/CIRCLE pada post, komentar, Moment, event, dan ranking.
+- Migrasi `20260724170000_backend_completion_foundation` dan `20260724180000_connection_pair_integrity` sudah diterapkan ke Supabase.
 
-## Integrasi UI yang sudah aktif
+## Hasil verifikasi
 
-- Google OAuth.
-- Login email.
-- Registrasi dan penyimpanan onboarding.
-- Refresh/logout session.
-- Saldo XP/HP pada AppShell.
-- GPS tracker ke Activity API.
-- Riwayat dan detail aktivitas database.
-- Reward digital dan saldo HP database.
-- Upload avatar Supabase Storage.
-- Nama AI Companion persisten.
-- Proteksi portal admin berdasarkan role database.
+- Prisma schema valid dan status database sinkron.
+- Dry-run SQL migrasi dalam transaksi rollback berhasil.
+- TypeScript lulus tanpa error.
+- 24/24 unit test backend lulus.
+- Lint lulus tanpa error; tersisa warning frontend lama yang tidak diubah.
+- Production build Next.js lulus.
+- Smoke test Supabase lulus untuk verifikasi GPS, reward idempoten, challenge, badge, dan redemption; data uji dibersihkan.
+- Preview maintenance: tidak ada GPS/sesi/redemption/cache kedaluwarsa pada saat pemeriksaan.
 
-## Masih memerlukan layanan atau keputusan eksternal
+## Konfigurasi production yang masih diperlukan
 
-- Domain, hosting staging/production, serta environment production.
-- Callback URL Google dan Supabase untuk domain production.
-- SMTP production dan template email konfirmasi/reset.
-- Pengujian OAuth production dengan beberapa akun Google.
-- Pengujian GPS fisik menggunakan HP di luar ruangan.
-- Pengujian RLS memakai dua akun Auth nyata dan pengujian upload/delete Storage dari browser.
-- Kunci USDA FDC bila pencarian makanan online tanpa fallback diinginkan.
-- Provider AI/vision untuk scanner makanan dan AI Companion nyata.
-- Integrasi mitra untuk fulfillment voucher/merchandise.
-- Monitoring error, log aggregation, backup, dan alert production.
-- MFA admin dan prosedur pemberian role admin oleh pemilik sistem.
-- Kebijakan retensi serta penyederhanaan koordinat GPS.
+- `MAINTENANCE_SECRET` dan scheduler/cron untuk `/api/internal/maintenance`.
+- `SUPABASE_SERVICE_ROLE_KEY` untuk penghapusan akun menyeluruh.
+- `USDA_FDC_API_KEY` bila pencarian online tanpa fallback lokal diperlukan.
+- SMTP production, callback OAuth domain production, MFA admin, monitoring, alerting, dan backup.
+- Provider push FCM/APNs untuk benar-benar mengirim token perangkat; notifikasi in-app sudah tersimpan.
+- Integrasi mitra untuk fulfillment voucher/merchandise; lifecycle internalnya sudah tersedia.
+- Pengujian GPS fisik di beberapa perangkat dan kondisi sinyal.
+- Aplikasi native/wearable dan validator attestation jika `REQUIRE_ACTIVITY_DEVICE_ATTESTATION=true` akan digunakan.
 
-## Panel frontend yang masih memakai presentational/demo data
+## Sengaja ditunda
 
-Backend endpoint sudah tersedia, tetapi komponen visual berikut belum seluruhnya diganti sumber datanya:
+AI Companion, vision scanner, weekly letter generator, dan seluruh integrasi model AI tidak diimplementasikan pada tahap ini sesuai permintaan. Struktur/model lama tidak dihapus dan dapat dilanjutkan pada prompt khusus AI berikutnya.
 
-- Dashboard hero dan sebagian widget Health Pulse.
-- Kartu Challenge Hub.
-- Feed komunitas, event, dan beberapa statistik komunitas.
-- Tampilan leaderboard lama.
-- Sebagian form pengaturan/target harian.
-- Jurnal UI lama.
-- Dashboard operasional admin selain autentikasi/route API.
-- AI Companion dan scanner foto makanan.
+## Catatan frontend
 
-Bagian tersebut tidak menghambat API backend, tetapi perlu tahap wiring frontend agar semua angka di layar sepenuhnya berasal dari database.
+Tahap ini tidak mengubah struktur atau tema frontend. Beberapa panel visual lama masih memakai presentational/demo data dan perlu wiring frontend terpisah jika seluruh UI hendak memakai API baru.

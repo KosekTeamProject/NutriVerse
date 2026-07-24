@@ -33,6 +33,7 @@ async function main() {
         activityType: ActivityType.WALK,
         startTime,
         endTime,
+        telemetrySampleCount: 5,
         telemetrySamples: {
           create: Array.from({ length: 5 }, (_, index) => ({
             sequenceNumber: index,

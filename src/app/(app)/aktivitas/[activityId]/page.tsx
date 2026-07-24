@@ -44,11 +44,17 @@ export default async function ActivityDetailPage({ params }: ActivityDetailPageP
         startedAt: stored.startTime.toISOString(),
         endedAt: (stored.endTime ?? stored.startTime).toISOString(),
         durationSeconds: stored.durationSeconds,
-        activeDurationSeconds: verification?.trustedDurationSeconds ?? stored.durationSeconds,
-        pausedDurationSeconds: Math.max(0, stored.durationSeconds - (verification?.trustedDurationSeconds ?? stored.durationSeconds)),
+        activeDurationSeconds:
+          verification?.trustedDurationSeconds ??
+          stored.activeDurationSeconds ??
+          stored.durationSeconds,
+        pausedDurationSeconds: stored.pausedDurationSeconds,
         distanceKm: stored.distanceMeters / 1000,
         averagePace: `${paceMinutes}:${String(paceSeconds).padStart(2, "0")}`,
-        averageSpeedKmh: stored.durationSeconds > 0 ? (stored.distanceMeters / 1000) / (stored.durationSeconds / 3600) : 0,
+        averageSpeedKmh:
+          stored.durationSeconds > 0
+            ? (stored.distanceMeters / 1000) / (stored.durationSeconds / 3600)
+            : 0,
         status: "completed",
         sourceMode: stored.isSimulated ? "simulation" : "live-gps",
         personalRecordAllowed: true,
@@ -65,7 +71,7 @@ export default async function ActivityDetailPage({ params }: ActivityDetailPageP
             acceptedSampleCount: verification.acceptedSampleCount,
             excludedSampleCount: verification.discardedSampleCount,
             activeDurationSeconds: verification.trustedDurationSeconds,
-            pausedDurationSeconds: Math.max(0, stored.durationSeconds - verification.trustedDurationSeconds),
+            pausedDurationSeconds: stored.pausedDurationSeconds,
             calculatedDistanceKm: verification.trustedDistanceMeters / 1000,
             averageAccuracyMeters: 0,
             largestSampleGapSeconds: verification.largestSampleGapSeconds,

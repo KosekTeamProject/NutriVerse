@@ -1,0 +1,103 @@
+▲ Next.js 16.2.10 (webpack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.56.1:3000
+- Environments: .env
+✓ Ready in 1671ms
+
+○ Compiling /aktivitas ...
+ GET /aktivitas 200 in 34.7s (next.js: 24.0s, proxy.ts: 2.9s, application-code: 7.8s)
+○ Compiling /api/auth/session ...
+ GET /api/auth/session 200 in 6.6s (next.js: 3.8s, proxy.ts: 568ms, application-code: 2.2s)
+○ Compiling / ...
+ GET /?auth_error=session_required&next=%2Faktivitas 200 in 4.6s (next.js: 3.7s, proxy.ts: 19ms, application-code: 819ms)
+○ Compiling /aktivitas ...
+ GET /aktivitas 200 in 6.7s (next.js: 7ms, proxy.ts: 2.3s, application-code: 4.4s)
+ GET /api/auth/session 200 in 4.1s (next.js: 1148ms, proxy.ts: 26ms, application-code: 2.9s)
+ POST /api/auth/sign-out 200 in 3.3s (next.js: 2.2s, proxy.ts: 576ms, application-code: 538ms)
+ GET / 200 in 211ms (next.js: 31ms, proxy.ts: 25ms, application-code: 156ms)
+ GET /aktivitas 200 in 3.4s (next.js: 135ms, proxy.ts: 25ms, application-code: 3.2s)
+○ Compiling /api/auth/google ...
+ GET /api/auth/google?next=/dashboard 307 in 4.5s (next.js: 4.2s, proxy.ts: 88ms, application-code: 168ms)
+ GET /api/auth/callback?code=a25915dd-b8c5-4a32-b4e7-eaadb2a4249f&next=%2Fdashboard 307 in 5.5s (next.js: 1435ms, proxy.ts: 19ms, application-code: 4.1s)
+○ Compiling /dashboard ...
+ GET /dashboard 200 in 3.9s (next.js: 3.4s, proxy.ts: 27ms, application-code: 504ms)
+ GET /api/auth/session 200 in 4.2s (next.js: 1377ms, proxy.ts: 49ms, application-code: 2.8s)
+ GET /aktivitas 200 in 4.7s (next.js: 184ms, proxy.ts: 35ms, application-code: 4.5s)
+ GET /komunitas 200 in 2.8s (next.js: 2.6s, proxy.ts: 28ms, application-code: 102ms)
+ GET /komunitas 200 in 232ms (next.js: 17ms, proxy.ts: 28ms, application-code: 186ms)
+○ Compiling /reward ...
+ GET /reward 200 in 17.8s (next.js: 17.6s, proxy.ts: 15ms, application-code: 149ms)
+ GET /pengaturan 200 in 3.9s (next.js: 3.0s, proxy.ts: 703ms, application-code: 199ms)
+ GET /api/rewards 200 in 9.8s (next.js: 2.7s, proxy.ts: 1977ms, application-code: 5.2s)
+○ Compiling /api/profile ...
+ GET /api/rewards 200 in 11.5s (next.js: 2.7s, proxy.ts: 1973ms, application-code: 6.8s)
+ GET /pengaturan 200 in 326ms (next.js: 105ms, proxy.ts: 27ms, application-code: 194ms)
+ GET /api/profile 200 in 6.4s (next.js: 3.3s, proxy.ts: 109ms, application-code: 3.0s)
+ GET /api/profile 200 in 6.9s (next.js: 3.3s, proxy.ts: 108ms, application-code: 3.5s)
+ GET /dashboard 200 in 128ms (next.js: 29ms, proxy.ts: 20ms, application-code: 79ms)
+ PATCH /api/profile 200 in 2.3s (next.js: 14ms, proxy.ts: 53ms, application-code: 2.2s)
+ GET /pengaturan 200 in 505ms (next.js: 106ms, proxy.ts: 33ms, application-code: 366ms)
+ GET /api/profile 200 in 3.9s (next.js: 13ms, proxy.ts: 74ms, application-code: 3.8s)
+ GET /api/profile 200 in 4.1s (next.js: 147ms, proxy.ts: 75ms, application-code: 3.9s)
+ PATCH /api/profile 200 in 2.1s (next.js: 11ms, proxy.ts: 56ms, application-code: 2.0s)
+○ Compiling /aktivitas/kepercayaan ...
+ GET /aktivitas/kepercayaan 200 in 3.6s (next.js: 3.4s, proxy.ts: 22ms, application-code: 200ms)
+ GET /aktivitas/kepercayaan 200 in 242ms (next.js: 8ms, proxy.ts: 29ms, application-code: 204ms)
+ GET /aktivitas 200 in 4.5s (next.js: 135ms, proxy.ts: 29ms, application-code: 4.3s)
+ POST /api/activities/start 409 in 6.5s (next.js: 2.5s, proxy.ts: 60ms, application-code: 4.0s)
+ POST /api/activities/start 409 in 3.8s (next.js: 40ms, proxy.ts: 36ms, application-code: 3.7s)
+ POST /api/activities/start 409 in 2.9s (next.js: 9ms, proxy.ts: 36ms, application-code: 2.8s)
+○ Compiling /api/auth/session ...
+ GET /aktivitas 200 in 6.7s (next.js: 379ms, proxy.ts: 50ms, application-code: 6.2s)
+ GET /aktivitas 200 in 2.6s (next.js: 87ms, proxy.ts: 35ms, application-code: 2.5s)
+ GET /api/auth/session 200 in 6.6s (next.js: 3.5s, proxy.ts: 45ms, application-code: 3.0s)
+ POST /api/activities/start 409 in 3.7s (next.js: 153ms, proxy.ts: 62ms, application-code: 3.5s)
+○ Compiling /todays-journey ...
+ GET /todays-journey 200 in 4.0s (next.js: 3.8s, proxy.ts: 19ms, application-code: 193ms)
+ GET /todays-journey 200 in 233ms (next.js: 34ms, proxy.ts: 41ms, application-code: 158ms)
+○ Compiling /scan ...
+ GET /scan 200 in 5.3s (next.js: 5.0s, proxy.ts: 141ms, application-code: 192ms)
+ GET /scan 200 in 480ms (next.js: 17ms, proxy.ts: 30ms, application-code: 432ms)
+ GET /scan 200 in 471ms (next.js: 19ms, proxy.ts: 42ms, application-code: 411ms)
+ GET /api/auth/session 200 in 4.7s (next.js: 259ms, proxy.ts: 37ms, application-code: 4.4s)
+ GET /aktivitas 200 in 4.3s (next.js: 76ms, proxy.ts: 19ms, application-code: 4.2s)
+ POST /api/activities/start 409 in 2.3s (next.js: 55ms, proxy.ts: 70ms, application-code: 2.1s)
+ GET /scan 200 in 170ms (next.js: 31ms, proxy.ts: 14ms, application-code: 124ms)
+ GET /aktivitas 200 in 4.5s (next.js: 46ms, proxy.ts: 21ms, application-code: 4.4s)
+ POST /api/activities/start 409 in 2.3s (next.js: 15ms, proxy.ts: 48ms, application-code: 2.3s)
+ GET /scan 200 in 187ms (next.js: 21ms, proxy.ts: 19ms, application-code: 147ms)
+ GET /aktivitas 200 in 4.5s (next.js: 71ms, proxy.ts: 35ms, application-code: 4.4s)
+ POST /api/activities/start 409 in 3.8s (next.js: 15ms, proxy.ts: 26ms, application-code: 3.8s)
+ GET /aktivitas 200 in 4.6s (next.js: 7ms, proxy.ts: 2.1s, application-code: 2.5s)
+ GET /aktivitas 200 in 2.5s (next.js: 7ms, proxy.ts: 13ms, application-code: 2.5s)
+ GET /aktivitas 200 in 4.0s (next.js: 368ms, proxy.ts: 16ms, application-code: 3.6s)
+ GET /aktivitas 200 in 2.1s (next.js: 10ms, proxy.ts: 11ms, application-code: 2.1s)
+ GET /aktivitas 200 in 2.6s (next.js: 13ms, proxy.ts: 25ms, application-code: 2.5s)
+ GET /aktivitas 200 in 1580ms (next.js: 10ms, proxy.ts: 18ms, application-code: 1552ms)
+ GET /aktivitas 200 in 1680ms (next.js: 10ms, proxy.ts: 13ms, application-code: 1658ms)
+ GET /aktivitas 200 in 2.4s (next.js: 8ms, proxy.ts: 12ms, application-code: 2.4s)
+ GET /aktivitas 200 in 1576ms (next.js: 5ms, proxy.ts: 9ms, application-code: 1561ms)
+ GET /aktivitas 200 in 2.8s (next.js: 113ms, proxy.ts: 8ms, application-code: 2.7s)
+ GET /aktivitas 200 in 1600ms (next.js: 5ms, proxy.ts: 17ms, application-code: 1579ms)
+ GET /aktivitas 200 in 2.9s (next.js: 13ms, proxy.ts: 28ms, application-code: 2.8s)
+○ Compiling /api/auth/session ...
+ GET /aktivitas 200 in 9.3s (next.js: 141ms, proxy.ts: 2.0s, application-code: 7.2s)
+ GET /aktivitas 200 in 2.3s (next.js: 94ms, proxy.ts: 20ms, application-code: 2.2s)
+ GET /api/auth/session 200 in 7.7s (next.js: 4.4s, proxy.ts: 35ms, application-code: 3.2s)
+ GET /aktivitas 200 in 2.4s (next.js: 23ms, proxy.ts: 21ms, application-code: 2.3s)
+ GET /api/auth/session 200 in 1990ms (next.js: 135ms, proxy.ts: 68ms, application-code: 1788ms)
+ GET /aktivitas 200 in 2.1s (next.js: 125ms, proxy.ts: 20ms, application-code: 1911ms)
+ POST /api/activities/start 201 in 9.3s (next.js: 4.1s, proxy.ts: 34ms, application-code: 5.2s)
+ GET /aktivitas 200 in 3.1s (next.js: 223ms, proxy.ts: 37ms, application-code: 2.8s)
+ POST /api/activities/4abc5f70-8ef8-4836-b7b8-b5426f76dc6e/heartbeat 200 in 9.6s (next.js: 5.3s, proxy.ts: 19ms, application-code: 4.3s)
+○ Compiling /api/activities/[activityId]/telemetry ...
+ POST /api/activities/4abc5f70-8ef8-4836-b7b8-b5426f76dc6e/heartbeat 200 in 6.3s (next.js: 4.2s, proxy.ts: 59ms, application-code: 2.1s)
+ POST /api/activities/4abc5f70-8ef8-4836-b7b8-b5426f76dc6e/telemetry 200 in 9.3s (next.js: 6.0s, proxy.ts: 58ms, application-code: 3.3s)
+ POST /api/activities/4abc5f70-8ef8-4836-b7b8-b5426f76dc6e/heartbeat 200 in 2.5s (next.js: 65ms, proxy.ts: 602ms, application-code: 1857ms)
+ POST /api/activities/4abc5f70-8ef8-4836-b7b8-b5426f76dc6e/heartbeat 200 in 2.4s (next.js: 102ms, proxy.ts: 28ms, application-code: 2.3s)
+ POST /api/activities/4abc5f70-8ef8-4836-b7b8-b5426f76dc6e/heartbeat 200 in 3.6s (next.js: 175ms, proxy.ts: 26ms, application-code: 3.4s)
+ POST /api/activities/4abc5f70-8ef8-4836-b7b8-b5426f76dc6e/heartbeat 200 in 4.3s (next.js: 56ms, proxy.ts: 27ms, application-code: 4.2s)
+ POST /api/activities/4abc5f70-8ef8-4836-b7b8-b5426f76dc6e/heartbeat 200 in 3.1s (next.js: 97ms, proxy.ts: 20ms, application-code: 3.0s)
+ POST /api/activities/4abc5f70-8ef8-4836-b7b8-b5426f76dc6e/heartbeat 200 in 2.6s (next.js: 46ms, proxy.ts: 27ms, application-code: 2.5s)
+ POST /api/activities/4abc5f70-8ef8-4836-b7b8-b5426f76dc6e/telemetry 200 in 3.7s (next.js: 46ms, proxy.ts: 32ms, application-code: 3.6s)
+ POST /api/activities/4abc5f70-8ef8-4836-b7b8-b5426f76dc6e/heartbeat 200 in 4.5s (next.js: 80ms, proxy.ts: 26ms, application-code: 4.4s)

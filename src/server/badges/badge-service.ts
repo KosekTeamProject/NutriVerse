@@ -2,7 +2,9 @@ import { VerificationStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { eligibleBadgeCodes } from "@/server/badges/badge-policy";
 
-export async function evaluateAndAwardUserBadges(userId: string) {
+const MANAGED_BADGE_CODES = ["FIRST_STEP", "STREAK_MASTER"] as const;
+
+export async function reconcileUserBadges(userId: string) {
   const [verifiedActivityCount, economy] = await Promise.all([
     prisma.activitySession.count({
       where: { userId, verificationStatus: VerificationStatus.VERIFIED },
@@ -13,18 +15,32 @@ export async function evaluateAndAwardUserBadges(userId: string) {
     verifiedActivityCount,
     streakDays: economy?.streakDays ?? 0,
   });
-  if (!eligibleCodes.length) return [];
 
   const badges = await prisma.badge.findMany({
-    where: { code: { in: eligibleCodes } },
+    where: { code: { in: [...MANAGED_BADGE_CODES] } },
   });
-  await prisma.userBadge.createMany({
-    data: badges.map((badge) => ({ userId, badgeId: badge.id })),
-    skipDuplicates: true,
-  });
+  const eligibleBadgeIds = badges
+    .filter((badge) => eligibleCodes.includes(badge.code))
+    .map((badge) => badge.id);
+  const ineligibleBadgeIds = badges
+    .filter((badge) => !eligibleCodes.includes(badge.code))
+    .map((badge) => badge.id);
+
+  await prisma.$transaction([
+    prisma.userBadge.deleteMany({
+      where: { userId, badgeId: { in: ineligibleBadgeIds } },
+    }),
+    prisma.userBadge.createMany({
+      data: eligibleBadgeIds.map((badgeId) => ({ userId, badgeId })),
+      skipDuplicates: true,
+    }),
+  ]);
+
   return prisma.userBadge.findMany({
-    where: { userId, badgeId: { in: badges.map((badge) => badge.id) } },
+    where: { userId, badgeId: { in: eligibleBadgeIds } },
     include: { badge: true },
     orderBy: { earnedAt: "asc" },
   });
 }
+
+export const evaluateAndAwardUserBadges = reconcileUserBadges;

@@ -1,7 +1,8 @@
-import { Gender } from "@prisma/client";
+import { Gender, Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import {
   apiErrorResponse,
+  ApiRequestError,
   assertSameOrigin,
   finiteNumber,
   stringArray,
@@ -44,9 +45,20 @@ function genderValue(value: unknown) {
 }
 
 function birthDateValue(birthDate: unknown, age: unknown) {
+  const now = new Date();
+  const youngest = new Date(now);
+  youngest.setUTCFullYear(youngest.getUTCFullYear() - 13);
+  const oldest = new Date(now);
+  oldest.setUTCFullYear(oldest.getUTCFullYear() - 120);
   if (typeof birthDate === "string") {
     const parsed = new Date(birthDate);
-    if (!Number.isNaN(parsed.getTime()) && parsed < new Date()) return parsed;
+    if (
+      !Number.isNaN(parsed.getTime()) &&
+      parsed <= youngest &&
+      parsed >= oldest
+    ) {
+      return parsed;
+    }
   }
   if (typeof age === "number" && Number.isInteger(age) && age >= 13 && age <= 120) {
     const result = new Date();
@@ -181,6 +193,18 @@ export async function PUT(request: NextRequest) {
   } catch (error) {
     if (error instanceof Error && error.message === "INVALID_PAYLOAD") {
       return NextResponse.json({ success: false, error: "Payload tidak valid." }, { status: 400 });
+    }
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      return apiErrorResponse(
+        new ApiRequestError(
+          "Username tersebut sudah digunakan pengguna lain.",
+          409,
+          "USERNAME_TAKEN",
+        ),
+      );
     }
     return apiErrorResponse(error);
   }
