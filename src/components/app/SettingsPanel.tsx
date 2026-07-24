@@ -28,7 +28,8 @@ import {
   type BreakReminderPreference,
 } from "@/components/app/WellbeingReminder";
 import { useAuthSession } from "@/hooks/useAuthSession";
-import { updateAuthSession } from "@/features/auth/session";
+import { clearAuthSession, updateAuthSession } from "@/features/auth/session";
+import { notifyDataChanged } from "@/lib/data-sync";
 
 type ProfileDraft = {
   name: string;
@@ -39,6 +40,14 @@ type ProfileDraft = {
 type ProfileFeedback = {
   tone: "success" | "error";
   message: string;
+};
+
+type DailyTargetDraft = {
+  calories: number;
+  protein: number;
+  waterLiters: number;
+  steps: number;
+  sleepHours: number;
 };
 
 function Switch({ on, onToggle, ariaLabel }: { readonly on: boolean; readonly onToggle: () => void; readonly ariaLabel: string }) {
@@ -97,14 +106,40 @@ function SectionCard({
   );
 }
 
-function SaveButton() {
-  const [saved, setSaved] = useState(false);
+function SaveButton({
+  onSave,
+  disabled = false,
+}: {
+  readonly onSave: () => Promise<void>;
+  readonly disabled?: boolean;
+}) {
+  const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+
+  async function save() {
+    setStatus("saving");
+    try {
+      await onSave();
+      setStatus("saved");
+    } catch {
+      setStatus("error");
+    }
+    window.setTimeout(() => setStatus("idle"), 1800);
+  }
+
   return (
     <button
-      onClick={() => { setSaved(true); setTimeout(() => setSaved(false), 1800); }}
-      className="btn btn-primary btn-sm mt-4 font-bold"
+      type="button"
+      onClick={() => void save()}
+      disabled={disabled || status === "saving"}
+      className="btn btn-primary btn-sm mt-4 font-bold disabled:cursor-not-allowed disabled:opacity-60"
     >
-      {saved ? <><Check className="h-4 w-4" /> Tersimpan</> : "Simpan Perubahan"}
+      {status === "saving"
+        ? "Menyimpan..."
+        : status === "saved"
+          ? <><Check className="h-4 w-4" /> Tersimpan</>
+          : status === "error"
+            ? "Gagal menyimpan"
+            : "Simpan Perubahan"}
     </button>
   );
 }
@@ -120,8 +155,15 @@ export function SettingsPanel() {
   });
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileFeedback, setProfileFeedback] = useState<ProfileFeedback | null>(null);
-  
-  // Local state toggles (MVP simulations)
+  const [settingsLoading, setSettingsLoading] = useState(true);
+  const [targets, setTargets] = useState<DailyTargetDraft>({
+    calories: 2000,
+    protein: 80,
+    waterLiters: 2,
+    steps: 8000,
+    sleepHours: 8,
+  });
+
   const [notif, setNotif] = useState({ aktivitas: true, leaderboard: true, sosial: false });
   const [privasi, setPrivasi] = useState({ 
     publik: false, 
@@ -145,6 +187,19 @@ export function SettingsPanel() {
     foodSimEnabled: true
   });
   const [breakReminder, setBreakReminder] = useState<BreakReminderPreference>({ enabled: false, intervalMinutes: 60 });
+
+  async function logout() {
+    if (!window.confirm("Yakin ingin keluar dari akun NutriVerse?")) return;
+    const response = await fetch("/api/auth/sign-out", { method: "POST" }).catch(
+      () => null,
+    );
+    if (response && !response.ok) {
+      window.alert("Sesi belum dapat diakhiri. Silakan coba lagi.");
+      return;
+    }
+    clearAuthSession();
+    window.location.assign("/");
+  }
 
   useEffect(() => {
     if (!session?.email) return;
@@ -176,21 +231,133 @@ export function SettingsPanel() {
   }, [session?.email, session?.name, session?.username]);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      try {
-        const saved = window.localStorage.getItem(BREAK_REMINDER_KEY);
-        if (saved) setBreakReminder((current) => ({ ...current, ...JSON.parse(saved) }));
-      } catch {
-        // Preferensi rusak diabaikan dan kembali ke nilai aman.
-      }
-    }, 0);
-    return () => window.clearTimeout(timer);
-  }, []);
+    if (!session?.email) return;
+    let cancelled = false;
+
+    fetch("/api/settings", { cache: "no-store" })
+      .then(async (response) => {
+        const result = (await response.json().catch(() => null)) as {
+          settings?: {
+            profileVisibility: "PRIVATE" | "CIRCLE" | "PUBLIC";
+            pulseVisibility: "PRIVATE" | "CIRCLE" | "PUBLIC";
+            activityVisibility: "PRIVATE" | "CIRCLE" | "PUBLIC";
+            leaderboardVisible: boolean;
+            challengeProgressVisible: boolean;
+            notificationsActivity: boolean;
+            notificationsLeaderboard: boolean;
+            notificationsSocial: boolean;
+            companionInsightsEnabled: boolean;
+            companionSafetyNotesEnabled: boolean;
+            useDemoData: boolean;
+            showSimulationLabels: boolean;
+            gpsSimulationEnabled: boolean;
+            foodSimulationEnabled: boolean;
+          } | null;
+          companion?: {
+            morningBriefEnabled: boolean;
+            weeklyLetterEnabled: boolean;
+            breakReminderEnabled: boolean;
+            breakReminderIntervalMinutes: number;
+          } | null;
+          healthProfile?: {
+            dailyCalorieTarget: number;
+            dailyProteinTargetGrams: number;
+            dailyWaterTargetMl: number;
+            dailyStepTarget: number;
+            dailySleepTargetHours: number;
+          } | null;
+        } | null;
+        if (!response.ok || !result || cancelled) return;
+
+        if (result.settings) {
+          setPrivasi((current) => ({
+            ...current,
+            publik: result.settings!.profileVisibility === "PUBLIC",
+            leaderboard: result.settings!.leaderboardVisible,
+            pulsePublic: result.settings!.pulseVisibility !== "PRIVATE",
+            activityPublic: result.settings!.activityVisibility !== "PRIVATE",
+            challengePublic: result.settings!.challengeProgressVisible,
+          }));
+          setNotif({
+            aktivitas: result.settings.notificationsActivity,
+            leaderboard: result.settings.notificationsLeaderboard,
+            sosial: result.settings.notificationsSocial,
+          });
+          setCompanion((current) => ({
+            ...current,
+            insights: result.settings!.companionInsightsEnabled,
+            safetyNotes: result.settings!.companionSafetyNotesEnabled,
+          }));
+          setSimulation({
+            useDemoData: result.settings.useDemoData,
+            showSimLabels: result.settings.showSimulationLabels,
+            gpsSimEnabled: result.settings.gpsSimulationEnabled,
+            foodSimEnabled: result.settings.foodSimulationEnabled,
+          });
+        }
+        if (result.companion) {
+          setCompanion((current) => ({
+            ...current,
+            morningBrief: result.companion!.morningBriefEnabled,
+            weeklyLetter: result.companion!.weeklyLetterEnabled,
+          }));
+          const storedReminder = {
+            enabled: result.companion.breakReminderEnabled,
+            intervalMinutes: result.companion.breakReminderIntervalMinutes,
+          };
+          setBreakReminder(storedReminder);
+          window.localStorage.setItem(
+            BREAK_REMINDER_KEY,
+            JSON.stringify(storedReminder),
+          );
+          window.dispatchEvent(new Event(BREAK_REMINDER_EVENT));
+        }
+        if (result.healthProfile) {
+          setTargets({
+            calories: result.healthProfile.dailyCalorieTarget,
+            protein: result.healthProfile.dailyProteinTargetGrams,
+            waterLiters: result.healthProfile.dailyWaterTargetMl / 1_000,
+            steps: result.healthProfile.dailyStepTarget,
+            sleepHours: result.healthProfile.dailySleepTargetHours,
+          });
+        }
+      })
+      .catch(() => {
+        // Nilai aman tetap tersedia jika koneksi preferensi sedang terputus.
+      })
+      .finally(() => {
+        if (!cancelled) setSettingsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.email]);
+
+  async function saveSettings(payload: Record<string, boolean | number | string>) {
+    const response = await fetch("/api/settings", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const result = (await response.json().catch(() => null)) as {
+      success?: boolean;
+      error?: string;
+    } | null;
+    if (!response.ok || !result?.success) {
+      throw new Error(result?.error || "Preferensi belum dapat disimpan.");
+    }
+    notifyDataChanged();
+  }
 
   function updateBreakReminder(next: BreakReminderPreference) {
     setBreakReminder(next);
     window.localStorage.setItem(BREAK_REMINDER_KEY, JSON.stringify(next));
     window.dispatchEvent(new Event(BREAK_REMINDER_EVENT));
+    void saveSettings({
+      breakReminderEnabled: next.enabled,
+      breakReminderIntervalMinutes: next.intervalMinutes,
+    });
   }
 
   async function saveProfile() {
@@ -326,12 +493,22 @@ export function SettingsPanel() {
       {/* 2. Target harian section */}
       <SectionCard icon={Target} title="Target Harian">
         <div className="grid gap-4 sm:grid-cols-4 text-xs">
-          <div><label className="label text-xs font-bold uppercase text-muted-foreground">Target Protein (g)</label><input className="input mt-1.5" defaultValue="80" /></div>
-          <div><label className="label text-xs font-bold uppercase text-muted-foreground">Target Air (L)</label><input className="input mt-1.5" defaultValue="2.0" /></div>
-          <div><label className="label text-xs font-bold uppercase text-muted-foreground">Target Langkah</label><input className="input mt-1.5" defaultValue="10000" /></div>
-          <div><label className="label text-xs font-bold uppercase text-muted-foreground">Tidur (jam)</label><input className="input mt-1.5" defaultValue="8" /></div>
+          <div><label className="label text-xs font-bold uppercase text-muted-foreground">Target Protein (g)</label><input className="input mt-1.5" type="number" min={10} max={1000} value={targets.protein} onChange={(event) => setTargets((current) => ({ ...current, protein: Number(event.target.value) }))} /></div>
+          <div><label className="label text-xs font-bold uppercase text-muted-foreground">Target Air (L)</label><input className="input mt-1.5" type="number" min={0.25} max={10} step={0.1} value={targets.waterLiters} onChange={(event) => setTargets((current) => ({ ...current, waterLiters: Number(event.target.value) }))} /></div>
+          <div><label className="label text-xs font-bold uppercase text-muted-foreground">Target Langkah</label><input className="input mt-1.5" type="number" min={1000} max={100000} step={500} value={targets.steps} onChange={(event) => setTargets((current) => ({ ...current, steps: Number(event.target.value) }))} /></div>
+          <div><label className="label text-xs font-bold uppercase text-muted-foreground">Tidur (jam)</label><input className="input mt-1.5" type="number" min={1} max={24} step={0.5} value={targets.sleepHours} onChange={(event) => setTargets((current) => ({ ...current, sleepHours: Number(event.target.value) }))} /></div>
         </div>
-        <SaveButton />
+        <SaveButton
+          disabled={settingsLoading}
+          onSave={() =>
+            saveSettings({
+              dailyProteinTargetGrams: targets.protein,
+              dailyWaterTargetMl: Math.round(targets.waterLiters * 1_000),
+              dailyStepTarget: targets.steps,
+              dailySleepTargetHours: targets.sleepHours,
+            })
+          }
+        />
       </SectionCard>
 
       {/* 3. Appearance section */}
@@ -341,7 +518,13 @@ export function SettingsPanel() {
             <p className="text-sm font-semibold text-foreground">Mode Gelap</p>
             <p className="text-xs text-muted-foreground">Ganti tema terang atau gelap aplikasi</p>
           </div>
-          <button onClick={toggleTheme} className="btn btn-outline btn-sm font-bold flex items-center gap-1.5">
+          <button
+            onClick={() => {
+              toggleTheme();
+              void saveSettings({ darkTheme: !dark });
+            }}
+            className="btn btn-outline btn-sm font-bold flex items-center gap-1.5"
+          >
             {dark ? <><Sun className="h-4 w-4" /> Terang</> : <><Moon className="h-4 w-4" /> Gelap</>}
           </button>
         </div>
@@ -364,7 +547,18 @@ export function SettingsPanel() {
             <span className="pill bg-brand-soft text-brand font-bold text-[10px]">Privat Penuh</span>
           </div>
         </div>
-        <SaveButton />
+        <SaveButton
+          disabled={settingsLoading}
+          onSave={() =>
+            saveSettings({
+              profileVisibility: privasi.publik ? "PUBLIC" : "CIRCLE",
+              pulseVisibility: privasi.pulsePublic ? "CIRCLE" : "PRIVATE",
+              activityVisibility: privasi.activityPublic ? "CIRCLE" : "PRIVATE",
+              leaderboardVisible: privasi.leaderboard,
+              challengeProgressVisible: privasi.challengePublic,
+            })
+          }
+        />
       </SectionCard>
 
       {/* 5. Companion settings */}
@@ -379,7 +573,17 @@ export function SettingsPanel() {
           <Info className="h-4 w-4 shrink-0 text-muted-foreground mt-0.5" />
           <p>{companionName.displayName} tidak menghitung Health Pulse, memverifikasi aktivitas, memberikan reward, atau mendiagnosis kondisi medis.</p>
         </div>
-        <SaveButton />
+        <SaveButton
+          disabled={settingsLoading}
+          onSave={() =>
+            saveSettings({
+              companionInsightsEnabled: companion.insights,
+              companionSafetyNotesEnabled: companion.safetyNotes,
+              morningBriefEnabled: companion.morningBrief,
+              weeklyLetterEnabled: companion.weeklyLetter,
+            })
+          }
+        />
       </SectionCard>
 
       {/* 6. Activity & Location settings */}
@@ -408,7 +612,17 @@ export function SettingsPanel() {
           <ToggleRow label="Simulasi GPS Lokasi" desc="Izinkan mode simulator lokasi di tracker latihan" on={simulation.gpsSimEnabled} onToggle={() => setSimulation((s) => ({ ...s, gpsSimEnabled: !s.gpsSimEnabled }))} />
           <ToggleRow label="Simulasi Foto Makanan" desc="Gunakan daftar demo makanan di scanner AI" on={simulation.foodSimEnabled} onToggle={() => setSimulation((s) => ({ ...s, foodSimEnabled: !s.foodSimEnabled }))} />
         </div>
-        <SaveButton />
+        <SaveButton
+          disabled={settingsLoading}
+          onSave={() =>
+            saveSettings({
+              useDemoData: simulation.useDemoData,
+              showSimulationLabels: simulation.showSimLabels,
+              gpsSimulationEnabled: simulation.gpsSimEnabled,
+              foodSimulationEnabled: simulation.foodSimEnabled,
+            })
+          }
+        />
       </SectionCard>
 
       {/* Bantuan & Tur */}
@@ -475,21 +689,30 @@ export function SettingsPanel() {
           <ToggleRow label="Pembaruan Peringkat" desc="Beri tahu saat peringkat mingguan diperbarui" on={notif.leaderboard} onToggle={() => setNotif((s) => ({ ...s, leaderboard: !s.leaderboard }))} />
           <ToggleRow label="Semangat &amp; Dukungan" desc="Notifikasi saat anggota Circle memberi dorongan semangat" on={notif.sosial} onToggle={() => setNotif((s) => ({ ...s, sosial: !s.sosial }))} />
         </div>
-        <SaveButton />
+        <SaveButton
+          disabled={settingsLoading}
+          onSave={() =>
+            saveSettings({
+              notificationsActivity: notif.aktivitas,
+              notificationsLeaderboard: notif.leaderboard,
+              notificationsSocial: notif.sosial,
+            })
+          }
+        />
       </SectionCard>
 
       {/* 10. Data and Export */}
       <div className="card card-pad bg-secondary/20 border-line space-y-4">
         <div>
           <h3 className="font-display text-base font-bold text-foreground">Kontrol Data</h3>
-          <p className="text-xs text-muted-foreground mt-0.5">Preferensi dan berkas sementara hanya disimpan di browser ini.</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Preferensi akun disimpan di database. Kontrol lokal hanya membersihkan cache perangkat ini.</p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
           <button className="btn btn-outline text-destructive flex-1" onClick={() => alert("Simulasi pembersihan data lokal selesai.")}>
             Bersihkan Data Lokal
           </button>
-          <button className="btn btn-ghost flex-1 text-muted-foreground font-semibold">
-            Keluar (Demo)
+          <button className="btn btn-ghost flex-1 text-muted-foreground font-semibold" onClick={logout}>
+            Keluar
           </button>
         </div>
       </div>

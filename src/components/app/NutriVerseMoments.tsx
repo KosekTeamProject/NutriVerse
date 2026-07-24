@@ -10,10 +10,12 @@ type Moment = {
   readonly id: string;
   readonly name: string;
   readonly caption: string;
-  readonly image: string | null;
+  readonly image: string;
   readonly privacy: Privacy;
   readonly duringActivity: boolean;
   readonly time: string;
+  readonly isOwner: boolean;
+  readonly reactionCount: number;
 };
 
 const PRIVACY_OPTIONS: readonly { value: Privacy; label: string; icon: typeof Users }[] = [
@@ -29,6 +31,29 @@ function loadMomentImage(source: string) {
     image.onerror = reject;
     image.src = source;
   });
+}
+
+function relativeTime(value: string) {
+  const minutes = Math.max(
+    0,
+    Math.floor((Date.now() - new Date(value).getTime()) / 60_000),
+  );
+  if (minutes < 1) return "Baru saja";
+  if (minutes < 60) return `${minutes} mnt lalu`;
+  if (minutes < 1_440) return `${Math.floor(minutes / 60)} jam lalu`;
+  return `${Math.floor(minutes / 1_440)} hari lalu`;
+}
+
+function privacyFromDatabase(value: string): Privacy {
+  if (value === "PUBLIC") return "public";
+  if (value === "PRIVATE") return "private";
+  return "friends";
+}
+
+function privacyForDatabase(value: Privacy) {
+  if (value === "public") return "PUBLIC";
+  if (value === "private") return "PRIVATE";
+  return "CIRCLE";
 }
 
 function loadMomentBrandMark() {
@@ -129,14 +154,67 @@ export function NutriVerseMoments() {
   const [duringActivity, setDuringActivity] = useState(true);
   const [downloaded, setDownloaded] = useState(false);
   const [railDragging, setRailDragging] = useState(false);
+  const [publishing, setPublishing] = useState(false);
   const [viewerMoment, setViewerMoment] = useState<Moment | null>(null);
-  const [moments, setMoments] = useState<Moment[]>([
-    { id: "demo-1", name: "Dinda", caption: "Morning walk sebelum kelas. Pelan tetapi selesai 🌿", image: null, privacy: "friends", duringActivity: true, time: "8 mnt lalu" },
-    { id: "demo-2", name: "Yoga", caption: "Recovery day bareng teman kampus.", image: null, privacy: "public", duringActivity: false, time: "24 mnt lalu" },
-  ]);
+  const [moments, setMoments] = useState<Moment[]>([]);
 
   useEffect(() => () => {
     streamRef.current?.getTracks().forEach((track) => track.stop());
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/moments?limit=30", { cache: "no-store" })
+      .then(async (response) => {
+        const result = (await response.json().catch(() => null)) as
+          | {
+              success?: boolean;
+              moments?: Array<{
+                id: string;
+                userId: string;
+                imageUrl: string;
+                caption: string | null;
+                privacyLevel: string;
+                duringActivity: boolean;
+                createdAt: string;
+                user: { id: string; name: string };
+                isOwner: boolean;
+                _count?: { reactions: number };
+              }>;
+              error?: string;
+            }
+          | null;
+        if (!response.ok || !result?.success) {
+          throw new Error(result?.error ?? "Moment gagal dimuat.");
+        }
+        if (!cancelled) {
+          setMoments(
+            (result.moments ?? []).map((moment) => ({
+              id: moment.id,
+              name: moment.user.name,
+              caption: moment.caption ?? "Satu momen sehat hari ini.",
+              image: moment.imageUrl,
+              privacy: privacyFromDatabase(moment.privacyLevel),
+              duringActivity: moment.duringActivity,
+              time: relativeTime(moment.createdAt),
+              isOwner: moment.isOwner,
+              reactionCount: moment._count?.reactions ?? 0,
+            })),
+          );
+        }
+      })
+      .catch((loadError: unknown) => {
+        if (!cancelled) {
+          setCameraError(
+            loadError instanceof Error
+              ? loadError.message
+              : "Moment gagal dimuat.",
+          );
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   function stopCamera() {
@@ -221,13 +299,106 @@ export function NutriVerseMoments() {
     window.setTimeout(() => setDownloaded(false), 1800);
   }
 
-  function publishMoment() {
+  async function publishMoment() {
     if (!photo) return;
-    setMoments((current) => [{ id: crypto.randomUUID(), name: "Kamu", caption: caption.trim() || "Satu momen sehat hari ini.", image: photo, privacy, duringActivity, time: "Baru saja" }, ...current]);
+    setPublishing(true);
+    setCameraError("");
+    try {
+      const imageBlob = await fetch(photo).then((response) => response.blob());
+      const form = new FormData();
+      form.set("bucket", "post-images");
+      form.set("file", new File([imageBlob], "moment.jpg", { type: "image/jpeg" }));
+      const uploadResponse = await fetch("/api/storage/upload", {
+        method: "POST",
+        body: form,
+      });
+      const upload = (await uploadResponse.json().catch(() => null)) as
+        | { success?: boolean; publicUrl?: string; error?: string }
+        | null;
+      if (!uploadResponse.ok || !upload?.success || !upload.publicUrl) {
+        throw new Error(upload?.error ?? "Foto Moment gagal diunggah.");
+      }
+      const response = await fetch("/api/moments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          imageUrl: upload.publicUrl,
+          caption: caption.trim() || "Satu momen sehat hari ini.",
+          privacyLevel: privacyForDatabase(privacy),
+          duringActivity,
+        }),
+      });
+      const result = (await response.json().catch(() => null)) as
+        | {
+            success?: boolean;
+            moment?: {
+              id: string;
+              imageUrl: string;
+              caption: string | null;
+              privacyLevel: string;
+              duringActivity: boolean;
+              createdAt: string;
+              user: { name: string };
+            };
+            error?: string;
+          }
+        | null;
+      if (!response.ok || !result?.success || !result.moment) {
+        throw new Error(result?.error ?? "Moment gagal disimpan.");
+      }
+      const moment = result.moment;
+      setMoments((current) => [{
+        id: moment.id,
+        name: moment.user.name,
+        caption: moment.caption ?? "Satu momen sehat hari ini.",
+        image: moment.imageUrl,
+        privacy: privacyFromDatabase(moment.privacyLevel),
+        duringActivity: moment.duringActivity,
+        time: "Baru saja",
+        isOwner: true,
+        reactionCount: 0,
+      }, ...current]);
+    } catch (publishError) {
+      setCameraError(
+        publishError instanceof Error
+          ? publishError.message
+          : "Moment gagal disimpan.",
+      );
+      return;
+    } finally {
+      setPublishing(false);
+    }
     setPhoto(null);
     setCaption("");
     setPrivacy("friends");
     closeComposer();
+  }
+
+  async function encourageMoment(momentId: string) {
+    const response = await fetch(`/api/moments/${momentId}/reaction`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "ENCOURAGE" }),
+    });
+    if (!response.ok) return;
+    setMoments((current) =>
+      current.map((moment) =>
+        moment.id === momentId
+          ? { ...moment, reactionCount: moment.reactionCount + 1 }
+          : moment,
+      ),
+    );
+  }
+
+  async function deleteMoment(momentId: string) {
+    if (!window.confirm("Hapus Moment ini dari akun dan database?")) return;
+    const response = await fetch(`/api/moments/${momentId}`, {
+      method: "DELETE",
+    });
+    if (!response.ok) return;
+    setMoments((current) =>
+      current.filter((moment) => moment.id !== momentId),
+    );
   }
 
   function scrollMoments(direction: -1 | 1) {
@@ -288,6 +459,11 @@ export function NutriVerseMoments() {
         onPointerCancel={stopRailDrag}
         aria-label="Carousel NutriVerse Moments"
       >
+        {moments.length === 0 && (
+          <div className="col-span-full grid min-h-52 place-items-center rounded-3xl border border-dashed border-line px-6 text-center text-xs text-muted-foreground">
+            Belum ada Moment di database. Tangkap momen pertama melalui kamera.
+          </div>
+        )}
         {moments.map((moment, index) => (
           <article key={moment.id} className="min-w-0 snap-start overflow-hidden rounded-[1.4rem] border border-line bg-secondary/25 shadow-sm">
             <button type="button" onClick={() => moment.image && setViewerMoment(moment)} disabled={!moment.image} className={`group relative block aspect-[4/5] w-full overflow-hidden text-left ${moment.image ? "cursor-zoom-in bg-[#07150f]" : index % 2 ? "bg-gradient-to-br from-[#15334a] via-[#1d7f87] to-[#efb46c]" : "bg-gradient-to-br from-[#063d2b] via-[#0b8054] to-[#a3e635]"}`} aria-label={moment.image ? `Lihat foto ${moment.name} secara penuh` : undefined}>
@@ -298,7 +474,7 @@ export function NutriVerseMoments() {
               {moment.image && <span className="absolute bottom-3 right-3 flex items-center gap-1 rounded-full bg-black/55 px-2 py-1 text-[7px] font-bold text-white opacity-100 backdrop-blur transition sm:opacity-0 sm:group-hover:opacity-100"><Maximize2 className="h-3 w-3" /> Lihat penuh</span>}
             </button>
             <div className="min-h-[58px] border-t border-line/70 bg-card px-3 py-2.5"><div className="flex items-start justify-between gap-2">{moment.duringActivity && <span className="shrink-0 rounded-full bg-brand-soft px-1.5 py-0.5 text-[7px] font-bold text-brand">SAAT AKTIVITAS</span>}<p className="ml-auto shrink-0 text-[8px] text-muted-foreground">{moment.time} · tanpa XP</p></div><p className="mt-1 line-clamp-2 text-[10px] font-bold leading-relaxed text-foreground">{moment.caption}</p></div>
-            <div className="flex items-center justify-between gap-2 px-3 py-2.5"><button className="text-[9px] font-bold text-muted-foreground hover:text-brand">Beri Semangat</button>{moment.image ? <div className="flex gap-1"><button onClick={() => downloadWatermarkedMoment(moment.image, moment.caption)} className="grid h-7 w-7 place-items-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-brand" aria-label="Download template Moment NutriVerse"><Download className="h-3.5 w-3.5" /></button><button onClick={() => setMoments((current) => current.filter((item) => item.id !== moment.id))} className="grid h-7 w-7 place-items-center rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive" aria-label="Hapus Moment"><Trash2 className="h-3.5 w-3.5" /></button></div> : <button className="text-[9px] font-bold text-muted-foreground hover:text-destructive">Laporkan</button>}</div>
+            <div className="flex items-center justify-between gap-2 px-3 py-2.5"><button onClick={() => encourageMoment(moment.id)} className="text-[9px] font-bold text-muted-foreground hover:text-brand">Beri Semangat{moment.reactionCount ? ` (${moment.reactionCount})` : ""}</button><div className="flex gap-1"><button onClick={() => downloadWatermarkedMoment(moment.image, moment.caption)} className="grid h-7 w-7 place-items-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-brand" aria-label="Download template Moment NutriVerse"><Download className="h-3.5 w-3.5" /></button>{moment.isOwner && <button onClick={() => deleteMoment(moment.id)} className="grid h-7 w-7 place-items-center rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive" aria-label="Hapus Moment"><Trash2 className="h-3.5 w-3.5" /></button>}</div></div>
           </article>
         ))}
       </div>
@@ -330,7 +506,7 @@ export function NutriVerseMoments() {
                 <div><label htmlFor="moment-caption" className="label">Caption untuk template</label><p id="moment-caption-help" className="mt-1 text-[10px] leading-relaxed text-muted-foreground">Teks ini bisa diedit dan akan tampil sebagai typography di bagian bawah preview serta PNG unduhan.</p><textarea id="moment-caption" value={caption} onChange={(event) => setCaption(event.target.value)} aria-describedby="moment-caption-help" maxLength={180} rows={4} className="input mt-2 min-h-24 resize-none" placeholder="Ceritakan momen sehatmu…" /><p className="mt-1 text-right text-[9px] text-muted-foreground">{caption.length}/180</p></div>
                 <div><p className="label">Siapa yang dapat melihat?</p><div className="grid grid-cols-3 gap-1.5">{PRIVACY_OPTIONS.map((option) => { const Icon = option.icon; return <button key={option.value} onClick={() => setPrivacy(option.value)} className={`rounded-xl border p-2 text-[9px] font-bold ${privacy === option.value ? "border-brand bg-brand-soft text-brand" : "border-line text-muted-foreground"}`}><Icon className="mx-auto mb-1 h-4 w-4" />{option.label}</button>; })}</div></div>
                 <label className="flex cursor-pointer items-start gap-2.5 rounded-xl bg-secondary/50 p-3"><input type="checkbox" checked={duringActivity} onChange={(event) => setDuringActivity(event.target.checked)} className="mt-0.5 accent-[var(--brand)]" /><span className="text-[10px] leading-relaxed text-muted-foreground"><span className="font-bold text-foreground">Diambil saat aktivitas berlangsung</span><br />Label konteks saja, bukan bukti anti-cheat atau sumber XP.</span></label>
-                <div className="grid gap-2"><button onClick={() => downloadWatermarkedMoment()} disabled={!photo} className="btn btn-outline"><Download className="h-4 w-4" /> {downloaded ? "PNG Tersimpan" : "Simpan PNG Template"}</button><button onClick={publishMoment} disabled={!photo} className="btn btn-primary"><Check className="h-4 w-4" /> Bagikan Moment</button></div>
+                <div className="grid gap-2"><button onClick={() => downloadWatermarkedMoment()} disabled={!photo || publishing} className="btn btn-outline"><Download className="h-4 w-4" /> {downloaded ? "PNG Tersimpan" : "Simpan PNG Template"}</button><button onClick={publishMoment} disabled={!photo || publishing} className="btn btn-primary"><Check className="h-4 w-4" /> {publishing ? "Menyimpan..." : "Bagikan Moment"}</button></div>
                 <p className="text-[9px] leading-relaxed text-muted-foreground">Moment hanya dapat dibuat melalui kamera langsung. Foto dinormalisasi ulang untuk membuang metadata EXIF/lokasi; PNG unduhan memadukan foto penuh, gradasi, identitas NutriVerse, dan caption.</p>
               </div>
             </div>

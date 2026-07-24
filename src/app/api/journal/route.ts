@@ -28,11 +28,16 @@ export async function POST(request: NextRequest) {
     const entry = await prisma.journalEntry.create({
       data: {
         userId: user.id,
+        title:
+          typeof body?.title === "string" && body.title.trim()
+            ? stringValue(body.title, "Judul jurnal", { max: 80 })
+            : "Catatan kesehatan",
         content: stringValue(body?.content, "Isi jurnal", { min: 1, max: 5000 }),
         mood:
           typeof body?.mood === "string" && body.mood.trim()
             ? stringValue(body.mood, "Mood", { max: 50 })
             : null,
+        allowCompanion: body?.allowCompanion === true,
         journeyEntries: { create: { userId: user.id } },
       },
     });

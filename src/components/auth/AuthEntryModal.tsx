@@ -36,7 +36,14 @@ export function AuthEntryModal({ open, onClose, initialView = "choice" }: { read
       const result = (await response.json()) as {
         success?: boolean;
         error?: string;
-        user?: { name: string; email: string; avatarUrl?: string | null };
+        user?: {
+          name: string;
+          email: string;
+          username?: string | null;
+          avatarUrl?: string | null;
+          companionName?: string;
+          companionAvatarId?: string;
+        };
       };
       if (!response.ok || !result.success || !result.user) {
         throw new Error(result.error || "Login gagal.");
@@ -44,8 +51,12 @@ export function AuthEntryModal({ open, onClose, initialView = "choice" }: { read
       saveAuthSession({
         name: result.user.name,
         email: result.user.email,
-        username: result.user.email.split("@")[0] || "nutriverse-user",
-        companionName: "Nora",
+        username:
+          result.user.username ||
+          result.user.email.split("@")[0] ||
+          "nutriverse-user",
+        companionName: result.user.companionName || "Nora",
+        companionAvatarId: result.user.companionAvatarId,
         avatarUrl: result.user.avatarUrl || undefined,
         provider: "password",
         createdAt: new Date().toISOString(),

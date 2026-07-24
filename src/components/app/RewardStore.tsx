@@ -6,6 +6,7 @@ import {
   Heart, Check, Gift, Store, ShieldAlert, Activity, Gauge, PackageCheck, CalendarClock
 } from "lucide-react";
 import { CAT_STYLE, type Reward, type RewardCategory } from "@/lib/rewards";
+import { notifyDataChanged } from "@/lib/data-sync";
 
 const ICONS: Record<string, typeof Award> = {
   award: Award, crown: Crown, frame: Frame, sparkles: Sparkles,
@@ -143,6 +144,7 @@ export function RewardStore() {
       if (!response.ok || !result.success) throw new Error(result.error || "Penukaran gagal.");
       setBalance((current) => current - r.hp);
       setRedeemed((previous) => new Set(previous).add(r.id));
+      notifyDataChanged();
     } catch (redeemError) {
       setError(redeemError instanceof Error ? redeemError.message : "Penukaran gagal.");
     }

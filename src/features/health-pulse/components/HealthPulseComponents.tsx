@@ -16,8 +16,7 @@ import {
   getHealthPulseTrendLabel, 
   getHealthDataTrustLabel, 
   getHealthDimensionTone,
-  formatHealthPulseChange,
-  getHealthPulseAccessibleSummary
+  formatHealthPulseChange
 } from "../helpers";
 
 // 1. HealthDimensionRow
@@ -325,18 +324,28 @@ interface HealthPulseHistoryChartProps {
 }
 
 export function HealthPulseHistoryChart({ history }: HealthPulseHistoryChartProps) {
+  const safeHistory =
+    history.length >= 2
+      ? history.slice(-14)
+      : [
+          ...(history.length ? history : [{ date: "", score: 0 }]),
+          ...(history.length ? history : [{ date: "", score: 0 }]),
+        ];
   // SVG dimensions
   const width = 600;
   const height = 240;
   const pad = 40;
 
   // Chart min/max scores
-  const minScore = 70;
-  const maxScore = 80;
+  const scores = safeHistory.map((point) => point.score);
+  const rawMinimum = Math.min(...scores);
+  const rawMaximum = Math.max(...scores);
+  const minScore = Math.max(0, Math.floor(rawMinimum / 10) * 10 - 5);
+  const maxScore = Math.min(100, Math.max(minScore + 10, Math.ceil(rawMaximum / 10) * 10 + 5));
   
   // Dynamic coordinates
-  const pointsCoords = history.map((pt, idx) => {
-    const x = pad + (idx * (width - 2 * pad)) / (history.length - 1);
+  const pointsCoords = safeHistory.map((pt, idx) => {
+    const x = pad + (idx * (width - 2 * pad)) / (safeHistory.length - 1);
     const y = height - pad - ((pt.score - minScore) * (height - 2 * pad)) / (maxScore - minScore);
     return { x, y, score: pt.score, date: pt.date };
   });
@@ -344,12 +353,15 @@ export function HealthPulseHistoryChart({ history }: HealthPulseHistoryChartProp
   const polylinePointsStr = pointsCoords.map((pt) => `${pt.x},${pt.y}`).join(" ");
 
   // Subtle grid values (every 2 units on score: 70, 72, 74, 76, 78, 80)
-  const gridLevels = [70, 72, 74, 76, 78, 80];
+  const gridLevels = Array.from(
+    { length: 6 },
+    (_, index) => minScore + ((maxScore - minScore) * index) / 5,
+  );
 
   return (
     <div className="card card-pad space-y-4">
       <div>
-        <h3 className="font-display text-base font-bold text-foreground">Tren Riwayat 14 Hari</h3>
+        <h3 className="font-display text-base font-bold text-foreground">Tren Riwayat {safeHistory.length} Hari</h3>
         <p className="text-xs text-muted-foreground mt-0.5">Catatan indeks perkembangan pulse Anda</p>
       </div>
 
@@ -358,22 +370,7 @@ export function HealthPulseHistoryChart({ history }: HealthPulseHistoryChartProp
         <svg 
           viewBox={`0 0 ${width} ${height}`} 
           className="w-full h-auto text-muted-foreground"
-          aria-label={getHealthPulseAccessibleSummary({
-            id: "health-pulse-current",
-            travelerId: "Fathan",
-            score: 78.0,
-            previousScore: 76.8,
-            change: 1.2,
-            status: "flourishing",
-            trend: "improving",
-            strongestDimension: "activity",
-            focusDimension: "sleep",
-            dataCompleteness: 86,
-            generatedAt: "2026-07-20T12:00:00Z",
-            dimensions: [],
-            reasons: [],
-            recommendedNextAction: ""
-          })}
+          aria-label={`Grafik tren Health Pulse ${safeHistory.length} hari, dari ${safeHistory[0]?.score ?? 0} ke ${safeHistory.at(-1)?.score ?? 0}`}
         >
           {/* Horizontal Grid lines */}
           {gridLevels.map((lvl) => {
@@ -460,58 +457,56 @@ export function HealthPulseHistoryChart({ history }: HealthPulseHistoryChartProp
 
           {/* X axis dates (First, middle, last) */}
           <text x={pad} y={height - 12} textAnchor="start" className="fill-current text-[10px] font-semibold">
-            {history[0].date.split("-").slice(1).join("/")}
+            {safeHistory[0].date.split("-").slice(1).join("/")}
           </text>
           <text x={width / 2} y={height - 12} textAnchor="middle" className="fill-current text-[10px] font-semibold">
-            {history[Math.floor(history.length / 2)].date.split("-").slice(1).join("/")}
+            {safeHistory[Math.floor(safeHistory.length / 2)].date.split("-").slice(1).join("/")}
           </text>
           <text x={width - pad} y={height - 12} textAnchor="end" className="fill-current text-[10px] font-semibold">
-            {history[history.length - 1].date.split("-").slice(1).join("/")}
+            {safeHistory[safeHistory.length - 1].date.split("-").slice(1).join("/")}
           </text>
         </svg>
       </div>
 
       <div className="flex items-start gap-2 rounded-xl bg-secondary/60 p-3 text-[11px] text-muted-foreground border border-line/30">
         <Info className="h-4 w-4 shrink-0" />
-        <p>Ringkasan grafik: skor bergerak stabil dari 73,2, sempat menurun tipis, lalu pulih bertahap hingga 78,0 hari ini.</p>
+        <p>
+          Ringkasan grafik: skor berubah dari {safeHistory[0].score.toFixed(1)} menjadi{" "}
+          {safeHistory.at(-1)?.score.toFixed(1)} berdasarkan data yang tersimpan.
+        </p>
       </div>
     </div>
   );
 }
 
 // 7. HealthPulseTrendLineChart
-export function HealthPulseTrendLineChart() {
+export function HealthPulseTrendLineChart({
+  history,
+}: {
+  readonly history: readonly HealthPulseHistoryPoint[];
+}) {
   const [filter, setFilter] = useState<"today" | "7days" | "30days">("7days");
 
   const trendData = useMemo(() => {
-    if (filter === "today") {
-      return [
-        { label: "06:00", score: 81.2 },
-        { label: "09:00", score: 81.5 },
-        { label: "12:00", score: 81.1 },
-        { label: "15:00", score: 81.4 },
-        { label: "18:00", score: 81.8 },
-        { label: "21:00", score: 82.0 },
-      ];
-    }
-    if (filter === "7days") {
-      return [
-        { label: "Sen", score: 79.5 },
-        { label: "Sel", score: 80.0 },
-        { label: "Rab", score: 80.4 },
-        { label: "Kam", score: 80.2 },
-        { label: "Jum", score: 81.0 },
-        { label: "Sab", score: 81.5 },
-        { label: "Min", score: 82.0 },
-      ];
-    }
-    return [
-      { label: "Minggu 1", score: 76.0 },
-      { label: "Minggu 2", score: 78.5 },
-      { label: "Minggu 3", score: 80.2 },
-      { label: "Minggu 4", score: 82.0 },
-    ];
-  }, [filter]);
+    const count = filter === "today" ? 2 : filter === "7days" ? 7 : 30;
+    const selected = history.slice(-count);
+    const safe =
+      selected.length >= 2
+        ? selected
+        : [
+            ...(selected.length ? selected : [{ date: "", score: 0 }]),
+            ...(selected.length ? selected : [{ date: "", score: 0 }]),
+          ];
+    return safe.map((point) => ({
+      label:
+        filter === "today"
+          ? point === safe.at(-1)
+            ? "Hari ini"
+            : "Sebelumnya"
+          : point.date.split("-").slice(1).join("/"),
+      score: point.score,
+    }));
+  }, [filter, history]);
 
   const scores = trendData.map((d: { label: string; score: number }) => d.score);
   const minS = Math.min(...scores) - 1;

@@ -1,9 +1,21 @@
+"use client";
+
 import { ArrowLeft, Compass, Info, AlertTriangle, ShieldCheck, Flame } from "lucide-react";
 import Link from "next/link";
-import { healthyDayHistory, todayJourney } from "@/features/behavior/data";
 import { HealthyDayHeatmap, StreakSummaryCard } from "@/features/behavior/components/BehaviorComponents";
+import { useProgressData } from "@/providers/ProgressDataProvider";
 
 export default function HealthyDaysHistoryPage() {
+  const { overview } = useProgressData();
+  if (!overview) {
+    return (
+      <div className="card card-pad mx-auto max-w-4xl text-center text-sm text-muted-foreground">
+        Menyusun kalender Hari Sehat dari database...
+      </div>
+    );
+  }
+  const journey = overview.todayJourney;
+  const history = overview.healthyDays.history;
   return (
     <div className="mx-auto max-w-4xl space-y-6 animate-fade-up">
       {/* Back button */}
@@ -27,10 +39,10 @@ export default function HealthyDaysHistoryPage() {
       </div>
 
       {/* 2. Streak Summary Card */}
-      <StreakSummaryCard summary={todayJourney.streak} />
+      <StreakSummaryCard summary={journey.streak} />
 
       {/* 3. 28-day Heatmap Widget */}
-      <HealthyDayHeatmap history={healthyDayHistory} />
+      <HealthyDayHeatmap history={history} />
 
       {/* 4. Consistency Summary Metrics */}
       <div className="card card-pad space-y-4">
@@ -42,24 +54,24 @@ export default function HealthyDaysHistoryPage() {
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 text-center">
           <div className="rounded-xl border border-line bg-card/65 p-3.5 space-y-1">
             <p className="text-[9px] text-muted-foreground font-semibold uppercase tracking-wider">Hari Tercapai</p>
-            <p className="text-lg font-extrabold text-foreground">16</p>
+            <p className="text-lg font-extrabold text-foreground">{overview?.healthyDays.achievedDays ?? 0}</p>
           </div>
 
           <div className="rounded-xl border border-line bg-card/65 p-3.5 space-y-1">
             <p className="text-[9px] text-muted-foreground font-semibold uppercase tracking-wider">Hari Pemulihan</p>
-            <p className="text-lg font-extrabold text-sky">5</p>
+            <p className="text-lg font-extrabold text-sky">{overview?.healthyDays.recoveryDays ?? 0}</p>
           </div>
 
           <div className="rounded-xl border border-line bg-card/65 p-3.5 space-y-1">
             <p className="text-[9px] text-muted-foreground font-semibold uppercase tracking-wider">Streak Aktif</p>
             <p className="text-lg font-extrabold text-brand flex items-center justify-center gap-1">
-              <Flame className="h-4.5 w-4.5" /> 7
+              <Flame className="h-4.5 w-4.5" /> {journey.streak.currentDays}
             </p>
           </div>
 
           <div className="rounded-xl border border-line bg-card/65 p-3.5 space-y-1">
             <p className="text-[9px] text-muted-foreground font-semibold uppercase tracking-wider">Rata-rata Kelengkapan</p>
-            <p className="text-lg font-extrabold text-foreground">86%</p>
+            <p className="text-lg font-extrabold text-foreground">{overview?.healthyDays.averageCompleteness ?? 0}%</p>
           </div>
         </div>
       </div>
@@ -95,7 +107,7 @@ export default function HealthyDaysHistoryPage() {
       <div className="flex items-start gap-2.5 rounded-2xl bg-secondary/50 p-4 text-[10px] text-muted-foreground border border-line/30">
         <AlertTriangle className="h-4 w-4 shrink-0 text-muted-foreground mt-0.5" />
         <p>
-          Sejumlah target pada MVP ini memakai data simulasi deterministik untuk memperagakan sistem kebiasaan yang direncanakan.
+          Kalender dan ringkasan pada halaman ini dihitung dari data harian yang tersimpan pada akunmu.
         </p>
       </div>
     </div>

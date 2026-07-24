@@ -12,6 +12,7 @@ import { WellbeingReminder } from "@/components/app/WellbeingReminder";
 import { GlobalSearch } from "@/components/app/GlobalSearch";
 import { BrandLogo } from "@/components/brand/BrandLogo";
 import { Footer } from "@/components/app/Footer";
+import { useProgressData } from "@/providers/ProgressDataProvider";
 
 const NAV_GROUPS = [
   { label: "Utama", items: [
@@ -39,11 +40,31 @@ const MOBILE_NAV = [
   { href: "/profil", label: "Profil", icon: UserRound },
 ];
 
-const HEADER_NOTIFICATIONS = [
-  { id: "daily-goals", title: "Goals harianmu siap", detail: "3 misi sehat sudah dipilih untuk hari ini.", time: "Baru saja", href: "/todays-journey" },
-  { id: "streak", title: "Streak mencapai 7 hari", detail: "Pertahankan konsistensi dengan aktivitas ringan hari ini.", time: "1 jam lalu", href: "/aktivitas" },
-  { id: "reward", title: "Saldo HP bisa ditukar", detail: "Kamu memiliki 3.280 HP di Toko Hadiah.", time: "Kemarin", href: "/reward" },
-] as const;
+type HeaderNotification = {
+  id: string;
+  type: string;
+  title: string;
+  message: string;
+  isRead: boolean;
+  createdAt: string;
+};
+
+function notificationHref(type: string) {
+  if (type === "CHALLENGE") return "/challenge";
+  if (type === "REWARD") return "/reward";
+  if (type === "EVENT" || type === "SOCIAL") return "/komunitas";
+  if (type === "ACTIVITY" || type === "CHEAT_ALERT") return "/aktivitas";
+  return "/todays-journey";
+}
+
+function notificationTime(value: string) {
+  const timestamp = new Date(value).getTime();
+  const elapsedMinutes = Math.max(0, Math.floor((Date.now() - timestamp) / 60_000));
+  if (elapsedMinutes < 1) return "Baru saja";
+  if (elapsedMinutes < 60) return `${elapsedMinutes} menit lalu`;
+  if (elapsedMinutes < 1_440) return `${Math.floor(elapsedMinutes / 60)} jam lalu`;
+  return `${Math.floor(elapsedMinutes / 1_440)} hari lalu`;
+}
 
 function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
@@ -80,11 +101,13 @@ export function AppShell({ children }: { readonly children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const session = useAuthSession();
+  const { overview } = useProgressData();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
   const [economy, setEconomy] = useState({ totalXp: 0, currentHp: 0 });
+  const [notifications, setNotifications] = useState<HeaderNotification[]>([]);
   const { dark, toggleTheme } = useTheme();
 
   const isPublicPage = pathname === "/onboarding" || pathname.startsWith("/bantuan");
@@ -103,6 +126,7 @@ export function AppShell({ children }: { readonly children: React.ReactNode }) {
             avatarUrl?: string | null;
             companionName?: string;
             companionAvatarId?: string;
+            provider?: "password" | "google";
             economy?: { totalXp: number; currentHp: number } | null;
           };
         } | null;
@@ -121,7 +145,7 @@ export function AppShell({ children }: { readonly children: React.ReactNode }) {
             companionName: result.user.companionName || current?.companionName || "Nora",
             companionAvatarId: result.user.companionAvatarId || current?.companionAvatarId,
             avatarUrl: result.user.avatarUrl || current?.avatarUrl,
-            provider: "google",
+            provider: result.user.provider ?? "password",
             createdAt: current?.createdAt || new Date().toISOString(),
             lastLoginTimestamp: Date.now(),
           });
@@ -129,7 +153,7 @@ export function AppShell({ children }: { readonly children: React.ReactNode }) {
             totalXp: result.user.economy?.totalXp ?? 0,
             currentHp: result.user.economy?.currentHp ?? 0,
           });
-        } else if (response.status === 401 && current?.provider === "google") {
+        } else if (response.status === 401) {
           clearAuthSession();
         }
       })
@@ -144,6 +168,26 @@ export function AppShell({ children }: { readonly children: React.ReactNode }) {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (!authChecked || !session) return;
+    let cancelled = false;
+    fetch("/api/notifications", { cache: "no-store" })
+      .then(async (response) => {
+        const result = (await response.json().catch(() => null)) as
+          | { success?: boolean; notifications?: HeaderNotification[] }
+          | null;
+        if (!cancelled && response.ok && result?.success) {
+          setNotifications(result.notifications ?? []);
+        }
+      })
+      .catch(() => {
+        // Notifikasi tidak menggagalkan shell saat koneksi terputus.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [authChecked, session]);
 
   if (pathname === "/onboarding") return children;
 
@@ -170,14 +214,37 @@ export function AppShell({ children }: { readonly children: React.ReactNode }) {
 
   const initials = session?.name ? session.name.split(" ").filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase() : "";
   const companionName = session?.companionName || "Nora";
+  const displayedEconomy = overview?.economy ?? economy;
 
   async function logout() {
-    await fetch("/api/auth/sign-out", { method: "POST" }).catch(() => null);
+    if (!window.confirm("Yakin ingin keluar dari akun NutriVerse?")) return;
+    const response = await fetch("/api/auth/sign-out", { method: "POST" }).catch(
+      () => null,
+    );
+    if (response && !response.ok) {
+      window.alert("Sesi belum dapat diakhiri. Silakan coba lagi.");
+      return;
+    }
     clearAuthSession();
     setProfileOpen(false);
     setMobileOpen(false);
     router.replace("/");
   }
+
+  function openNotification(notification: HeaderNotification) {
+    setNotificationsOpen(false);
+    if (notification.isRead) return;
+    setNotifications((items) =>
+      items.map((item) =>
+        item.id === notification.id ? { ...item, isRead: true } : item,
+      ),
+    );
+    void fetch(`/api/notifications/${notification.id}/read`, {
+      method: "PATCH",
+    });
+  }
+
+  const unreadNotifications = notifications.filter((item) => !item.isRead);
 
   return (
     <div className="min-h-screen bg-background">
@@ -210,8 +277,8 @@ export function AppShell({ children }: { readonly children: React.ReactNode }) {
             <div className="col-start-3 row-start-1 ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
               {session ? (
                 <>
-                  <span className="pill hidden bg-amber/15 text-amber xl:inline-flex" aria-label={`Saldo ${economy.totalXp} XP`}><Flame className="h-3.5 w-3.5" /> {economy.totalXp.toLocaleString("id-ID")} XP</span>
-                  <span className="pill hidden bg-brand-soft text-brand xl:inline-flex" aria-label={`Saldo ${economy.currentHp} HP`}>{economy.currentHp.toLocaleString("id-ID")} HP</span>
+                  <span className="pill hidden bg-amber/15 text-amber xl:inline-flex" aria-label={`Saldo ${displayedEconomy.totalXp} XP`}><Flame className="h-3.5 w-3.5" /> {displayedEconomy.totalXp.toLocaleString("id-ID")} XP</span>
+                  <span className="pill hidden bg-brand-soft text-brand xl:inline-flex" aria-label={`Saldo ${displayedEconomy.currentHp} HP`}>{displayedEconomy.currentHp.toLocaleString("id-ID")} HP</span>
                 </>
               ) : (
                 <div className="hidden lg:flex items-center gap-8 mr-6 text-sm font-medium text-muted-foreground">
@@ -228,30 +295,31 @@ export function AppShell({ children }: { readonly children: React.ReactNode }) {
                 <button
                   onClick={() => { setNotificationsOpen((value) => !value); setProfileOpen(false); }}
                   className="relative grid h-8 w-8 place-items-center rounded-lg text-muted-foreground transition hover:bg-secondary hover:text-foreground sm:h-9 sm:w-9"
-                  aria-label={`${HEADER_NOTIFICATIONS.length} notifikasi belum dibaca`}
+                  aria-label={`${unreadNotifications.length} notifikasi belum dibaca`}
                   aria-expanded={notificationsOpen}
                   aria-controls="header-notifications"
                 >
                   <Bell className="h-[18px] w-[18px]" />
-                  <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-destructive ring-2 ring-background" />
+                  {unreadNotifications.length > 0 && <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-destructive ring-2 ring-background" />}
                 </button>
                 {notificationsOpen && (
                   <section id="header-notifications" className="fixed inset-x-3 top-[7rem] z-50 overflow-hidden rounded-2xl border border-line bg-card shadow-2xl sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-80" aria-label="Daftar notifikasi">
                     <div className="flex items-center justify-between border-b border-line/60 px-4 py-3">
                       <div>
                         <p className="font-display text-sm font-bold text-foreground">Notifikasi</p>
-                        <p className="text-[10px] text-muted-foreground">{HEADER_NOTIFICATIONS.length} pembaruan terbaru</p>
+                        <p className="text-[10px] text-muted-foreground">{notifications.length} pembaruan dari database</p>
                       </div>
-                      <span className="grid h-7 min-w-7 place-items-center rounded-full bg-destructive/10 px-2 text-[10px] font-bold text-destructive">{HEADER_NOTIFICATIONS.length}</span>
+                      <span className="grid h-7 min-w-7 place-items-center rounded-full bg-destructive/10 px-2 text-[10px] font-bold text-destructive">{unreadNotifications.length}</span>
                     </div>
                     <div className="p-2">
-                      {HEADER_NOTIFICATIONS.map((item) => (
-                        <Link key={item.id} href={item.href} onClick={() => setNotificationsOpen(false)} className="flex gap-3 rounded-xl px-3 py-3 transition hover:bg-secondary">
-                          <span className="relative mt-1 h-2 w-2 shrink-0 rounded-full bg-brand"><span className="absolute inset-0 animate-ping rounded-full bg-brand/40" /></span>
+                      {notifications.length === 0 && <p className="px-3 py-6 text-center text-xs text-muted-foreground">Belum ada notifikasi.</p>}
+                      {notifications.map((item) => (
+                        <Link key={item.id} href={notificationHref(item.type)} onClick={() => openNotification(item)} className="flex gap-3 rounded-xl px-3 py-3 transition hover:bg-secondary">
+                          <span className={`relative mt-1 h-2 w-2 shrink-0 rounded-full ${item.isRead ? "bg-muted-foreground/35" : "bg-brand"}`}>{!item.isRead && <span className="absolute inset-0 animate-ping rounded-full bg-brand/40" />}</span>
                           <span className="min-w-0 flex-1">
                             <span className="block text-xs font-bold text-foreground">{item.title}</span>
-                            <span className="mt-0.5 block text-[10px] leading-relaxed text-muted-foreground">{item.detail}</span>
-                            <span className="mt-1 block text-[9px] font-semibold text-brand">{item.time}</span>
+                            <span className="mt-0.5 block text-[10px] leading-relaxed text-muted-foreground">{item.message}</span>
+                            <span className="mt-1 block text-[9px] font-semibold text-brand">{notificationTime(item.createdAt)}</span>
                           </span>
                         </Link>
                       ))}

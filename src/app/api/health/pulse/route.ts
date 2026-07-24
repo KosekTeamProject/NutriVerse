@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
     const [profile, nutrition, activity] = await Promise.all([
       prisma.healthProfile.findUnique({ where: { userId: user.id } }),
       prisma.nutritionEntry.aggregate({
-        where: { userId: user.id, createdAt: { gte: bounds.start, lt: bounds.end } },
+        where: { userId: user.id, loggedAt: { gte: bounds.start, lt: bounds.end } },
         _sum: { protein: true },
       }),
       prisma.activitySession.aggregate({

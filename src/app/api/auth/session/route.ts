@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { apiErrorResponse } from "@/lib/api";
-import { requireCurrentUser } from "@/lib/auth";
+import { requireCurrentAuthContext } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export async function GET() {
   try {
-    const user = await requireCurrentUser();
+    const { user, authUser } = await requireCurrentAuthContext();
     const domain = await prisma.user.findUnique({
       where: { id: user.id },
       select: {
@@ -21,6 +21,8 @@ export async function GET() {
         onboardingCompleted: domain?.healthProfile?.onboardingCompleted ?? false,
         companionName: domain?.companionPreference?.companionName ?? "Nora",
         companionAvatarId: domain?.companionPreference?.companionAvatarId ?? "sparkles",
+        provider:
+          authUser.app_metadata?.provider === "google" ? "google" : "password",
         economy: domain?.economy,
       },
     });

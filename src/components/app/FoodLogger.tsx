@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Camera, PencilLine, Clock, Trash2, Info, Leaf, Database, X, Check, Filter, Sparkles, Scale } from "lucide-react";
 import { FoodScanner, type LoggedFood } from "./FoodScanner";
 import { ManualFoodInput } from "./ManualFoodInput";
@@ -8,118 +8,238 @@ import { NutritionTrustBadge } from "@/features/nutrition/components/NutritionCo
 import { AIMenuRecommendation } from "@/features/nutrition/components/AIMenuRecommendation";
 import { BodyWeightTracker } from "@/features/body-weight/components/BodyWeightTracker";
 import { getHealthIndicator } from "@/lib/food";
+import { notifyDataChanged } from "@/lib/data-sync";
+import { useProgressData } from "@/providers/ProgressDataProvider";
 
 type Tab = "scan" | "manual" | "recommendation" | "weight";
 type HistoryFilter = "today" | "week" | "month";
 
 type Entry = LoggedFood & { 
-  id: number; 
+  id: string; 
   via: "scan" | "manual"; 
   date: string;
+  loggedAt: string;
   category?: "Sarapan" | "Makan Siang" | "Makan Malam" | "Camilan";
-  periodFilter?: HistoryFilter;
 };
 
-// Initial mock entries for demonstrating history filters & summary percentages
-const INITIAL_HISTORY: Entry[] = [
-  {
-    id: 1,
-    name: "Nasi Ayam Panggang & Sayur",
-    portion: "1x porsi",
-    via: "scan",
-    date: "Hari ini, 12:30",
-    category: "Makan Siang",
-    periodFilter: "today",
-    nutrition: { kcal: 520, protein: 38, carbs: 58, fat: 12, fiber: 6, sugar: 4, sodium: 640, vitamins: "B3, B12" },
-    activityRec: "Jalan santai 15 menit jika kondisi tubuh mendukung.",
-    insight: "Tinggi protein padat dan karbohidrat kompleks.",
-    trustLevel: "confirmed"
-  },
-  {
-    id: 2,
-    name: "Oatmeal Pisang & Telur",
-    portion: "1x porsi",
-    via: "manual",
-    date: "Hari ini, 07:15",
-    category: "Sarapan",
-    periodFilter: "today",
-    nutrition: { kcal: 360, protein: 18, carbs: 48, fat: 10, fiber: 7, sugar: 5, sodium: 220, vitamins: "A, B1" },
-    activityRec: "Jalan ringan 10 menit.",
-    insight: "Serat lambat cerna yang baik di pagi hari.",
-    trustLevel: "self-reported"
-  },
-  {
-    id: 3,
-    name: "Salad Buah & Yogurt",
-    portion: "1x porsi",
-    via: "scan",
-    date: "Kemarin, 15:45",
-    category: "Camilan",
-    periodFilter: "week",
-    nutrition: { kcal: 210, protein: 12, carbs: 32, fat: 4, fiber: 4, sugar: 16, sodium: 90, vitamins: "C, Calcium" },
-    activityRec: "Aktivitas ringan fleksibel.",
-    insight: "Camilan kaya probiotik dan buah segar.",
-    trustLevel: "confirmed"
-  },
-  {
-    id: 4,
-    name: "Sup Sayuran & Tempe Kukus",
-    portion: "1.5x porsi",
-    via: "manual",
-    date: "4 hari lalu, 19:10",
-    category: "Makan Malam",
-    periodFilter: "month",
-    nutrition: { kcal: 310, protein: 22, carbs: 36, fat: 9, fiber: 8, sugar: 3, sodium: 480, vitamins: "A, C, K" },
-    activityRec: "Gerak santai atau pemulihan.",
-    insight: "Rendah lemak, kaya serat dan mineral.",
-    trustLevel: "self-reported"
-  }
-];
+type StoredNutritionEntry = {
+  id: string;
+  foodName: string;
+  portionGrams: number | null;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  fiber: number;
+  sugar: number;
+  sodiumMg: number;
+  mealType: string | null;
+  source: string;
+  isUserConfirmed: boolean;
+  confidenceScore: number;
+  imageUrl: string | null;
+  recommendationText: string | null;
+  loggedAt: string;
+};
+
+function mealTypeFor(date: Date) {
+  const hour = date.getHours();
+  if (hour >= 5 && hour < 11) return "Sarapan";
+  if (hour >= 11 && hour < 16) return "Makan Siang";
+  if (hour >= 16 && hour < 21) return "Makan Malam";
+  return "Camilan";
+}
+
+function storedEntry(entry: StoredNutritionEntry): Entry {
+  const loggedAt = new Date(entry.loggedAt);
+  return {
+    id: entry.id,
+    name: entry.foodName,
+    portion: entry.portionGrams ? `${entry.portionGrams} g` : "Porsi tercatat",
+    photo: entry.imageUrl ?? undefined,
+    via: entry.source === "SCAN" ? "scan" : "manual",
+    date: loggedAt.toLocaleString("id-ID", {
+      day: "2-digit",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+    }),
+    loggedAt: entry.loggedAt,
+    category: (entry.mealType as Entry["category"]) ?? mealTypeFor(loggedAt),
+    nutrition: {
+      kcal: roundedNutrition(entry.calories),
+      protein: roundedNutrition(entry.protein),
+      carbs: roundedNutrition(entry.carbs),
+      fat: roundedNutrition(entry.fat),
+      fiber: roundedNutrition(entry.fiber),
+      sugar: roundedNutrition(entry.sugar),
+      sodium: roundedNutrition(entry.sodiumMg),
+      vitamins: "",
+    },
+    activityRec:
+      entry.recommendationText ?? "Aktivitas ringan dapat disesuaikan dengan kondisi tubuh.",
+    insight: "Catatan nutrisi tersimpan dan ikut dihitung dalam progres harian.",
+    trustLevel:
+      entry.source === "SCAN" && entry.isUserConfirmed
+        ? "confirmed"
+        : "self-reported",
+  };
+}
+
+function roundedNutrition(value: number) {
+  return Math.round(value * 10) / 10;
+}
 
 export function FoodLogger() {
+  const { overview } = useProgressData();
+  const [filterNow] = useState(() => Date.now());
   const [tab, setTab] = useState<Tab>("scan");
   const [historyFilter, setHistoryFilter] = useState<HistoryFilter>("today");
-  const [log, setLog] = useState<Entry[]>(INITIAL_HISTORY);
-  const [editingId, setEditingId] = useState<number | null>(null);
+  const [log, setLog] = useState<Entry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState({ name: "", portion: "" });
 
-  function addEntry(entry: LoggedFood) {
+  useEffect(() => {
+    const from = new Date(Date.now() - 31 * 24 * 60 * 60_000).toISOString();
+    fetch(`/api/nutrition/entries?limit=200&from=${encodeURIComponent(from)}`, {
+      cache: "no-store",
+    })
+      .then(async (response) => {
+        const result = (await response.json().catch(() => null)) as
+          | { success?: boolean; entries?: StoredNutritionEntry[]; error?: string }
+          | null;
+        if (!response.ok || !result?.success) {
+          throw new Error(result?.error ?? "Riwayat makanan gagal dimuat.");
+        }
+        setLog((result.entries ?? []).map(storedEntry));
+      })
+      .catch((error: unknown) => {
+        setMessage(error instanceof Error ? error.message : "Riwayat makanan gagal dimuat.");
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  async function addEntry(entry: LoggedFood) {
     const now = new Date();
-    const date = `Hari ini, ${String(now.getHours()).padStart(2, "0")}.${String(now.getMinutes()).padStart(2, "0")}`;
-    
-    // Assign category based on hour
-    const hour = now.getHours();
-    let category: "Sarapan" | "Makan Siang" | "Makan Malam" | "Camilan" = "Camilan";
-    if (hour >= 5 && hour < 11) category = "Sarapan";
-    else if (hour >= 11 && hour < 16) category = "Makan Siang";
-    else if (hour >= 16 && hour < 21) category = "Makan Malam";
-
-    const newEntry: Entry = {
-      ...entry,
-      id: Date.now() + Math.random(),
-      via: tab === "manual" ? "manual" : "scan",
-      date,
-      category,
-      periodFilter: "today"
-    };
-
-    setLog((prev) => [newEntry, ...prev]);
+    const category = mealTypeFor(now);
+    setMessage("Menyimpan catatan makanan...");
+    let imageUrl: string | undefined;
+    if (entry.photoFile) {
+      const form = new FormData();
+      form.set("bucket", "post-images");
+      form.set("file", entry.photoFile);
+      const uploadResponse = await fetch("/api/storage/upload", {
+        method: "POST",
+        body: form,
+      });
+      const upload = (await uploadResponse.json().catch(() => null)) as
+        | { success?: boolean; publicUrl?: string; error?: string }
+        | null;
+      if (!uploadResponse.ok || !upload?.success || !upload.publicUrl) {
+        setMessage(upload?.error ?? "Foto makanan gagal diunggah.");
+        return;
+      }
+      imageUrl = upload.publicUrl;
+    }
+    const response = await fetch("/api/nutrition/entries", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        foodName: entry.name,
+        calories: entry.nutrition.kcal,
+        protein: entry.nutrition.protein,
+        carbs: entry.nutrition.carbs,
+        fat: entry.nutrition.fat,
+        fiber: entry.nutrition.fiber,
+        sugar: entry.nutrition.sugar,
+        sodiumMg: entry.nutrition.sodium,
+        mealType: category,
+        source: tab === "scan" ? "SCAN" : "MANUAL",
+        isUserConfirmed: entry.trustLevel === "confirmed",
+        confidenceScore: entry.trustLevel === "confirmed" ? 1 : 0,
+        imageUrl,
+        recommendationText: entry.activityRec,
+        loggedAt: now.toISOString(),
+      }),
+    });
+    const result = (await response.json().catch(() => null)) as
+      | { success?: boolean; entry?: StoredNutritionEntry; error?: string }
+      | null;
+    if (!response.ok || !result?.success || !result.entry) {
+      setMessage(result?.error ?? "Catatan makanan gagal disimpan.");
+      return;
+    }
+    setLog((previous) => [storedEntry(result.entry!), ...previous]);
+    setMessage("Catatan tersimpan dan seluruh progres telah diperbarui.");
+    notifyDataChanged();
   }
 
-  const remove = (id: number) => setLog((prev) => prev.filter((e) => e.id !== id));
+  const remove = async (id: string) => {
+    const response = await fetch(`/api/nutrition/entries/${id}`, {
+      method: "DELETE",
+    });
+    if (!response.ok) {
+      setMessage("Catatan makanan gagal dihapus.");
+      return;
+    }
+    setLog((previous) => previous.filter((entry) => entry.id !== id));
+    setMessage("Catatan dihapus dan progres dihitung ulang.");
+    notifyDataChanged();
+  };
   const beginEdit = (entry: Entry) => { setEditingId(entry.id); setEditDraft({ name: entry.name, portion: entry.portion }); };
-  const saveEdit = () => {
+  const saveEdit = async () => {
     if (!editingId || !editDraft.name.trim() || !editDraft.portion.trim()) return;
-    setLog((entries) => entries.map((entry) => entry.id === editingId ? { ...entry, name: editDraft.name.trim(), portion: editDraft.portion.trim() } : entry));
+    const portionGrams = Number.parseFloat(editDraft.portion.replace(",", "."));
+    if (!Number.isFinite(portionGrams) || portionGrams <= 0) {
+      setMessage("Porsi makanan harus berupa angka lebih dari nol.");
+      return;
+    }
+    const response = await fetch(`/api/nutrition/entries/${editingId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        foodName: editDraft.name.trim(),
+        portionGrams,
+      }),
+    });
+    if (!response.ok) {
+      setMessage("Perubahan catatan gagal disimpan.");
+      return;
+    }
+    const result = (await response.json().catch(() => null)) as
+      | { success?: boolean; entry?: StoredNutritionEntry }
+      | null;
+    setLog((entries) =>
+      entries.map((entry) =>
+        entry.id === editingId && result?.entry
+          ? storedEntry(result.entry)
+          : entry,
+      ),
+    );
     setEditingId(null);
+    setMessage("Perubahan tersimpan.");
+    notifyDataChanged();
   };
 
   // Filtered log entries
   const filteredEntries = useMemo(() => {
-    if (historyFilter === "today") return log.filter((e) => e.periodFilter === "today");
-    if (historyFilter === "week") return log.filter((e) => e.periodFilter === "today" || e.periodFilter === "week");
-    return log;
-  }, [log, historyFilter]);
+    const now = filterNow;
+    if (historyFilter === "today") {
+      const today = new Date(now).toDateString();
+      return log.filter(
+        (entry) => new Date(entry.loggedAt).toDateString() === today,
+      );
+    }
+    const windowMs =
+      historyFilter === "week"
+        ? 7 * 24 * 60 * 60_000
+        : 31 * 24 * 60 * 60_000;
+    return log.filter(
+      (entry) => now - new Date(entry.loggedAt).getTime() <= windowMs,
+    );
+  }, [filterNow, log, historyFilter]);
 
   // Aggregate totals
   const totals = useMemo(() => {
@@ -138,7 +258,13 @@ export function FoodLogger() {
   }, [filteredEntries]);
 
   // Daily target percentages
-  const targets = { protein: 65, carbs: 220, fiber: 25 };
+  const periodDays =
+    historyFilter === "today" ? 1 : historyFilter === "week" ? 7 : 31;
+  const targets = {
+    protein: (overview?.daily.protein.target ?? 80) * periodDays,
+    carbs: (overview?.daily.carbs.target ?? 220) * periodDays,
+    fiber: (overview?.daily.fiber.target ?? 25) * periodDays,
+  };
   const proteinPct = Math.min(150, Math.round((totals.protein / targets.protein) * 100));
   const carbsPct = Math.min(150, Math.round((totals.carbs / targets.carbs) * 100));
   const fiberPct = Math.min(150, Math.round((totals.fiber / targets.fiber) * 100));
@@ -273,7 +399,12 @@ export function FoodLogger() {
 
         {/* Entries List */}
         <div className="space-y-3">
-          {filteredEntries.length === 0 ? (
+          {loading ? (
+            <div className="rounded-2xl border border-dashed border-line p-6 text-center">
+              <Database className="mx-auto h-6 w-6 animate-pulse text-brand" />
+              <p className="mt-2 text-xs font-bold text-foreground">Memuat data makanan...</p>
+            </div>
+          ) : filteredEntries.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-line p-6 text-center">
               <Database className="mx-auto h-6 w-6 text-muted-foreground" />
               <p className="mt-2 text-xs font-bold text-foreground">Tidak ada catatan pada periode ini</p>
@@ -350,7 +481,7 @@ export function FoodLogger() {
 
         <div className="mt-4 flex items-start gap-2 rounded-xl bg-secondary/50 p-4 text-[10px] text-muted-foreground border border-line/30">
           <Info className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-          <p>Riwayat disimpan sementara di penyimpanan browser lokal. Integrasi database penuh ditangguhkan.</p>
+          <p>{message ?? "Riwayat, makro, dan seluruh grafik terkait tersinkron langsung dengan database."}</p>
         </div>
       </div>
     </div>

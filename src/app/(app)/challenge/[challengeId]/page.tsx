@@ -10,7 +10,10 @@ import {
   Heart, 
   Activity 
 } from "lucide-react";
-import { getChallengeById, AUTO_PROGRESS, TIER_STYLE } from "@/lib/challenges";
+import { ChallengeMetric, ChallengeTrustLevel } from "@prisma/client";
+import { TIER_STYLE, type ChallengeTier } from "@/lib/challenges";
+import { requireCurrentUser } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import { getPrimaryCompanionInsight } from "@/features/companion/helpers";
 import { CompanionGuidanceSection } from "@/features/companion/components/CompanionGuidanceSection";
 
@@ -20,17 +23,59 @@ interface ChallengeDetailPageProps {
 
 export default async function ChallengeDetailPage({ params }: ChallengeDetailPageProps) {
   const { challengeId } = await params;
-  const challenge = getChallengeById(challengeId);
+  const user = await requireCurrentUser();
+  const storedChallenge = await prisma.challenge.findUnique({
+    where: { id: challengeId },
+    include: {
+      progresses: {
+        where: { userId: user.id },
+        take: 1,
+      },
+    },
+  });
 
-  if (!challenge) {
+  if (!storedChallenge) {
     notFound();
   }
 
-  // Get progress percentage and completed state
-  const isGps = challenge.source === "gps";
-  const now = isGps ? Math.min(challenge.goal, AUTO_PROGRESS[challenge.metric] ?? 0) : 0;
-  const pct = Math.min(100, Math.round((now / challenge.goal) * 100));
-  const done = now >= challenge.goal;
+  const progress = storedChallenge.progresses[0];
+  const convertValue = (value: number) =>
+    storedChallenge.metric === ChallengeMetric.DISTANCE_METERS
+      ? Number((value / 1_000).toFixed(2))
+      : storedChallenge.metric === ChallengeMetric.DURATION_SECONDS
+        ? Number((value / 60).toFixed(1))
+        : Number(value.toFixed(1));
+  const unit =
+    storedChallenge.metric === ChallengeMetric.DISTANCE_METERS
+      ? "km"
+      : storedChallenge.metric === ChallengeMetric.DURATION_SECONDS
+        ? "mnt"
+        : storedChallenge.targetUnit.toLowerCase();
+  const rewardScore = storedChallenge.bonusXp + storedChallenge.bonusHp;
+  const tier: ChallengeTier =
+    rewardScore >= 900 ? "High" : rewardScore >= 250 ? "Medium" : "Low";
+  const challenge = {
+    title: storedChallenge.title,
+    desc: storedChallenge.description,
+    period: storedChallenge.type.toLowerCase(),
+    tier,
+    source:
+      storedChallenge.trustLevel === ChallengeTrustLevel.GPS_VERIFIED_ONLY
+        ? "gps"
+        : "manual",
+    goal: convertValue(storedChallenge.targetValue),
+    unit,
+    xp: storedChallenge.bonusXp,
+    hp: storedChallenge.bonusHp,
+  };
+  const now = convertValue(progress?.currentValue ?? 0);
+  const pct = Math.min(
+    100,
+    Math.round(
+      ((progress?.currentValue ?? 0) / storedChallenge.targetValue) * 100,
+    ),
+  );
+  const done = progress?.isCompleted ?? false;
 
   // Retrieve Nora Challenge guidance
   const noraInsight = getPrimaryCompanionInsight("challenge");
@@ -210,7 +255,7 @@ export default async function ChallengeDetailPage({ params }: ChallengeDetailPag
       <div className="flex items-start gap-2.5 rounded-2xl bg-secondary/50 p-4 text-[10px] text-muted-foreground border border-line/30">
         <AlertTriangle className="h-4 w-4 shrink-0 text-muted-foreground mt-0.5" />
         <p>
-          Sejumlah target pada MVP ini memakai data simulasi deterministik untuk memperagakan sistem kebiasaan yang direncanakan.
+          Progres ini dibaca langsung dari kontribusi aktivitas dan catatan akun yang tersimpan di database.
         </p>
       </div>
     </div>

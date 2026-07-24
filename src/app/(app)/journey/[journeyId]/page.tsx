@@ -14,6 +14,8 @@ import { getJourneyById, toHealthStoryDisplayData, getJourneyVisibilityDescripti
 import { HealthStoryPreviewContainer } from "@/features/journey/components/HealthStoryPreviewContainer";
 import { companionInsights } from "@/features/companion/data";
 import { CompanionCard } from "@/features/companion/components/CompanionComponents";
+import { requireCurrentUser } from "@/lib/auth";
+import { buildProgressOverview } from "@/server/progress/progress-service";
 
 interface JourneyDetailPageProps {
   readonly params: Promise<{ readonly journeyId: string }>;
@@ -27,7 +29,10 @@ export default async function JourneyDetailPage({ params }: JourneyDetailPagePro
     notFound();
   }
 
-  const displayData = toHealthStoryDisplayData(record, "Fathan");
+  const user = await requireCurrentUser();
+  const overview = await buildProgressOverview(user.id);
+  const activeChallenge = overview.challenges[0];
+  const displayData = toHealthStoryDisplayData(record, user.name);
   const dateStr = record.occurredAt.split("T")[0];
 
   // Fetch relevant reflection for morning walk
@@ -151,12 +156,12 @@ export default async function JourneyDetailPage({ params }: JourneyDetailPagePro
           )}
 
           {/* Active Challenge Contribution widget */}
-          {record.id === "journey-morning-walk" && (
+          {record.id === "journey-morning-walk" && activeChallenge && (
             <div className="card card-pad space-y-4 border-line/60 bg-card">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0">
                   <span className="pill bg-amber/10 text-amber text-[9px] font-bold uppercase tracking-wider">Kontribusi Tantangan</span>
-                  <h3 className="font-display text-base font-bold text-foreground mt-1">Perjalanan Kardio Ringan</h3>
+                  <h3 className="font-display text-base font-bold text-foreground mt-1">{activeChallenge.title}</h3>
                 </div>
                 <span className="pill self-start bg-brand-soft text-brand text-[9px] font-bold uppercase sm:max-w-[45%]">
                   Progres Aktivitas Otomatis
@@ -166,10 +171,10 @@ export default async function JourneyDetailPage({ params }: JourneyDetailPagePro
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between text-xs font-semibold text-muted-foreground">
                   <span>Progres</span>
-                  <span className="text-foreground">7.2 / 10.0 km (72%)</span>
+                  <span className="text-foreground">{activeChallenge.currentValue} / {activeChallenge.targetValue} {activeChallenge.unit} ({activeChallenge.progressPercent}%)</span>
                 </div>
                 <div className="chart-progress h-2 overflow-hidden rounded-full">
-                  <div className="h-full rounded-full bg-brand" style={{ width: "72%" }} />
+                  <div className="h-full rounded-full bg-brand" style={{ width: `${activeChallenge.progressPercent}%` }} />
                 </div>
               </div>
 
@@ -178,7 +183,7 @@ export default async function JourneyDetailPage({ params }: JourneyDetailPagePro
               </p>
 
               <div className="pt-1">
-                <Link href="/challenge/challenge-light-cardio" className="btn btn-outline btn-sm w-full text-center font-semibold justify-center">
+                <Link href={`/challenge/${activeChallenge.id}`} className="btn btn-outline btn-sm w-full text-center font-semibold justify-center">
                   Lihat Tantangan
                 </Link>
               </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ChevronUp, ChevronDown, Minus, Crown, Flame, ShieldCheck, CalendarDays, MapPinOff } from "lucide-react";
 import { RankCrest } from "@/components/brand/RankCrest";
 import { TIER_EMBLEM_NAMES, tierBySlug, tierForXp, nextTier } from "@/lib/tiers";
@@ -17,38 +17,36 @@ type Entry = {
 };
 type Scope = "liga" | "teman" | "lokal";
 
-const DATA: Record<Scope, Entry[]> = {
-  liga: [
-    { rank: 1, name: "Dinda Puspita", xp: 14280, tier: "radiant", delta: 1, consistencyDays: 8, healthyDays: 6 },
-    { rank: 2, name: "Nadia Pramesti", xp: 13740, tier: "radiant", delta: 0, consistencyDays: 6, healthyDays: 5 },
-    { rank: 3, name: "Fathan Mubarak", xp: 12450, tier: "radiant", delta: 2, you: true, consistencyDays: 7, healthyDays: 4 },
-    { rank: 4, name: "Ilham Razaq", xp: 11870, tier: "radiant", delta: -1, consistencyDays: 5, healthyDays: 4 },
-    { rank: 5, name: "Putri Maharani", xp: 10920, tier: "radiant", delta: 1, consistencyDays: 4, healthyDays: 3 },
-    { rank: 6, name: "Rafi Adiputra", xp: 10100, tier: "radiant", delta: -1, consistencyDays: 3, healthyDays: 3 },
-    { rank: 7, name: "Aulia Rahma", xp: 9640, tier: "vital", delta: 0, consistencyDays: 4, healthyDays: 3 },
-  ],
-  lokal: [
-    { rank: 1, name: "Dinda Puspita", xp: 28500, tier: "elite", delta: 0, consistencyDays: 8, healthyDays: 7 },
-    { rank: 2, name: "Yoga Adyatma", xp: 21900, tier: "peak", delta: 1, consistencyDays: 12, healthyDays: 10 },
-    { rank: 3, name: "Fathan Mubarak", xp: 12450, tier: "radiant", delta: 2, you: true, consistencyDays: 7, healthyDays: 4 },
-    { rank: 4, name: "Ilham Razaq", xp: 11870, tier: "radiant", delta: -1, consistencyDays: 5, healthyDays: 4 },
-    { rank: 5, name: "Rafi Adiputra", xp: 8100, tier: "vital", delta: 0, consistencyDays: 2, healthyDays: 1 },
-    { rank: 6, name: "Aulia Rahma", xp: 6400, tier: "vital", delta: 1, consistencyDays: 4, healthyDays: 3 },
-    { rank: 7, name: "Bagus Prasetyo", xp: 4200, tier: "bloom", delta: -2, consistencyDays: 1, healthyDays: 1 },
-  ],
-  teman: [
-    { rank: 1, name: "Ilham Razaq", xp: 11870, tier: "radiant", delta: 0, consistencyDays: 5, healthyDays: 4 },
-    { rank: 2, name: "Fathan Mubarak", xp: 12450, tier: "radiant", delta: 1, you: true, consistencyDays: 7, healthyDays: 4 },
-    { rank: 3, name: "Rafi Adiputra", xp: 8100, tier: "vital", delta: -1, consistencyDays: 2, healthyDays: 1 },
-    { rank: 4, name: "Aulia Rahma", xp: 6400, tier: "vital", delta: 0, consistencyDays: 4, healthyDays: 3 },
-  ],
-};
-
 const SCOPES: { key: Scope; label: string }[] = [
   { key: "liga", label: "Liga" },
   { key: "teman", label: "Teman" },
   { key: "lokal", label: "Lokal" },
 ];
+
+type ApiLeaderboardRow = {
+  id: string;
+  rank: number;
+  name: string;
+  economy: {
+    totalXp: number;
+    currentTier: string;
+    streakDays: number;
+  } | null;
+};
+
+function mapLeaderboardEntry(row: ApiLeaderboardRow, you: boolean): Entry {
+  const xp = row.economy?.totalXp ?? 0;
+  return {
+    rank: row.rank,
+    name: row.name,
+    xp,
+    tier: row.economy?.currentTier.toLowerCase() ?? tierForXp(xp).slug,
+    delta: 0,
+    you,
+    consistencyDays: row.economy?.streakDays ?? 0,
+    healthyDays: Math.min(7, row.economy?.streakDays ?? 0),
+  };
+}
 
 function initials(name: string) {
   return name.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase();
@@ -85,12 +83,72 @@ function Podium({ e, place }: { readonly e: Entry; readonly place: 1 | 2 | 3 }) 
 
 export function LeaderboardView() {
   const [scope, setScope] = useState<Scope>("liga");
-  const list = DATA[scope];
+  const [renderedAt] = useState(() => Date.now());
+  const [list, setList] = useState<Entry[]>([]);
+  const [myEntry, setMyEntry] = useState<Entry | null>(null);
+  const [season, setSeason] = useState<{ name: string; endDate: string } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    const apiScope =
+      scope === "teman" ? "FRIENDS" : scope === "lokal" ? "LOCAL" : "LEAGUE";
+    void fetch(`/api/leaderboard?scope=${apiScope}&limit=50`, {
+      cache: "no-store",
+    })
+      .then(async (response) => {
+        const result = (await response.json().catch(() => null)) as
+          | {
+              success?: boolean;
+              error?: string;
+              season?: { name: string; endDate: string } | null;
+              leaderboard?: ApiLeaderboardRow[];
+              myRank?: ApiLeaderboardRow | null;
+            }
+          | null;
+        if (!response.ok || !result?.success) {
+          throw new Error(result?.error ?? "Peringkat belum dapat dimuat.");
+        }
+        if (!active) return;
+        const currentId = result.myRank?.id;
+        const entries = (result.leaderboard ?? []).map((row) =>
+          mapLeaderboardEntry(row, row.id === currentId),
+        );
+        setList(entries);
+        setMyEntry(
+          result.myRank ? mapLeaderboardEntry(result.myRank, true) : null,
+        );
+        setSeason(result.season ?? null);
+        setError(null);
+      })
+      .catch((loadError: unknown) => {
+        if (!active) return;
+        setList([]);
+        setMyEntry(null);
+        setError(
+          loadError instanceof Error
+            ? loadError.message
+            : "Peringkat belum dapat dimuat.",
+        );
+      });
+    return () => {
+      active = false;
+    };
+  }, [scope]);
+
   const top3 = list.slice(0, 3);
   const rest = list.slice(3);
-  const me = list.find((e) => e.you);
+  const me = list.find((e) => e.you) ?? myEntry;
   const meTier = me ? tierForXp(me.xp) : null;
   const nxt = me ? nextTier(me.xp) : null;
+  const daysRemaining = season
+    ? Math.max(
+        0,
+        Math.ceil(
+          (new Date(season.endDate).getTime() - renderedAt) / 86_400_000,
+        ),
+      )
+    : 0;
 
   return (
     <div className="space-y-6">
@@ -105,14 +163,22 @@ export function LeaderboardView() {
               Kamu dipasangkan dengan traveler pada rentang progres serupa. Aktivitas tervalidasi dan konsistensi mingguan membentuk posisi musim ini.
             </p>
           </div>
-          <span className="pill border border-brand/20 bg-card text-[10px] font-bold text-brand">LIGA RADIANT</span>
+          <span className="pill border border-brand/20 bg-card text-[10px] font-bold text-brand">
+            {meTier ? `LIGA ${meTier.name.toUpperCase()}` : "LIGA AKTIF"}
+          </span>
         </div>
         <div className="mt-3 flex flex-wrap gap-2 text-[10px] font-semibold text-muted-foreground">
-          <span className="pill bg-card"><CalendarDays className="h-3.5 w-3.5" /> Musim 03 · 5 hari tersisa</span>
+          <span className="pill bg-card"><CalendarDays className="h-3.5 w-3.5" /> {season?.name ?? "Musim belum aktif"} · {daysRemaining} hari tersisa</span>
           <span className="pill bg-card"><ShieldCheck className="h-3.5 w-3.5" /> Hanya aktivitas tervalidasi</span>
           <span className="pill bg-card"><MapPinOff className="h-3.5 w-3.5" /> Tanpa rute presisi</span>
         </div>
       </div>
+
+      {error && (
+        <div className="card card-pad text-center text-xs text-muted-foreground">
+          {error}
+        </div>
+      )}
 
       {/* scope tabs */}
       <div className="flex w-full overflow-x-auto rounded-full bg-secondary p-1 sm:inline-flex sm:w-auto">
@@ -194,7 +260,7 @@ export function LeaderboardView() {
           <ShieldCheck className="h-4.5 w-4.5 text-brand" /> Peringkat yang adil dan suportif
         </h3>
         <p className="text-xs text-muted-foreground leading-relaxed leading-normal">
-          Catatan mandiri tetap tersimpan sebagai riwayat pribadi, tetapi tidak memberi poin kompetitif. Peringkat bukan diagnosis kesehatan atau ukuran nilai diri. Data dan musim pada MVP ini masih simulasi; sinkronisasi serta segmentasi produksi memerlukan server.
+          Catatan mandiri tetap tersimpan sebagai riwayat pribadi, tetapi tidak memberi poin kompetitif. Peringkat bukan diagnosis kesehatan atau ukuran nilai diri. Posisi, musim, XP, tier, dan streak dibaca dari database sesuai visibilitas akun.
         </p>
       </div>
     </div>

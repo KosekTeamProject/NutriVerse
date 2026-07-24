@@ -8,22 +8,20 @@ import {
   Footprints,
   Calendar
 } from "lucide-react";
-import { 
-  DemoTraveler, 
-  ChallengePreview 
-} from "../../demo/types";
+import { ChallengePreview } from "../../demo/types";
 import { JourneyRecord } from "../../journey/types";
 import { CompanionWeeklyLetter } from "../../companion/types";
 import { useCompanionName } from "@/hooks/useCompanionName";
 import { useAuthSession } from "@/hooks/useAuthSession";
-import { Sparkles } from "lucide-react";
 import { useMemo } from "react";
+import { useProgressData } from "@/providers/ProgressDataProvider";
 
 // 1. DashboardHero (Replaces LivingHomeHeader and ProactiveNoraBanner)
-export function DashboardHero({ traveler }: { readonly traveler: DemoTraveler }) {
+export function DashboardHero() {
   const session = useAuthSession();
+  const { overview } = useProgressData();
   const { displayName } = useCompanionName();
-  const userName = (session?.name ?? traveler.name).split(" ")[0];
+  const userName = (overview?.identity.name ?? session?.name ?? "Pengguna").split(" ")[0];
 
   const isReturningUser = useMemo(() => {
     if (!session?.lastLoginTimestamp) return false;
@@ -93,10 +91,10 @@ export function DashboardHero({ traveler }: { readonly traveler: DemoTraveler })
             Proaktif AI Companion &middot; {displayName}
           </span>
           <span className="pill bg-amber/15 text-amber text-[10px] font-bold shadow-sm backdrop-blur-md">
-            <Flame className="h-3 w-3" /> Streak {traveler.currentStreak} Hari
+            <Flame className="h-3 w-3" /> Streak {overview?.economy.streakDays ?? 0} Hari
           </span>
           <span className="pill bg-secondary/80 text-foreground text-[10px] font-semibold backdrop-blur-md hidden sm:flex">
-            <Calendar className="h-3 w-3" /> Hari ke-{traveler.journeyDay}
+            <Calendar className="h-3 w-3" /> {overview?.healthyDays.achievedDays ?? 0} hari sehat / 28 hari
           </span>
         </div>
 

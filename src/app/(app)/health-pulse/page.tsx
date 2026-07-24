@@ -1,8 +1,8 @@
 "use client";
 
-import { Info, ArrowRight, Database, Footprints, Utensils, Droplets, Moon } from "lucide-react";
+import { useState } from "react";
+import { Info, ArrowRight, Database, Footprints, Utensils, Droplets, Moon, Check } from "lucide-react";
 import Link from "next/link";
-import { currentSnapshot, previousSnapshot, historyPoints } from "@/features/health-pulse/data";
 import { 
   HealthPulseCard, 
   HealthPulseHistoryChart,
@@ -12,10 +12,120 @@ import { HealthPulseDimensionChart } from "@/features/health-pulse/components/He
 import { getPrimaryCompanionInsight } from "@/features/companion/helpers";
 import { CompanionCard } from "@/features/companion/components/CompanionComponents";
 import { useCompanionName } from "@/hooks/useCompanionName";
+import { useProgressData } from "@/providers/ProgressDataProvider";
+import { notifyDataChanged } from "@/lib/data-sync";
+
+function DailyCheckIn() {
+  const { refresh } = useProgressData();
+  const [sleepHours, setSleepHours] = useState("");
+  const [waterMl, setWaterMl] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  async function save(event: React.FormEvent) {
+    event.preventDefault();
+    const sleep = Number(sleepHours);
+    const water = Number(waterMl);
+    if ((!sleep || sleep <= 0) && (!water || water <= 0)) return;
+    setSaving(true);
+    setMessage(null);
+    try {
+      const requests: Promise<Response>[] = [];
+      if (water > 0) {
+        requests.push(
+          fetch("/api/nutrition/water", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ volumeMl: water }),
+          }),
+        );
+      }
+      if (sleep > 0) {
+        requests.push(
+          fetch("/api/health/pulse", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ sleepHours: sleep }),
+          }),
+        );
+      }
+      const responses = await Promise.all(requests);
+      if (responses.some((response) => !response.ok)) {
+        throw new Error("Check-in belum dapat disimpan.");
+      }
+      setSleepHours("");
+      setWaterMl("");
+      setMessage("Check-in tersimpan dan semua grafik sudah diperbarui.");
+      notifyDataChanged();
+      await refresh();
+    } catch (error) {
+      setMessage(
+        error instanceof Error ? error.message : "Check-in belum dapat disimpan.",
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <form onSubmit={save} className="card card-pad space-y-4">
+      <div>
+        <h3 className="font-display text-base font-bold">Check-in harian</h3>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          Catat tidur dan air minum; Health Pulse serta ring progres akan
+          dihitung ulang dari database.
+        </p>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="text-xs font-bold">
+          Tidur terakhir (jam)
+          <input
+            type="number"
+            min="0.5"
+            max="24"
+            step="0.5"
+            value={sleepHours}
+            onChange={(event) => setSleepHours(event.target.value)}
+            className="input mt-1 w-full"
+            placeholder="Contoh: 7.5"
+          />
+        </label>
+        <label className="text-xs font-bold">
+          Tambah air (ml)
+          <input
+            type="number"
+            min="1"
+            max="5000"
+            step="50"
+            value={waterMl}
+            onChange={(event) => setWaterMl(event.target.value)}
+            className="input mt-1 w-full"
+            placeholder="Contoh: 250"
+          />
+        </label>
+      </div>
+      <button type="submit" disabled={saving} className="btn btn-primary btn-sm">
+        <Check className="h-4 w-4" /> {saving ? "Menyimpan..." : "Simpan check-in"}
+      </button>
+      {message && <p className="text-xs text-muted-foreground">{message}</p>}
+    </form>
+  );
+}
 
 export default function HealthPulseDetailPage() {
   const { displayName } = useCompanionName();
+  const { overview } = useProgressData();
   const noraInsight = getPrimaryCompanionInsight("health-pulse");
+  if (!overview) {
+    return (
+      <div className="card card-pad mx-auto max-w-5xl text-center text-sm text-muted-foreground">
+        Menghitung Health Pulse dari data akun...
+      </div>
+    );
+  }
+  const current = overview.healthPulse.current;
+  const previous = overview.healthPulse.previous;
+  const history = overview.healthPulse.history;
 
   return (
     <div className="mx-auto w-full min-w-0 max-w-5xl space-y-6 animate-fade-up-premium">
@@ -32,12 +142,14 @@ export default function HealthPulseDetailPage() {
       <div className="card card-pad">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div><p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-brand"><Database className="h-4 w-4" /> Asal data hari ini</p><p className="mt-1 text-xs text-muted-foreground">Setiap skor dapat dilacak kembali ke jenis inputnya.</p></div>
-          <span className="pill self-start bg-secondary text-[10px] font-bold text-muted-foreground">86% DATA TERISI</span>
+          <span className="pill self-start bg-secondary text-[10px] font-bold text-muted-foreground">{current.dataCompleteness}% DATA TERISI</span>
         </div>
         <div className="mt-4 grid grid-cols-2 gap-2 min-[480px]:grid-cols-4">
           {[{ icon: Footprints, label: "Aktivitas", source: "GPS terverifikasi" }, { icon: Utensils, label: "Nutrisi", source: "Pindai & manual" }, { icon: Droplets, label: "Hidrasi", source: "Catatan mandiri" }, { icon: Moon, label: "Tidur", source: "Catatan mandiri" }].map((item) => { const Icon = item.icon; return <div key={item.label} className="rounded-2xl border border-line bg-secondary/30 p-3"><Icon className="h-4 w-4 text-brand" /><p className="mt-2 text-xs font-bold text-foreground">{item.label}</p><p className="mt-0.5 text-[10px] leading-relaxed text-muted-foreground">{item.source}</p></div>; })}
         </div>
       </div>
+
+      <DailyCheckIn />
 
       {/* Grid: Main details + Sidebar actions */}
       <div className="grid min-w-0 gap-6 lg:grid-cols-3">
@@ -46,7 +158,7 @@ export default function HealthPulseDetailPage() {
           {/* Detailed Health Pulse Card */}
           <div data-tour="health-pulse-score">
             <HealthPulseCard 
-              snapshot={currentSnapshot} 
+              snapshot={current} 
               variant="detailed" 
               showReasons={true} 
               showTrustIndicators={true} 
@@ -59,8 +171,8 @@ export default function HealthPulseDetailPage() {
             <h3 className="font-display text-base font-bold text-foreground">Perbandingan Dimensi Health Pulse</h3>
             <p className="text-xs text-muted-foreground">Perbandingan skor 5 dimensi utama hari ini vs sebelumnya</p>
             <HealthPulseDimensionChart 
-              current={currentSnapshot.dimensions} 
-              previous={previousSnapshot.dimensions} 
+              current={current.dimensions} 
+              previous={previous.dimensions} 
               compact={false}
               showLegend={true}
             />
@@ -75,10 +187,10 @@ export default function HealthPulseDetailPage() {
           )}
 
           {/* Interactive Line Chart Trend (Hari Ini / 7 Hari / 30 Hari) */}
-          <HealthPulseTrendLineChart />
+          <HealthPulseTrendLineChart history={history} />
 
           {/* 14-Day History Trend Chart */}
-          <HealthPulseHistoryChart history={historyPoints} />
+          <HealthPulseHistoryChart history={history} />
         </div>
 
         {/* Sidebar details */}
@@ -90,7 +202,7 @@ export default function HealthPulseDetailPage() {
               <p className="text-xs text-muted-foreground mt-0.5">Penilaian metrik kesehatan hari ini</p>
             </div>
             <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-extrabold text-foreground">{currentSnapshot.dataCompleteness}%</span>
+              <span className="text-3xl font-extrabold text-foreground">{current.dataCompleteness}%</span>
               <span className="text-xs text-muted-foreground font-semibold">Siap</span>
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed">

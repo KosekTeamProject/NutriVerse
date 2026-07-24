@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { apiErrorResponse, assertSameOrigin, enforceRateLimit } from "@/lib/api";
 import { bootstrapUser } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 type SignInPayload = { email?: unknown; password?: unknown };
@@ -19,7 +20,29 @@ export async function POST(request: NextRequest) {
   if (error || !data.user) return NextResponse.json({ success: false, error: error?.message ?? "Login gagal." }, { status: 401 });
 
   const user = await bootstrapUser(data.user);
-  return NextResponse.json({ success: true, user: { id: user.id, email: user.email, name: user.name, avatarUrl: user.avatarUrl } });
+  const domain = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: {
+      username: true,
+      companionPreference: {
+        select: { companionName: true, companionAvatarId: true },
+      },
+    },
+  });
+  return NextResponse.json({
+    success: true,
+    user: {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      username: domain?.username,
+      avatarUrl: user.avatarUrl,
+      companionName: domain?.companionPreference?.companionName ?? "Nora",
+      companionAvatarId:
+        domain?.companionPreference?.companionAvatarId ?? "sparkles",
+      provider: "password",
+    },
+  });
  } catch (error) {
    return apiErrorResponse(error);
  }

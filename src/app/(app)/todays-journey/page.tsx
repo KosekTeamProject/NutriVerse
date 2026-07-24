@@ -2,16 +2,24 @@
 
 import { ArrowRight, ShieldCheck, Lock, AlertTriangle, Flame } from "lucide-react";
 import Link from "next/link";
-import { todayJourney } from "@/features/behavior/data";
 import { TodayJourneyCard } from "@/features/behavior/components/BehaviorComponents";
 import { getPrimaryCompanionInsight } from "@/features/companion/helpers";
 import { CompanionCard } from "@/features/companion/components/CompanionComponents";
 import { useCompanionName } from "@/hooks/useCompanionName";
+import { useProgressData } from "@/providers/ProgressDataProvider";
 
 export default function TodaysJourneyDetailPage() {
   const { displayName } = useCompanionName();
+  const { overview } = useProgressData();
   // Retrieve behavior-relevant companion card (e.g. morning brief or recovery reflection)
   const noraInsight = getPrimaryCompanionInsight("home");
+  if (!overview) {
+    return (
+      <div className="card card-pad mx-auto max-w-4xl text-center text-sm text-muted-foreground">
+        Menyusun perjalanan hari ini dari database...
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-4xl space-y-6 animate-fade-up">
@@ -41,7 +49,7 @@ export default function TodaysJourneyDetailPage() {
       {/* 3. Detailed TodayJourneyCard */}
       <div data-tour="todays-mission">
         <TodayJourneyCard 
-          journey={todayJourney} 
+          journey={overview.todayJourney} 
           variant="detailed"
           showGoalTrust={true}
           showHealthyDay={true}
@@ -151,7 +159,7 @@ export default function TodaysJourneyDetailPage() {
       <div className="flex items-start gap-2.5 rounded-2xl bg-secondary/50 p-4 text-[10px] text-muted-foreground border border-line/30">
         <AlertTriangle className="h-4 w-4 shrink-0 text-muted-foreground mt-0.5" />
         <p>
-          Sejumlah target pada MVP ini memakai data simulasi deterministik untuk memperagakan pengalaman sistem kebiasaan yang direncanakan.
+          Semua target pada halaman ini dihitung ulang dari aktivitas, nutrisi, hidrasi, dan tidur yang tersimpan pada akunmu.
         </p>
       </div>
     </div>

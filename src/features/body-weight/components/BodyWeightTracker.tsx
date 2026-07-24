@@ -1,10 +1,11 @@
 "use client";
 /* eslint-disable react-hooks/purity */
 
-import { useState, useMemo } from "react";
-import { Scale, TrendingDown, Target, Sparkles, Plus, Calendar, ArrowRight, Check } from "lucide-react";
+import { useEffect, useState, useMemo } from "react";
+import { Scale, TrendingDown, Sparkles, Plus, Check } from "lucide-react";
 import { useAuthSession } from "@/hooks/useAuthSession";
 import { updateAuthSession } from "@/features/auth/session";
+import { notifyDataChanged } from "@/lib/data-sync";
 
 export type WeightEntry = {
   id: string;
@@ -14,19 +15,79 @@ export type WeightEntry = {
   timestamp: number;
 };
 
-const INITIAL_WEIGHT_HISTORY: WeightEntry[] = [
-  { id: "1", date: "4 Minggu Lalu", weightKg: 68.0, bmi: 23.5, timestamp: Date.now() - 28 * 24 * 60 * 60 * 1000 },
-  { id: "2", date: "3 Minggu Lalu", weightKg: 67.2, bmi: 23.2, timestamp: Date.now() - 21 * 24 * 60 * 60 * 1000 },
-  { id: "3", date: "2 Minggu Lalu", weightKg: 66.5, bmi: 23.0, timestamp: Date.now() - 14 * 24 * 60 * 60 * 1000 },
-  { id: "4", date: "1 Minggu Lalu", weightKg: 65.8, bmi: 22.8, timestamp: Date.now() - 7 * 24 * 60 * 60 * 1000 },
-];
+type StoredHealthMetric = {
+  id: string;
+  weightKg: number | null;
+  bmi: number | null;
+  recordedAt: string;
+};
+
+function formatEntryDate(timestamp: number) {
+  const date = new Date(timestamp);
+  const today = new Date();
+  if (date.toDateString() === today.toDateString()) return "Hari Ini";
+  return new Intl.DateTimeFormat("id-ID", {
+    day: "numeric",
+    month: "short",
+  }).format(date);
+}
 
 export function BodyWeightTracker() {
   const session = useAuthSession();
-  const [history, setHistory] = useState<WeightEntry[]>(INITIAL_WEIGHT_HISTORY);
+  const [history, setHistory] = useState<WeightEntry[]>([]);
   const [newWeight, setNewWeight] = useState("");
   const [showInput, setShowInput] = useState(false);
-  const [lastPromptTime, setLastPromptTime] = useState<number>(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const [lastPromptTime, setLastPromptTime] = useState<number>(Date.now());
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    void fetch("/api/health/metrics?limit=30", { cache: "no-store" })
+      .then(async (response) => {
+        const result = (await response.json().catch(() => null)) as
+          | { success?: boolean; metrics?: StoredHealthMetric[]; error?: string }
+          | null;
+        if (!response.ok || !result?.success) {
+          throw new Error(result?.error ?? "Riwayat berat belum dapat dimuat.");
+        }
+        if (!active) return;
+        const entries = (result.metrics ?? [])
+          .filter(
+            (metric): metric is StoredHealthMetric & { weightKg: number } =>
+              typeof metric.weightKg === "number",
+          )
+          .map((metric) => {
+            const timestamp = new Date(metric.recordedAt).getTime();
+            return {
+              id: metric.id,
+              date: formatEntryDate(timestamp),
+              weightKg: metric.weightKg,
+              bmi: metric.bmi ?? 0,
+              timestamp,
+            };
+          })
+          .sort((a, b) => a.timestamp - b.timestamp);
+        setHistory(entries);
+        if (entries.length > 0) {
+          setLastPromptTime(entries[entries.length - 1].timestamp);
+        } else {
+          setLastPromptTime(0);
+        }
+      })
+      .catch((loadError: unknown) => {
+        if (active) {
+          setError(
+            loadError instanceof Error
+              ? loadError.message
+              : "Riwayat berat belum dapat dimuat.",
+          );
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const currentWeight = useMemo(() => {
     if (history.length > 0) return history[history.length - 1].weightKg;
@@ -40,33 +101,57 @@ export function BodyWeightTracker() {
   const daysSinceLastUpdate = Math.floor((Date.now() - lastPromptTime) / (1000 * 60 * 60 * 24));
   const isSevenDaysPassed = daysSinceLastUpdate >= 7;
 
-  function handleAddWeight(e: React.FormEvent) {
+  async function handleAddWeight(e: React.FormEvent) {
     e.preventDefault();
     const val = Number(newWeight);
     if (!val || val <= 30 || val >= 300) return;
 
     const bmi = Number((val / ((heightCm / 100) ** 2)).toFixed(1));
-    const entry: WeightEntry = {
-      id: Date.now().toString(),
-      date: "Hari Ini",
-      weightKg: val,
-      bmi,
-      timestamp: Date.now()
-    };
-
-    setHistory((prev) => [...prev, entry]);
-    setLastPromptTime(Date.now());
-    setNewWeight("");
-    setShowInput(false);
-
-    if (session?.baseline) {
-      updateAuthSession({
-        baseline: {
-          ...session.baseline,
-          weightKg: val,
-          bmi
-        }
+    setSaving(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/health/metrics", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ weightKg: val }),
       });
+      const result = (await response.json().catch(() => null)) as
+        | { success?: boolean; metric?: StoredHealthMetric; error?: string }
+        | null;
+      if (!response.ok || !result?.success || !result.metric) {
+        throw new Error(result?.error ?? "Berat badan gagal disimpan.");
+      }
+      const timestamp = new Date(result.metric.recordedAt).getTime();
+      const entry: WeightEntry = {
+        id: result.metric.id,
+        date: formatEntryDate(timestamp),
+        weightKg: result.metric.weightKg ?? val,
+        bmi: result.metric.bmi ?? bmi,
+        timestamp,
+      };
+      setHistory((prev) => [...prev, entry].sort((a, b) => a.timestamp - b.timestamp));
+      setLastPromptTime(timestamp);
+      setNewWeight("");
+      setShowInput(false);
+      notifyDataChanged();
+
+      if (session?.baseline) {
+        updateAuthSession({
+          baseline: {
+            ...session.baseline,
+            weightKg: val,
+            bmi,
+          },
+        });
+      }
+    } catch (saveError) {
+      setError(
+        saveError instanceof Error
+          ? saveError.message
+          : "Berat badan gagal disimpan.",
+      );
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -129,9 +214,10 @@ export function BodyWeightTracker() {
               required
             />
             <button type="submit" className="btn btn-primary btn-sm px-4">
-              Simpan <Check className="h-4 w-4" />
+              {saving ? "Menyimpan..." : "Simpan"} <Check className="h-4 w-4" />
             </button>
           </div>
+          {error && <p className="text-xs text-destructive">{error}</p>}
         </form>
       )}
 
@@ -176,6 +262,11 @@ export function BodyWeightTracker() {
           </div>
 
           {/* Bar / Node per Entry */}
+          {history.length === 0 && (
+            <div className="absolute inset-0 grid place-items-center px-8 text-center text-xs text-muted-foreground">
+              Belum ada pengukuran. Simpan berat pertama untuk membentuk grafik.
+            </div>
+          )}
           {history.map((item) => {
             const heightPct = Math.max(10, Math.min(100, ((item.weightKg - minW) / (maxW - minW)) * 100));
             return (

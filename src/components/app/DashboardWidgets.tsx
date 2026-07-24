@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { ProgressRing } from "@/components/ui/ProgressRing";
 import { useAuthSession } from "@/hooks/useAuthSession";
+import { useProgressData } from "@/providers/ProgressDataProvider";
 
 // Contextual AI Smart Motivations
 const SMART_AI_MOTIVATIONS = [
@@ -30,13 +31,6 @@ const SMART_AI_MOTIVATIONS = [
   "Nutrisi sehat yang kamu catat siang ini membantu menjaga energi stabil hingga sore hari.",
   "Tidak perlu sempurna setiap hari; yang terpenting adalah kamu terus kembali dan melanjutkan perjalanan.",
   "Seteguk air jernih dan peregangan ringan 1 menit memberi dorongan fokus luar biasa untuk harimu."
-];
-
-// Initial 3 Priorities for Today's Focus
-const INITIAL_TODAYS_FOCUS = [
-  { id: "steps", label: "Jalan 3.000 langkah lagi", note: "Target 8.000 langkah", completed: false, icon: Footprints, href: "/aktivitas" },
-  { id: "water", label: "Minum 2 gelas air", note: "Penuhi hidrasi siang hari", completed: false, icon: Droplets, href: "/todays-journey" },
-  { id: "food", label: "Scan makan siang", note: "Catat nutrisi ramah gizi", completed: true, icon: ScanLine, href: "/scan" },
 ];
 
 export function DailyMotivationCard() {
@@ -88,13 +82,45 @@ export function DailyMotivationCard() {
 }
 
 export function TodaysFocusCard() {
-  const [focusItems, setFocusItems] = useState(INITIAL_TODAYS_FOCUS);
-
-  function toggleItem(id: string) {
-    setFocusItems((items) =>
-      items.map((item) => (item.id === id ? { ...item, completed: !item.completed } : item))
-    );
-  }
+  const { overview } = useProgressData();
+  const steps = overview?.daily.steps;
+  const water = overview?.daily.water;
+  const calories = overview?.daily.calories;
+  const focusItems = [
+    {
+      id: "steps",
+      label:
+        (steps?.percent ?? 0) >= 100
+          ? "Target langkah tercapai"
+          : `${Math.max(0, Math.round((steps?.target ?? 8000) - (steps?.value ?? 0))).toLocaleString("id-ID")} langkah lagi`,
+      note: `Target ${(steps?.target ?? 8000).toLocaleString("id-ID")} langkah`,
+      completed: (steps?.percent ?? 0) >= 100,
+      icon: Footprints,
+      href: "/aktivitas",
+    },
+    {
+      id: "water",
+      label:
+        (water?.percent ?? 0) >= 100
+          ? "Target hidrasi tercapai"
+          : `Tambah ${Math.max(0, Math.round((water?.target ?? 2000) - (water?.value ?? 0))).toLocaleString("id-ID")} ml air`,
+      note: `${Math.round(water?.value ?? 0).toLocaleString("id-ID")} / ${Math.round(water?.target ?? 2000).toLocaleString("id-ID")} ml`,
+      completed: (water?.percent ?? 0) >= 100,
+      icon: Droplets,
+      href: "/health-pulse",
+    },
+    {
+      id: "food",
+      label:
+        (calories?.value ?? 0) > 0
+          ? "Asupan hari ini sudah tercatat"
+          : "Catat makanan pertama",
+      note: `${Math.round(calories?.value ?? 0).toLocaleString("id-ID")} kkal tercatat`,
+      completed: (calories?.value ?? 0) > 0,
+      icon: ScanLine,
+      href: "/scan",
+    },
+  ];
 
   const completedCount = focusItems.filter((item) => item.completed).length;
 
@@ -128,11 +154,7 @@ export function TodaysFocusCard() {
                   : "border-line bg-card/90 hover:border-brand/40 hover:bg-secondary/40"
               }`}
             >
-              <button
-                type="button"
-                onClick={() => toggleItem(item.id)}
-                className="flex items-center gap-3 text-left min-w-0 flex-1"
-              >
+              <div className="flex min-w-0 flex-1 items-center gap-3 text-left">
                 <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg transition ${
                   item.completed ? "bg-brand text-white" : "border border-line bg-secondary text-muted-foreground"
                 }`}>
@@ -144,7 +166,7 @@ export function TodaysFocusCard() {
                   </p>
                   <p className="text-[10px] text-muted-foreground truncate">{item.note}</p>
                 </div>
-              </button>
+              </div>
 
               <Link
                 href={item.href}
@@ -162,6 +184,10 @@ export function TodaysFocusCard() {
 }
 
 export function VisualProgressWidget() {
+  const { overview } = useProgressData();
+  const steps = overview?.daily.steps;
+  const water = overview?.daily.water;
+  const activeMinutes = overview?.daily.activeMinutes;
   return (
     <section className="card card-pad space-y-4 border-line/60 bg-gradient-to-br from-card via-card to-secondary/30">
       <div className="flex items-center justify-between border-b border-line/40 pb-3">
@@ -177,32 +203,32 @@ export function VisualProgressWidget() {
       <div className="grid grid-cols-3 gap-3">
         {/* Ring 1: Steps */}
         <div className="flex flex-col items-center text-center p-3 rounded-2xl border border-line bg-card/65 shadow-sm hover:scale-[1.02] transition">
-          <ProgressRing progress={68} size={64} strokeWidth={6} color="var(--brand)">
+          <ProgressRing progress={steps?.percent ?? 0} size={64} strokeWidth={6} color="var(--brand)">
             <Footprints className="h-5 w-5 text-brand" />
           </ProgressRing>
-          <p className="stat-num mt-2 text-sm font-extrabold text-foreground">5.420</p>
+          <p className="stat-num mt-2 text-sm font-extrabold text-foreground">{Math.round(steps?.value ?? 0).toLocaleString("id-ID")}</p>
           <p className="text-[10px] text-muted-foreground font-semibold">Langkah</p>
-          <p className="text-[9px] text-brand font-bold mt-0.5">68%</p>
+          <p className="text-[9px] text-brand font-bold mt-0.5">{steps?.percent ?? 0}%</p>
         </div>
 
         {/* Ring 2: Water */}
         <div className="flex flex-col items-center text-center p-3 rounded-2xl border border-line bg-card/65 shadow-sm hover:scale-[1.02] transition">
-          <ProgressRing progress={75} size={64} strokeWidth={6} color="var(--sky)">
+          <ProgressRing progress={water?.percent ?? 0} size={64} strokeWidth={6} color="var(--sky)">
             <Droplets className="h-5 w-5 text-sky" />
           </ProgressRing>
-          <p className="stat-num mt-2 text-sm font-extrabold text-foreground">6 / 8</p>
+          <p className="stat-num mt-2 text-sm font-extrabold text-foreground">{Math.round((water?.value ?? 0) / 250)} / {Math.max(1, Math.round((water?.target ?? 2000) / 250))}</p>
           <p className="text-[10px] text-muted-foreground font-semibold">Gelas Air</p>
-          <p className="text-[9px] text-sky font-bold mt-0.5">75%</p>
+          <p className="text-[9px] text-sky font-bold mt-0.5">{water?.percent ?? 0}%</p>
         </div>
 
         {/* Ring 3: Active Mins */}
         <div className="flex flex-col items-center text-center p-3 rounded-2xl border border-line bg-card/65 shadow-sm hover:scale-[1.02] transition">
-          <ProgressRing progress={83} size={64} strokeWidth={6} color="var(--lime)">
+          <ProgressRing progress={activeMinutes?.percent ?? 0} size={64} strokeWidth={6} color="var(--lime)">
             <Zap className="h-5 w-5 text-lime" />
           </ProgressRing>
-          <p className="stat-num mt-2 text-sm font-extrabold text-foreground">25 mnt</p>
+          <p className="stat-num mt-2 text-sm font-extrabold text-foreground">{Math.round(activeMinutes?.value ?? 0)} mnt</p>
           <p className="text-[10px] text-muted-foreground font-semibold">Aktif</p>
-          <p className="text-[9px] text-lime font-bold mt-0.5">83%</p>
+          <p className="text-[9px] text-lime font-bold mt-0.5">{activeMinutes?.percent ?? 0}%</p>
         </div>
       </div>
     </section>
@@ -286,10 +312,11 @@ export function DashboardStarter() {
 }
 
 export function HealthyHabitSummary() {
+  const { overview } = useProgressData();
   const metrics = [
-    { icon: CalendarCheck2, value: "4 / 7", label: "Hari aktif tervalidasi", note: "minggu ini" },
-    { icon: TrendingUp, value: "+2 hari", label: "Peningkatan konsistensi", note: "dibanding baseline" },
-    { icon: ShieldCheck, value: "3 sesi", label: "Aktivitas tepercaya", note: "tanpa sinyal risiko" },
+    { icon: CalendarCheck2, value: `${overview?.profile.healthyDaysThisWeek ?? 0} / 7`, label: "Hari sehat tercatat", note: "minggu ini" },
+    { icon: TrendingUp, value: `${overview?.economy.streakDays ?? 0} hari`, label: "Streak aktivitas", note: "berdasarkan aktivitas tepercaya" },
+    { icon: ShieldCheck, value: `${overview?.profile.verifiedActivityCount ?? 0} sesi`, label: "Aktivitas tepercaya", note: "total terverifikasi" },
   ];
 
   return (

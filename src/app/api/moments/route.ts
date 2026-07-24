@@ -76,7 +76,10 @@ export async function GET(request: Request) {
     const page = hasMore ? moments.slice(0, limit) : moments;
     return NextResponse.json({
       success: true,
-      moments: page,
+      moments: page.map((moment) => ({
+        ...moment,
+        isOwner: moment.userId === user.id,
+      })),
       nextCursor: hasMore ? page.at(-1)?.id : null,
     });
   } catch (error) {
@@ -139,6 +142,7 @@ export async function POST(request: NextRequest) {
         activitySessionId,
         imageUrl,
         caption,
+        duringActivity: body?.duringActivity === true,
         privacyLevel,
       },
       include: {

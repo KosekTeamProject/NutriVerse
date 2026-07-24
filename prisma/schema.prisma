@@ -254,9 +254,13 @@ model HealthProfile {
   favoriteWorkoutTime     String?
   onboardingCompleted     Boolean   @default(false)
   dailyStepTarget         Int       @default(8000)
+  dailyCalorieTarget      Int       @default(2000)
   dailyProteinTargetGrams Int       @default(80)
+  dailyCarbTargetGrams    Int       @default(220)
+  dailyFiberTargetGrams   Int       @default(25)
   dailyWaterTargetMl      Int       @default(2000)
   dailySleepTargetHours   Float     @default(8)
+  dailyActiveTargetMinutes Int      @default(30)
   createdAt               DateTime  @default(now())
   updatedAt               DateTime  @updatedAt
 
@@ -781,12 +785,14 @@ model JourneyEntry {
 }
 
 model JournalEntry {
-  id        String   @id @default(uuid())
-  userId    String
-  content   String // Jurnal privat pengguna
-  mood      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id             String   @id @default(uuid())
+  userId         String
+  title          String   @default("Catatan kesehatan")
+  content        String // Jurnal privat pengguna
+  mood           String?
+  allowCompanion Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   user           User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   journeyEntries JourneyEntry[]
@@ -831,9 +837,16 @@ model NutritionEntry {
   protein            Float    @default(0)
   carbs              Float    @default(0)
   fat                Float    @default(0)
+  fiber              Float    @default(0)
+  sugar              Float    @default(0)
+  sodiumMg           Float    @default(0)
+  mealType           String?
+  source             String   @default("MANUAL")
+  isUserConfirmed    Boolean  @default(true)
   confidenceScore    Float    @default(0) // Estimasi keandalan AI
   imageUrl           String?
   recommendationText String? // Saran langkah kecil
+  loggedAt           DateTime @default(now())
   createdAt          DateTime @default(now())
 
   user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -841,6 +854,7 @@ model NutritionEntry {
   journeyEntries JourneyEntry[]
 
   @@index([userId, createdAt])
+  @@index([userId, loggedAt])
   @@index([foodItemId])
   @@map("nutrition_entries")
 }
@@ -1100,6 +1114,7 @@ model Moment {
   activitySessionId String?
   imageUrl          String // Foto kamera langsung
   caption           String?
+  duringActivity    Boolean      @default(false)
   privacyLevel      PrivacyLevel @default(PUBLIC)
   reportCount       Int          @default(0)
   isHidden          Boolean      @default(false)
@@ -1176,6 +1191,17 @@ model AuditLog {
   actorUser User @relation("ActorUser", fields: [actorUserId], references: [id], onDelete: Cascade)
 
   @@map("audit_logs")
+}
+
+model SystemSetting {
+  id              String   @id @default(uuid())
+  key             String   @unique
+  value           Json
+  updatedByUserId String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("system_settings")
 }
 
 model ApiRateLimitBucket {

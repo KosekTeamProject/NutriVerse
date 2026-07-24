@@ -23,6 +23,8 @@ type OnboardingPayload = {
   healthGoals?: unknown;
   activityLevel?: unknown;
   dailyStepTarget?: unknown;
+  dailyCalorieTarget?: unknown;
+  dailySleepTargetHours?: unknown;
   preferredActivities?: unknown;
   dietaryPreferences?: unknown;
   allergies?: unknown;
@@ -114,6 +116,23 @@ export async function PUT(request: NextRequest) {
       min: 1000,
       max: 100000,
     });
+    const dailyCalorieTarget =
+      finiteNumber(body.dailyCalorieTarget, "Target kalori", {
+        min: 500,
+        max: 10000,
+        optional: true,
+      }) ?? Math.round(Math.min(10_000, weightKg * 30));
+    const dailySleepTargetHours =
+      finiteNumber(body.dailySleepTargetHours, "Target tidur", {
+        min: 1,
+        max: 24,
+        optional: true,
+      }) ?? 8;
+    const dailyProteinTargetGrams = Math.round(weightKg * 1.2);
+    const dailyCarbTargetGrams = Math.round((dailyCalorieTarget * 0.45) / 4);
+    const dailyWaterTargetMl = Math.round(
+      Math.min(5000, Math.max(1000, weightKg * 30)),
+    );
     const birthDate = birthDateValue(body.birthDate, body.age);
     if (!birthDate) {
       return NextResponse.json({ success: false, error: "Usia atau tanggal lahir tidak valid." }, { status: 400 });
@@ -136,6 +155,11 @@ export async function PUT(request: NextRequest) {
           healthGoals: stringValue(body.healthGoals, "Tujuan kesehatan", { max: 200 }),
           activityLevel: stringValue(body.activityLevel, "Tingkat aktivitas", { max: 50 }),
           dailyStepTarget: Math.round(dailyStepTarget),
+          dailyCalorieTarget: Math.round(dailyCalorieTarget),
+          dailyProteinTargetGrams,
+          dailyCarbTargetGrams,
+          dailyWaterTargetMl,
+          dailySleepTargetHours,
           preferredActivities: stringArray(body.preferredActivities ?? [], "Aktivitas"),
           dietaryPreferences: stringArray(body.dietaryPreferences ?? [], "Preferensi makanan"),
           allergies: stringArray(body.allergies ?? [], "Alergi"),
@@ -155,6 +179,11 @@ export async function PUT(request: NextRequest) {
           healthGoals: stringValue(body.healthGoals, "Tujuan kesehatan", { max: 200 }),
           activityLevel: stringValue(body.activityLevel, "Tingkat aktivitas", { max: 50 }),
           dailyStepTarget: Math.round(dailyStepTarget),
+          dailyCalorieTarget: Math.round(dailyCalorieTarget),
+          dailyProteinTargetGrams,
+          dailyCarbTargetGrams,
+          dailyWaterTargetMl,
+          dailySleepTargetHours,
           preferredActivities: stringArray(body.preferredActivities ?? [], "Aktivitas"),
           dietaryPreferences: stringArray(body.dietaryPreferences ?? [], "Preferensi makanan"),
           allergies: stringArray(body.allergies ?? [], "Alergi"),

@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Footprints, Flame, Droplets, Sunrise, Salad, Bike, Medal, Crown, Lock, Award } from "lucide-react";
-import { BADGES, ACHIEVEMENTS } from "@/lib/badges";
+import { useProgressData } from "@/providers/ProgressDataProvider";
 
 const ICONS: Record<string, typeof Award> = {
   footprints: Footprints, flame: Flame, droplets: Droplets, sunrise: Sunrise,
@@ -10,8 +10,73 @@ const ICONS: Record<string, typeof Award> = {
 };
 
 export function ProfileCollection() {
+  const { overview } = useProgressData();
   const [tab, setTab] = useState<"badge" | "achievement">("badge");
-  const earned = BADGES.filter((b) => b.earned).length;
+  const [badges, setBadges] = useState<
+    Array<{
+      id: string;
+      code: string;
+      name: string;
+      description: string;
+      earned: boolean;
+    }>
+  >([]);
+
+  useEffect(() => {
+    void fetch("/api/badges", { cache: "no-store" })
+      .then((response) => response.json())
+      .then(
+        (result: {
+          success?: boolean;
+          badges?: Array<{
+            id: string;
+            code: string;
+            name: string;
+            description: string;
+            earned: boolean;
+          }>;
+        }) => {
+          if (result.success) setBadges(result.badges ?? []);
+        },
+      )
+      .catch(() => undefined);
+  }, []);
+
+  const achievements = [
+    {
+      id: "streak",
+      name: "7 Hari Konsisten",
+      desc: "Menjaga ritme aktivitas terverifikasi",
+      now: overview?.economy.streakDays ?? 0,
+      goal: 7,
+      unit: "hari",
+    },
+    {
+      id: "activity",
+      name: "30 Aktivitas Tepercaya",
+      desc: "Mengumpulkan sesi aktivitas yang lolos validasi",
+      now: overview?.profile.verifiedActivityCount ?? 0,
+      goal: 30,
+      unit: "sesi",
+    },
+    {
+      id: "distance",
+      name: "100 Kilometer",
+      desc: "Akumulasi jarak aktivitas terverifikasi",
+      now: overview?.profile.totalDistanceKm ?? 0,
+      goal: 100,
+      unit: "km",
+    },
+    {
+      id: "healthy-days",
+      name: "Healthy Month",
+      desc: "Hari sehat yang terbentuk dalam 28 hari terakhir",
+      now: overview?.healthyDays.achievedDays ?? 0,
+      goal: 28,
+      unit: "hari",
+    },
+  ];
+  const earned = badges.filter((badge) => badge.earned).length;
 
   return (
     <div className="card card-pad">
@@ -20,7 +85,7 @@ export function ProfileCollection() {
           onClick={() => setTab("badge")}
           className={`rounded-full px-5 py-1.5 text-sm font-semibold transition ${tab === "badge" ? "bg-card text-brand shadow-sm" : "text-muted-foreground"}`}
         >
-          Badge ({earned}/{BADGES.length})
+          Badge ({earned}/{badges.length})
         </button>
         <button
           onClick={() => setTab("achievement")}
@@ -32,8 +97,18 @@ export function ProfileCollection() {
 
       {tab === "badge" ? (
         <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {BADGES.map((b) => {
-            const Icon = ICONS[b.icon] ?? Award;
+          {badges.map((b) => {
+            const code = b.code.toLowerCase();
+            const icon = code.includes("streak")
+              ? "flame"
+              : code.includes("water")
+                ? "droplets"
+                : code.includes("food")
+                  ? "salad"
+                  : code.includes("distance")
+                    ? "bike"
+                    : "footprints";
+            const Icon = ICONS[icon] ?? Award;
             return (
               <div key={b.id} className={`flex flex-col items-center rounded-2xl border border-line p-4 text-center ${b.earned ? "" : "opacity-60"}`}>
                 <span className={`relative grid h-14 w-14 place-items-center rounded-2xl ${b.earned ? "bg-gradient-to-br from-brand to-lime text-white" : "bg-secondary text-muted-foreground"}`}>
@@ -41,14 +116,14 @@ export function ProfileCollection() {
                   {!b.earned && <span className="absolute -bottom-1 -right-1 grid h-6 w-6 place-items-center rounded-full border-2 border-card bg-muted-foreground/70 text-white"><Lock className="h-3 w-3" /></span>}
                 </span>
                 <p className="mt-2 text-xs font-bold leading-tight">{b.name}</p>
-                <p className="mt-0.5 text-[10px] text-muted-foreground">{b.desc}</p>
+                <p className="mt-0.5 text-[10px] text-muted-foreground">{b.description}</p>
               </div>
             );
           })}
         </div>
       ) : (
         <div className="mt-5 space-y-3">
-          {ACHIEVEMENTS.map((a) => {
+          {achievements.map((a) => {
             const pct = Math.min(100, Math.round((a.now / a.goal) * 100));
             return (
               <div key={a.id} className="rounded-2xl border border-line p-4">

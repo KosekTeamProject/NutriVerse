@@ -89,8 +89,8 @@ export async function bootstrapUser(authUser: SupabaseUser) {
   });
 }
 
-/** Verifies the bearer session against Supabase Auth and resolves the application user. */
-export async function requireCurrentUser() {
+/** Verifies the Supabase cookie session and resolves both auth and domain identities. */
+export async function requireCurrentAuthContext() {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase.auth.getUser();
   if (error || !data.user) throw new ApiAuthError();
@@ -103,7 +103,12 @@ export async function requireCurrentUser() {
       403,
     );
   }
-  return user;
+  return { user, authUser: data.user };
+}
+
+/** Verifies the bearer session against Supabase Auth and resolves the application user. */
+export async function requireCurrentUser() {
+  return (await requireCurrentAuthContext()).user;
 }
 
 export async function requireAdminUser() {

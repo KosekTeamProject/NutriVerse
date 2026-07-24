@@ -16,8 +16,10 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     const entry = await prisma.journalEntry.update({
       where: { id: existing.id },
       data: {
+        ...(body?.title !== undefined ? { title: stringValue(body.title, "Judul jurnal", { max: 80 }) } : {}),
         ...(body?.content !== undefined ? { content: stringValue(body.content, "Isi jurnal", { max: 5000 }) } : {}),
         ...(body?.mood !== undefined ? { mood: body.mood === "" ? null : stringValue(body.mood, "Mood", { max: 50 }) } : {}),
+        ...(body?.allowCompanion !== undefined ? { allowCompanion: body.allowCompanion === true } : {}),
       },
     });
     return NextResponse.json({ success: true, entry });

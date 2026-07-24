@@ -1,15 +1,18 @@
 "use client";
 
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import {
   Heart, HeartPulse, MessageCircle, Footprints, Flame, MessageSquarePlus, Users2, Check, Lock,
   CalendarDays, Clock3, Gift, MapPin, Megaphone, Palette, RefreshCw, Share2, Trophy, Target, TrendingUp,
   Download, Droplets, ImagePlus, Trash2, ChevronDown, ChevronLeft, ChevronRight
 } from "lucide-react";
-import { POSTS, COMMUNITY_CHALLENGE, type Post } from "@/lib/community";
+import { POSTS, type Post } from "@/lib/community";
 import { LeaderboardView } from "@/components/app/LeaderboardView";
 import { BrandLogo } from "@/components/brand/BrandLogo";
 import { NutriVerseMoments } from "@/components/app/NutriVerseMoments";
+import type { CommunityOverview } from "@/features/progress/types";
+import { notifyDataChanged } from "@/lib/data-sync";
+import { useProgressData } from "@/providers/ProgressDataProvider";
 
 function initials(name: string) {
   return name.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase();
@@ -77,25 +80,34 @@ function PostCard({ p }: { readonly p: Post }) {
   );
 }
 
-const COMMUNITY_EVENTS = [
-  { id: "amikom-run", area: "Yogyakarta", title: "AMIKOM Morning Run 5K", location: "Embung AMIKOM, Yogyakarta", date: "27 Juli 2026", day: "Minggu", time: "06.00 WIB", participants: 412, capacity: 600, xp: 450, badge: "Lencana Eksklusif", background: "linear-gradient(120deg,#073b2b 0%,#0b6642 52%,#082b22 100%)", accent: "#b8ef57" },
-  { id: "jakarta-night", area: "Jakarta", title: "Jakarta Night Walk 4K", location: "Lapangan Banteng, Jakarta", date: "2 Agustus 2026", day: "Sabtu", time: "19.00 WIB", participants: 286, capacity: 450, xp: 320, badge: "City Glow", background: "linear-gradient(120deg,#10243e 0%,#174e70 52%,#0b2734 100%)", accent: "#67e8f9" },
-  { id: "bandung-cycle", area: "Bandung", title: "Bandung Cycle Loop 12K", location: "Gedung Sate, Bandung", date: "9 Agustus 2026", day: "Minggu", time: "06.30 WIB", participants: 198, capacity: 320, xp: 520, badge: "Weekend Ride", background: "linear-gradient(120deg,#312e4f 0%,#5b3f83 50%,#172554 100%)", accent: "#c4b5fd" },
-  { id: "surabaya-steps", area: "Surabaya", title: "Surabaya Sunrise Steps", location: "Taman Bungkul, Surabaya", date: "16 Agustus 2026", day: "Minggu", time: "05.45 WIB", participants: 344, capacity: 500, xp: 380, badge: "Sunrise Badge", background: "linear-gradient(120deg,#713f12 0%,#c05a22 50%,#3f250e 100%)", accent: "#fde047" },
-  { id: "bali-coast", area: "Bali", title: "Bali Coast Recovery Walk", location: "Pantai Sanur, Bali", date: "23 Agustus 2026", day: "Minggu", time: "06.15 WITA", participants: 172, capacity: 280, xp: 300, badge: "Coastal Calm", background: "linear-gradient(120deg,#134e4a 0%,#0f766e 50%,#164e63 100%)", accent: "#99f6e4" },
+const EVENT_THEMES = [
+  { background: "linear-gradient(120deg,#073b2b 0%,#0b6642 52%,#082b22 100%)", accent: "#b8ef57" },
+  { background: "linear-gradient(120deg,#10243e 0%,#174e70 52%,#0b2734 100%)", accent: "#67e8f9" },
+  { background: "linear-gradient(120deg,#312e4f 0%,#5b3f83 50%,#172554 100%)", accent: "#c4b5fd" },
 ] as const;
 
-const EVENT_LOCATIONS = ["Semua Area", "Yogyakarta", "Jakarta", "Bandung", "Surabaya", "Bali"] as const;
-
-function EventCarousel({ location }: { readonly location: string }) {
-  const filteredEvents = location === "Semua Area" ? COMMUNITY_EVENTS : COMMUNITY_EVENTS.filter((event) => event.area === location);
-  const events = filteredEvents.length ? filteredEvents : COMMUNITY_EVENTS;
+function EventCarousel({
+  location,
+  sourceEvents,
+  onChanged,
+}: {
+  readonly location: string;
+  readonly sourceEvents: CommunityOverview["events"];
+  readonly onChanged: () => Promise<void>;
+}) {
+  const filteredEvents =
+    location === "Semua Area"
+      ? sourceEvents
+      : sourceEvents.filter((event) => event.location === location);
+  const events = filteredEvents;
   const [activeIndex, setActiveIndex] = useState(0);
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState(0);
-  const [joinedIds, setJoinedIds] = useState<ReadonlySet<string>>(new Set());
+  const [joinedIds, setJoinedIds] = useState<ReadonlySet<string>>(
+    new Set(events.filter((event) => event.isJoined).map((event) => event.id)),
+  );
   const viewportRef = useRef<HTMLDivElement>(null);
   const dragStartRef = useRef<number | null>(null);
   const autoplayDirectionRef = useRef<1 | -1>(1);
@@ -114,12 +126,14 @@ function EventCarousel({ location }: { readonly location: string }) {
     return () => window.clearInterval(interval);
   }, [eventCount, paused]);
 
-  function joinEvent(eventId: string) {
-    setJoinedIds((currentIds) => {
-      const next = new Set(currentIds);
-      next.add(eventId);
-      return next;
+  async function joinEvent(eventId: string) {
+    const response = await fetch(`/api/events/${eventId}/registration`, {
+      method: "POST",
     });
+    if (!response.ok) return;
+    setJoinedIds((currentIds) => new Set(currentIds).add(eventId));
+    notifyDataChanged();
+    await onChanged();
   }
 
   function showSlide(index: number) {
@@ -153,6 +167,20 @@ function EventCarousel({ location }: { readonly location: string }) {
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
   }
 
+  if (events.length === 0) {
+    return (
+      <section className="card card-pad grid min-h-56 place-items-center text-center">
+        <div>
+          <CalendarDays className="mx-auto h-8 w-8 text-muted-foreground" />
+          <p className="mt-3 text-sm font-bold">Belum ada event aktif</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Event yang diterbitkan admin akan muncul otomatis di sini.
+          </p>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section
       className="relative min-w-0 overflow-hidden rounded-3xl border border-white/10 bg-[#073b2b] text-white shadow-soft"
@@ -178,40 +206,66 @@ function EventCarousel({ location }: { readonly location: string }) {
           style={{ transform: `translate3d(calc(${-activeIndex * 100}% + ${dragOffset}px),0,0)` }}
         >
           {events.map((event, index) => {
-            const progress = Math.round((event.participants / event.capacity) * 100);
+            const progress =
+              event.capacity > 0
+                ? Math.min(
+                    100,
+                    Math.round((event.participants / event.capacity) * 100),
+                  )
+                : 0;
             const joined = joinedIds.has(event.id);
+            const eventDate = new Date(event.startDate);
+            const theme = EVENT_THEMES[index % EVENT_THEMES.length];
+            const date = new Intl.DateTimeFormat("id-ID", {
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+            }).format(eventDate);
+            const day = new Intl.DateTimeFormat("id-ID", {
+              weekday: "long",
+            }).format(eventDate);
+            const time = `${new Intl.DateTimeFormat("id-ID", {
+              hour: "2-digit",
+              minute: "2-digit",
+            }).format(eventDate)} WIB`;
             return (
               <article
                 key={event.id}
                 className="relative w-full shrink-0 overflow-hidden p-5 pb-20 sm:p-7 sm:pb-24"
-                style={{ backgroundImage: event.background }}
+                style={{
+                  backgroundImage: event.bannerUrl
+                    ? `linear-gradient(120deg,rgba(3,25,18,.88),rgba(3,25,18,.35)),url(${event.bannerUrl})`
+                    : theme.background,
+                  backgroundSize: "cover",
+                  backgroundPosition: "center",
+                }}
                 aria-hidden={index !== activeIndex}
               >
-                <div aria-hidden className="absolute -right-12 -top-14 h-48 w-48 rounded-full opacity-25 blur-3xl" style={{ backgroundColor: event.accent }} />
+                <div aria-hidden className="absolute -right-12 -top-14 h-48 w-48 rounded-full opacity-25 blur-3xl" style={{ backgroundColor: theme.accent }} />
                 <div aria-hidden className="absolute inset-y-0 right-0 w-2/5 bg-[radial-gradient(circle_at_center,rgba(255,255,255,.12),transparent_68%)]" />
                 <div aria-hidden className="absolute bottom-0 right-0 h-32 w-1/2 bg-gradient-to-t from-black/25 to-transparent" />
                 <div className="relative z-10 max-w-2xl">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="pill border border-white/15 bg-white/10 text-[10px] font-bold text-white"><Megaphone className="h-3.5 w-3.5" /> EVENT KOMUNITAS</span>
-                    <span className="pill border border-white/20 bg-black/15 text-[10px] font-bold" style={{ color: event.accent }}>{event.badge.toUpperCase()}</span>
+                    <span className="pill border border-white/20 bg-black/15 text-[10px] font-bold" style={{ color: theme.accent }}>+{event.bonusHp} HP</span>
                   </div>
                   <h2 className="mt-5 text-balance font-display text-2xl font-extrabold tracking-tight sm:text-4xl">{event.title}</h2>
-                  <p className="mt-2 flex items-center gap-1.5 text-xs text-white/80 sm:text-sm"><MapPin className="h-4 w-4" style={{ color: event.accent }} /> {event.location}</p>
+                  <p className="mt-2 flex items-center gap-1.5 text-xs text-white/80 sm:text-sm"><MapPin className="h-4 w-4" style={{ color: theme.accent }} /> {event.location ?? "Lokasi menyusul"}</p>
                   <div className="mt-5 grid gap-3 min-[420px]:grid-cols-2 sm:grid-cols-4">
                     {[
-                      { icon: CalendarDays, value: event.date, label: event.day },
-                      { icon: Clock3, value: event.time, label: "Mulai" },
+                      { icon: CalendarDays, value: date, label: day },
+                      { icon: Clock3, value: time, label: "Mulai" },
                       { icon: Users2, value: `${event.participants} peserta`, label: "Sudah bergabung" },
-                      { icon: Gift, value: `+${event.xp} XP`, label: "Bonus setelah validasi" },
+                      { icon: Gift, value: `+${event.bonusXp} XP`, label: "Bonus setelah validasi" },
                     ].map((item) => {
                       const Icon = item.icon;
-                      return <div key={item.value} className="flex items-start gap-2"><Icon className="mt-0.5 h-5 w-5 shrink-0" style={{ color: event.accent }} /><div><p className="text-xs font-bold sm:text-sm">{item.value}</p><p className="text-[10px] text-white/60">{item.label}</p></div></div>;
+                      return <div key={item.value} className="flex items-start gap-2"><Icon className="mt-0.5 h-5 w-5 shrink-0" style={{ color: theme.accent }} /><div><p className="text-xs font-bold sm:text-sm">{item.value}</p><p className="text-[10px] text-white/60">{item.label}</p></div></div>;
                     })}
                   </div>
                   <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-end">
                     <div className="min-w-0 flex-1">
                       <div className="flex justify-between text-[10px] text-white/70"><span>{event.participants} / {event.capacity} peserta</span><span>{progress}%</span></div>
-                      <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-white/15"><div className="h-full rounded-full transition-all duration-500" style={{ width: `${progress}%`, backgroundColor: event.accent }} /></div>
+                      <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-white/15"><div className="h-full rounded-full transition-all duration-500" style={{ width: `${progress}%`, backgroundColor: theme.accent }} /></div>
                     </div>
                     <button onClick={() => joinEvent(event.id)} className={`btn shrink-0 ${joined ? "bg-white/15 text-white" : "bg-white text-[#073b2b]"}`} tabIndex={index === activeIndex ? 0 : -1}>
                       {joined ? <><Check className="h-4 w-4" /> Sudah Bergabung</> : "Gabung Event"}
@@ -243,6 +297,7 @@ const SHARE_TEMPLATES = [
   { name: "Malam Kompetitif", background: "from-[#101629] via-[#302a72] to-[#128b73]", accent: "#4de0b6", colors: ["#101629", "#128b73"] },
 ] as const;
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const SHARE_CONTENTS = [
   { label: "Health Pulse", top: "PULSE 78", metric: "+1,2", headline: ["Naik", "Health", "Point"], caption: "Health Pulse-ku naik +1,2 poin hari ini. Pelan-pelan, konsisten, dan tetap dengarkan tubuh. #NutriVerse" },
   { label: "Aktivitas", top: "1,4 KM", metric: "1,4 KM", headline: ["Morning", "Walk", "Tuntas"], caption: "Jalan pagi 1,4 km selesai dan terverifikasi GPS. Satu langkah sehat untuk hari ini. #NutriVerse" },
@@ -250,6 +305,7 @@ const SHARE_CONTENTS = [
   { label: "Peringkat", top: "RANK #3", metric: "#3", headline: ["Naik", "Peringkat", "Liga"], caption: "Naik dua posisi di Liga Radiant! Kompetitif boleh, tetapi kesehatan dan pemulihan tetap utama. #NutriVerse" },
 ] as const;
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const SHARE_INSIGHTS = [
   { icon: "pulse", title: "Health Pulse\nHari Ini", detail: "Health Pulse meningkat +1,2 poin berkat konsistensi aktivitas dan kebiasaan sehat." },
   { icon: "activity", title: "Aktivitas\nHari Ini", detail: "Morning Walk sejauh 1,4 km selesai dan tervalidasi GPS." },
@@ -338,9 +394,10 @@ function drawPosterLineIcon(context: CanvasRenderingContext2D, kind: string, x: 
 }
 
 function ShareTemplateStudio() {
+  const { overview } = useProgressData();
   const [templateIndex, setTemplateIndex] = useState(0);
   const [contentIndex, setContentIndex] = useState(0);
-  const [caption, setCaption] = useState<string>(SHARE_CONTENTS[0].caption);
+  const [caption, setCaption] = useState<string>("Progres sehatku hari ini tercatat di NutriVerse. #NutriVerse");
   const [shared, setShared] = useState(false);
   const [downloaded, setDownloaded] = useState(false);
   const [backgroundPhoto, setBackgroundPhoto] = useState<string | null>(null);
@@ -348,7 +405,19 @@ function ShareTemplateStudio() {
   const [format, setFormat] = useState<"story" | "post">("story");
   const [exportMode, setExportMode] = useState<"transparent" | "ready">("transparent");
   const template = SHARE_TEMPLATES[templateIndex];
-  const content = SHARE_CONTENTS[contentIndex];
+  const pulse = overview?.healthPulse.current;
+  const dynamicContents = [
+    { label: "Health Pulse", top: `PULSE ${pulse?.score.toFixed(0) ?? 0}`, metric: `${(pulse?.change ?? 0) >= 0 ? "+" : ""}${pulse?.change.toFixed(1) ?? "0.0"}`, headline: ["Health", "Pulse", "Hari Ini"], caption: `Health Pulse-ku ${pulse?.score.toFixed(1) ?? "0.0"} hari ini. #NutriVerse` },
+    { label: "Aktivitas", top: `${overview?.daily.walkingDistance.value ?? 0} KM`, metric: `${overview?.daily.walkingDistance.value ?? 0} KM`, headline: ["Gerak", "Hari Ini", "Tercatat"], caption: `Aktivitas jalan ${overview?.daily.walkingDistance.value ?? 0} km tercatat dari GPS terverifikasi. #NutriVerse` },
+    { label: "Pencapaian", top: `STREAK ${overview?.economy.streakDays ?? 0}`, metric: `${overview?.economy.streakDays ?? 0} HARI`, headline: ["Streak", "Sehat", "Terjaga"], caption: `${overview?.economy.streakDays ?? 0} hari menjaga kebiasaan sehat. #NutriVerse` },
+    { label: "Progres", top: `${overview?.todayJourney.progressPercent ?? 0}%`, metric: `${overview?.todayJourney.progressPercent ?? 0}%`, headline: ["Target", "Harian", "Berjalan"], caption: `Progres target harianku ${overview?.todayJourney.progressPercent ?? 0}%. #NutriVerse` },
+  ];
+  const dynamicInsights = [
+    { icon: "pulse", title: "Health Pulse\nHari Ini", detail: `Skor ${pulse?.score.toFixed(1) ?? "0.0"} dengan kelengkapan ${pulse?.dataCompleteness ?? 0}%.` },
+    { icon: "activity", title: "Aktivitas\nHari Ini", detail: `${Math.round(overview?.daily.steps.value ?? 0).toLocaleString("id-ID")} langkah dan ${overview?.daily.activeMinutes.value ?? 0} menit aktif.` },
+    { icon: "hydration", title: "Hidrasi\nHari Ini", detail: `${Math.round(overview?.daily.water.value ?? 0).toLocaleString("id-ID")} ml dari target ${Math.round(overview?.daily.water.target ?? 0).toLocaleString("id-ID")} ml.` },
+  ];
+  const content = dynamicContents[contentIndex];
 
   function chooseBackground(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -416,7 +485,7 @@ function ShareTemplateStudio() {
     const insightTop = format === "story" ? 1395 : 905;
     const insightGap = format === "story" ? 26 : 18;
     const insightWidth = (width - side * 2 - insightGap * 2) / 3;
-    SHARE_INSIGHTS.forEach((insight, index) => {
+    dynamicInsights.forEach((insight, index) => {
       const x = side + index * (insightWidth + insightGap);
       drawPosterLineIcon(context, insight.icon, x, insightTop, format === "story" ? 84 : 62);
       context.fillStyle = "#ffffff";
@@ -503,7 +572,7 @@ function ShareTemplateStudio() {
                 </p>
               </div>
               <div className={`absolute inset-x-4 bottom-4 z-10 grid grid-cols-3 gap-2 border-b border-white/15 pb-5 ${format === "story" ? "pt-3" : "pt-2"}`}>
-                {SHARE_INSIGHTS.map((insight) => {
+                {dynamicInsights.map((insight) => {
                   const InsightIcon = insight.icon === "pulse" ? HeartPulse : insight.icon === "activity" ? Footprints : Droplets;
                   return (
                     <div key={insight.title} className="min-w-0 text-left">
@@ -525,7 +594,7 @@ function ShareTemplateStudio() {
         <div className="min-w-0 space-y-4">
           <div>
             <p className="label">Pilih progres yang dibagikan</p>
-            <div className="mt-2 flex max-w-full gap-2 overflow-x-auto pb-1">{SHARE_CONTENTS.map((item, index) => <button key={item.label} onClick={() => { setContentIndex(index); setCaption(item.caption); }} className={`shrink-0 rounded-full px-3 py-2 text-[10px] font-bold transition ${contentIndex === index ? "bg-brand text-white shadow-sm" : "bg-secondary text-muted-foreground hover:text-foreground"}`}>{item.label}</button>)}</div>
+            <div className="mt-2 flex max-w-full gap-2 overflow-x-auto pb-1">{dynamicContents.map((item, index) => <button key={item.label} onClick={() => { setContentIndex(index); setCaption(item.caption); }} className={`shrink-0 rounded-full px-3 py-2 text-[10px] font-bold transition ${contentIndex === index ? "bg-brand text-white shadow-sm" : "bg-secondary text-muted-foreground hover:text-foreground"}`}>{item.label}</button>)}</div>
           </div>
 
           <section className="rounded-2xl border border-line bg-secondary/20 p-4">
@@ -578,10 +647,73 @@ export function CommunityHub() {
 }
 
 export function CommunityFeed() {
-  const [joined, setJoined] = useState(false);
   const [location, setLocation] = useState("Semua Area");
-  const cc = COMMUNITY_CHALLENGE;
-  const pct = Math.round((cc.now / cc.goal) * 100);
+  const [overview, setOverview] = useState<CommunityOverview | null>(null);
+  const [leaders, setLeaders] = useState<
+    Array<{
+      id: string;
+      name: string;
+      economy: { totalXp: number } | null;
+    }>
+  >([]);
+
+  const loadCommunity = useCallback(async () => {
+    const response = await fetch("/api/community/overview", {
+      cache: "no-store",
+    });
+    const result = (await response.json().catch(() => null)) as
+      | { success?: boolean; overview?: CommunityOverview }
+      | null;
+    if (response.ok && result?.success && result.overview) {
+      setOverview(result.overview);
+    }
+  }, []);
+
+  useEffect(() => {
+    const initialLoad = window.setTimeout(() => void loadCommunity(), 0);
+    void fetch("/api/leaderboard?scope=LEAGUE&limit=5", {
+      cache: "no-store",
+    })
+      .then((response) => response.json())
+      .then(
+        (result: {
+          success?: boolean;
+          leaderboard?: Array<{
+            id: string;
+            name: string;
+            economy: { totalXp: number } | null;
+          }>;
+        }) => {
+          if (result.success) setLeaders(result.leaderboard ?? []);
+        },
+      )
+      .catch(() => undefined);
+    return () => window.clearTimeout(initialLoad);
+  }, [loadCommunity]);
+
+  const cc = overview?.challenge ?? null;
+  const pct = cc?.progressPercent ?? 0;
+  const statistics = overview?.statistics;
+  const eventLocations = [
+    "Semua Area",
+    ...Array.from(
+      new Set(
+        (overview?.events ?? [])
+          .map((event) => event.location)
+          .filter((value): value is string => Boolean(value)),
+      ),
+    ),
+  ];
+
+  async function joinChallenge() {
+    if (!cc) return;
+    const response = await fetch(`/api/challenges/${cc.id}/join`, {
+      method: "POST",
+    });
+    if (!response.ok) return;
+    notifyDataChanged();
+    await loadCommunity();
+  }
 
   return (
     <div className="min-w-0 space-y-5">
@@ -597,7 +729,7 @@ export function CommunityFeed() {
             className="h-10 w-full appearance-none rounded-xl border border-line bg-card py-2 pl-3 pr-9 text-xs font-bold text-foreground shadow-sm outline-none transition hover:border-brand/40 focus:border-brand focus:ring-2 focus:ring-brand/15"
             aria-label="Pilih lokasi event"
           >
-            {EVENT_LOCATIONS.map((item) => (
+            {eventLocations.map((item) => (
               <option key={item} value={item}>{item}</option>
             ))}
           </select>
@@ -607,16 +739,21 @@ export function CommunityFeed() {
 
       <div className="grid min-w-0 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
         <div className="min-w-0 space-y-5">
-          <EventCarousel key={location} location={location} />
+          <EventCarousel
+            key={`${location}-${overview?.generatedAt ?? "loading"}`}
+            location={location}
+            sourceEvents={overview?.events ?? []}
+            onChanged={loadCommunity}
+          />
 
           <section className="card card-pad border-line bg-card">
             <h2 className="font-display text-sm font-bold text-foreground">Statistik Komunitas</h2>
             <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               {[
-                { icon: Users2, value: "2.143", label: "Anggota aktif", note: "+124 hari ini", color: "text-brand" },
-                { icon: Footprints, value: "2.418.233", label: "Langkah minggu ini", note: "+18,8%", color: "text-sky" },
-                { icon: Flame, value: "14", label: "Event aktif", note: "di seluruh area", color: "text-amber" },
-                { icon: TrendingUp, value: "8 hari", label: "Rata-rata streak", note: "+1 hari", color: "text-lime" },
+                { icon: Users2, value: (statistics?.activeMembers ?? 0).toLocaleString("id-ID"), label: "Anggota aktif", note: "30 hari terakhir", color: "text-brand" },
+                { icon: Footprints, value: (statistics?.weeklySteps ?? 0).toLocaleString("id-ID"), label: "Langkah minggu ini", note: "aktivitas terverifikasi", color: "text-sky" },
+                { icon: Flame, value: String(statistics?.activeEvents ?? 0), label: "Event aktif", note: "dari database", color: "text-amber" },
+                { icon: TrendingUp, value: `${statistics?.averageStreak ?? 0} hari`, label: "Rata-rata streak", note: "anggota aktif", color: "text-lime" },
               ].map((metric) => { const Icon = metric.icon; return (
                 <div key={metric.label} className="rounded-2xl border border-line/65 bg-secondary/25 p-3.5">
                   <div className="flex items-center gap-2"><Icon className={`h-5 w-5 ${metric.color}`} /><p className="font-display text-lg font-extrabold text-foreground">{metric.value}</p></div>
@@ -645,24 +782,24 @@ export function CommunityFeed() {
             <div className="flex items-center gap-2"><TrendingUp className="h-5 w-5 text-brand" /><h2 className="font-display text-sm font-bold text-foreground">Insight Komunitas Hari Ini</h2></div>
             <div className="mt-4 grid grid-cols-2 gap-2.5">
               {[
-                { label: "Langkah rata-rata", value: "7.234", note: "+12%" },
-                { label: "Streak rata-rata", value: "8 hari", note: "+1 hari" },
-                { label: "Anggota aktif", value: "2.143", note: "Hari ini" },
-                { label: "Target tercapai", value: "72%", note: "Anggota" },
+                { label: "Langkah rata-rata", value: (statistics?.averageSteps ?? 0).toLocaleString("id-ID"), note: "7 hari" },
+                { label: "Streak rata-rata", value: `${statistics?.averageStreak ?? 0} hari`, note: "Akun aktif" },
+                { label: "Anggota aktif", value: (statistics?.activeMembers ?? 0).toLocaleString("id-ID"), note: "30 hari" },
+                { label: "Target tercapai", value: `${statistics?.targetCompletionPercent ?? 0}%`, note: "Challenge" },
               ].map((item) => <div key={item.label} className="rounded-2xl border border-line/65 bg-secondary/25 p-3"><p className="text-[9px] font-semibold text-muted-foreground">{item.label}</p><p className="mt-1 font-display text-base font-extrabold text-foreground">{item.value}</p><p className="mt-0.5 text-[9px] text-brand">{item.note}</p></div>)}
             </div>
           </section>
 
-          <section className="card card-pad space-y-4 border-line bg-card">
+          {cc && <section className="card card-pad space-y-4 border-line bg-card">
             <div className="flex items-center justify-between gap-2"><h2 className="font-display text-sm font-bold text-foreground">Tantangan Aktif</h2><Target className="h-5 w-5 text-brand" /></div>
-          <div><h3 className="text-xs font-bold text-foreground">{cc.title}</h3><div className="chart-progress mt-3 h-2 overflow-hidden rounded-full"><div className="h-full rounded-full bg-gradient-to-r from-brand to-lime" style={{ width: `${pct}%` }} /></div><p className="mt-2 text-[10px] text-muted-foreground">{cc.now.toLocaleString("id-ID")} / {cc.goal.toLocaleString("id-ID")} langkah ({pct}%)</p></div>
-            <div className="flex items-center justify-between gap-3 border-t border-line/45 pt-3"><span className="text-[10px] text-muted-foreground">{cc.participants} pengguna bergabung</span>{joined ? <span className="pill bg-brand-soft text-[10px] font-bold text-brand"><Check className="h-3 w-3" /> Terdaftar</span> : <button onClick={() => setJoined(true)} className="btn btn-primary btn-xs">Gabung</button>}</div>
-          </section>
+          <div><h3 className="text-xs font-bold text-foreground">{cc.title}</h3><div className="chart-progress mt-3 h-2 overflow-hidden rounded-full"><div className="h-full rounded-full bg-gradient-to-r from-brand to-lime" style={{ width: `${pct}%` }} /></div><p className="mt-2 text-[10px] text-muted-foreground">{cc.currentValue.toLocaleString("id-ID")} / {cc.targetValue.toLocaleString("id-ID")} {cc.unit} ({pct}%)</p></div>
+            <div className="flex items-center justify-between gap-3 border-t border-line/45 pt-3"><span className="text-[10px] text-muted-foreground">{cc.participants} pengguna berkontribusi</span>{cc.isJoined ? <span className="pill bg-brand-soft text-[10px] font-bold text-brand"><Check className="h-3 w-3" /> Terdaftar</span> : <button onClick={joinChallenge} className="btn btn-primary btn-xs">Gabung</button>}</div>
+          </section>}
 
           <section className="card card-pad border-line bg-card">
             <div className="flex items-center justify-between gap-2"><h2 className="font-display text-sm font-bold text-foreground">Peringkat Minggu Ini</h2><Trophy className="h-5 w-5 text-amber" /></div>
             <div className="mt-4 space-y-3">
-              {[{ name: "Fatan Mubarak", xp: "1.245 XP" }, { name: "Dinda Puspita", xp: "980 XP" }, { name: "Yoga Adyatma", xp: "764 XP" }, { name: "Aulia Rahmah", xp: "512 XP" }, { name: "Ilham Ramadhan", xp: "410 XP" }].map((item, index) => <div key={item.name} className="flex items-center gap-2.5"><span className={`grid h-6 w-6 place-items-center rounded-full text-[10px] font-extrabold ${index < 3 ? "bg-amber/15 text-amber" : "bg-secondary text-muted-foreground"}`}>{index + 1}</span><span className="grid h-8 w-8 place-items-center rounded-full bg-gradient-to-br from-brand to-lime text-[9px] font-bold text-white">{initials(item.name)}</span><p className="min-w-0 flex-1 truncate text-[11px] font-bold text-foreground">{item.name}</p><p className="shrink-0 text-[10px] font-bold text-amber">{item.xp}</p></div>)}
+              {leaders.map((item, index) => <div key={item.id} className="flex items-center gap-2.5"><span className={`grid h-6 w-6 place-items-center rounded-full text-[10px] font-extrabold ${index < 3 ? "bg-amber/15 text-amber" : "bg-secondary text-muted-foreground"}`}>{index + 1}</span><span className="grid h-8 w-8 place-items-center rounded-full bg-gradient-to-br from-brand to-lime text-[9px] font-bold text-white">{initials(item.name)}</span><p className="min-w-0 flex-1 truncate text-[11px] font-bold text-foreground">{item.name}</p><p className="shrink-0 text-[10px] font-bold text-amber">{(item.economy?.totalXp ?? 0).toLocaleString("id-ID")} XP</p></div>)}
             </div>
             <button onClick={() => window.location.hash = "peringkat"} className="mt-4 w-full rounded-xl bg-secondary py-2 text-[10px] font-bold text-brand">Lihat Peringkat Lengkap</button>
           </section>
@@ -670,7 +807,7 @@ export function CommunityFeed() {
           <section className="card card-pad border-line bg-card">
             <h2 className="font-display text-sm font-bold text-foreground">Healthy Circle Populer</h2>
             <div className="mt-4 grid grid-cols-2 gap-2.5">
-              {[{ name: "Running Club", members: "1.024" }, { name: "Yoga Daily", members: "892" }, { name: "Hydration Squad", members: "743" }, { name: "Nutrition Talk", members: "652" }].map((circle, index) => <button key={circle.name} className="rounded-2xl border border-line/65 bg-secondary/25 p-3 text-left transition hover:border-brand/30 hover:bg-brand-soft/35"><span className={`grid h-9 w-9 place-items-center rounded-full ${index % 2 ? "bg-sky/15 text-sky" : "bg-brand-soft text-brand"}`}>{index < 2 ? <Footprints className="h-4 w-4" /> : <Users2 className="h-4 w-4" />}</span><p className="mt-2 text-[10px] font-bold text-foreground">{circle.name}</p><p className="text-[9px] text-muted-foreground">{circle.members} anggota</p></button>)}
+              {(overview?.guilds ?? []).map((circle, index) => <button key={circle.id} className="rounded-2xl border border-line/65 bg-secondary/25 p-3 text-left transition hover:border-brand/30 hover:bg-brand-soft/35"><span className={`grid h-9 w-9 place-items-center rounded-full ${index % 2 ? "bg-sky/15 text-sky" : "bg-brand-soft text-brand"}`}>{index < 2 ? <Footprints className="h-4 w-4" /> : <Users2 className="h-4 w-4" />}</span><p className="mt-2 text-[10px] font-bold text-foreground">{circle.name}</p><p className="text-[9px] text-muted-foreground">{circle.members.toLocaleString("id-ID")} anggota</p></button>)}
             </div>
           </section>
 

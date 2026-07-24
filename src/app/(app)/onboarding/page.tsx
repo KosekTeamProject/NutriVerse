@@ -306,6 +306,8 @@ export default function OnboardingPage() {
           healthGoals: finalBaseline.goal,
           activityLevel: finalBaseline.activityLevel,
           dailyStepTarget: finalBaseline.stepGoal,
+          dailyCalorieTarget: finalBaseline.estimatedDailyCalories,
+          dailySleepTargetHours: Number.parseFloat(finalBaseline.sleepHours ?? "8"),
           preferredActivities: selectedActivities,
           dietaryPreferences: isVegetarian ? ["VEGETARIAN"] : [],
           allergies: selectedAllergies.filter((item) => item !== "Tidak Ada"),

@@ -186,7 +186,7 @@ export function ActivityVerificationCard({
 
       <div className="flex items-start gap-2 text-[10px] text-muted-foreground">
         <Info className="h-4 w-4 shrink-0 text-muted-foreground mt-0.5" />
-        <p>Aktivitas ini memenuhi pemeriksaan demonstrasi saat ini. Verifikasi produksi memerlukan pemrosesan server.</p>
+        <p>Aktivitas ini memenuhi pemeriksaan integritas server dan hasilnya tersimpan pada riwayat database.</p>
       </div>
     </div>
   );

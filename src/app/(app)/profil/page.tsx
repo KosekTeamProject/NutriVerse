@@ -31,9 +31,10 @@ import { TIER_EMBLEM_NAMES, tierBySlug } from "@/lib/tiers";
 import { useAuthSession } from "@/hooks/useAuthSession";
 import { useCompanionName } from "@/hooks/useCompanionName";
 import { updateAuthSession } from "@/features/auth/session";
+import { useProgressData } from "@/providers/ProgressDataProvider";
 
 const STORIES_POOL = [
-  "Kebiasaan sehat telah terjaga selama 148 hari. Setiap langkah kecil terus membangun masa depan yang lebih sehat.",
+  "Setiap langkah kecil yang tercatat terus membangun kebiasaan sehat.",
   "Pemulihan hari ini berfokus pada jalan ringan untuk mengembalikan energi sebelum tantangan berikutnya.",
   "Asupan protein mencapai 70% target. Hidrasi masih menjadi peluang peningkatan yang paling jelas."
 ];
@@ -51,6 +52,20 @@ type ProfileImageEditor = {
   readonly positionX: number;
   readonly positionY: number;
 };
+
+type ProfilePrivacySummary = {
+  readonly profileVisibility: "PRIVATE" | "CIRCLE" | "PUBLIC";
+  readonly pulseVisibility: "PRIVATE" | "CIRCLE" | "PUBLIC";
+  readonly activityVisibility: "PRIVATE" | "CIRCLE" | "PUBLIC";
+  readonly challengeProgressVisible: boolean;
+};
+
+function privacyLabel(level?: "PRIVATE" | "CIRCLE" | "PUBLIC") {
+  if (level === "PUBLIC") return "Publik";
+  if (level === "CIRCLE") return "Lingkaran Saja";
+  if (level === "PRIVATE") return "Privat";
+  return "Memuat...";
+}
 
 function readProfileImage(file: File) {
   return new Promise<string>((resolve, reject) => {
@@ -179,14 +194,17 @@ function StatCard({
 
 export default function ProfilPage() {
   const session = useAuthSession();
+  const { overview } = useProgressData();
   const companionName = useCompanionName();
-  const tier = tierBySlug("radiant");
+  const tier = tierBySlug(overview?.economy.currentTier.toLowerCase() ?? "sprout");
   const [storyIndex, setStoryIndex] = useState(0);
   const [companionDraft, setCompanionDraft] = useState<string | null>(null);
   const [companionSaved, setCompanionSaved] = useState(false);
   const [imageFeedback, setImageFeedback] = useState("");
   const [imageEditor, setImageEditor] = useState<ProfileImageEditor | null>(null);
   const [imageSaving, setImageSaving] = useState(false);
+  const [privacySummary, setPrivacySummary] =
+    useState<ProfilePrivacySummary | null>(null);
   const profileName = session?.name ?? "Fathan Mubarak";
   const profileUsername = session?.username ?? "fathan.mubarak";
   const initials = profileName.split(" ").filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
@@ -198,6 +216,25 @@ export default function ProfilPage() {
     }, 5000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (!session?.email) return;
+    let cancelled = false;
+    fetch("/api/settings", { cache: "no-store" })
+      .then(async (response) => {
+        const result = (await response.json().catch(() => null)) as {
+          settings?: ProfilePrivacySummary | null;
+        } | null;
+        if (!response.ok || !result?.settings || cancelled) return;
+        setPrivacySummary(result.settings);
+      })
+      .catch(() => {
+        // Ringkasan tetap menunjukkan status memuat jika layanan preferensi terputus.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.email]);
 
   async function saveCompanionName() {
     if (companionDraftValue.trim().length < 2) return;
@@ -329,9 +366,9 @@ export default function ProfilPage() {
                 <p className="font-display text-sm font-bold text-foreground">{tier.name} &middot; {TIER_EMBLEM_NAMES[tier.slug]} &middot; Divisi II</p>
               </div>
             </div>
-            <span className="pill bg-amber/15 text-amber font-bold"><Zap className="h-3.5 w-3.5" /> 12.450 XP</span>
-            <span className="pill bg-brand-soft text-brand font-bold"><Heart className="h-3.5 w-3.5 text-brand fill-brand" /> 3.280 HP</span>
-            <span className="pill bg-secondary text-muted-foreground font-semibold text-xs">Hari ke-148</span>
+            <span className="pill bg-amber/15 text-amber font-bold"><Zap className="h-3.5 w-3.5" /> {(overview?.economy.totalXp ?? 0).toLocaleString("id-ID")} XP</span>
+            <span className="pill bg-brand-soft text-brand font-bold"><Heart className="h-3.5 w-3.5 text-brand fill-brand" /> {(overview?.economy.currentHp ?? 0).toLocaleString("id-ID")} HP</span>
+            <span className="pill bg-secondary text-muted-foreground font-semibold text-xs">{overview?.healthyDays.achievedDays ?? 0} hari sehat / 28 hari</span>
           </div>
 
           {/* Dynamic Profile Story Card */}
@@ -400,10 +437,10 @@ export default function ProfilPage() {
 
       {/* stats */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard icon={Zap} label="Progress XP" value="12.450" accent="amber" />
-        <StatCard icon={MapPin} label="Jarak total" value="128 km" accent="brand" />
-        <StatCard icon={Activity} label="Aktivitas" value="42" accent="sky" />
-        <StatCard icon={Flame} label="Streak" value="7 hari" accent="lime" />
+        <StatCard icon={Zap} label="Progress XP" value={(overview?.economy.totalXp ?? 0).toLocaleString("id-ID")} accent="amber" />
+        <StatCard icon={MapPin} label="Jarak total" value={`${overview?.profile.totalDistanceKm ?? 0} km`} accent="brand" />
+        <StatCard icon={Activity} label="Aktivitas" value={`${overview?.profile.verifiedActivityCount ?? 0}`} accent="sky" />
+        <StatCard icon={Flame} label="Streak" value={`${overview?.economy.streakDays ?? 0} hari`} accent="lime" />
       </div>
 
       {/* Daily Targets - Radial Progress Rings */}
@@ -415,10 +452,10 @@ export default function ProfilPage() {
           <h3 className="font-display text-base font-bold text-foreground">Target Konsistensi Harian</h3>
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <RadialProgress value={2050} target={2200} unit="kkal" label="Kalori" color="var(--brand)" icon={Utensils} />
-          <RadialProgress value={56} target={80} unit="g" label="Protein" color="var(--brand-bright)" icon={Zap} />
-          <RadialProgress value={1.1} target={2.0} unit="L" label="Air" color="var(--sky)" icon={Droplets} />
-          <RadialProgress value={7.5} target={8.0} unit="jam" label="Tidur" color="var(--amber)" icon={Moon} />
+          <RadialProgress value={overview?.daily.calories.value ?? 0} target={overview?.daily.calories.target ?? 2000} unit="kkal" label="Kalori" color="var(--brand)" icon={Utensils} />
+          <RadialProgress value={overview?.daily.protein.value ?? 0} target={overview?.daily.protein.target ?? 80} unit="g" label="Protein" color="var(--brand-bright)" icon={Zap} />
+          <RadialProgress value={(overview?.daily.water.value ?? 0) / 1000} target={(overview?.daily.water.target ?? 2000) / 1000} unit="L" label="Air" color="var(--sky)" icon={Droplets} />
+          <RadialProgress value={overview?.daily.sleep.value ?? 0} target={overview?.daily.sleep.target ?? 8} unit="jam" label="Tidur" color="var(--amber)" icon={Moon} />
         </div>
       </div>
 
@@ -430,14 +467,14 @@ export default function ProfilPage() {
             <h3 className="font-display text-sm font-bold text-foreground uppercase tracking-wider flex items-center gap-1.5">
               <Activity className="h-4 w-4 text-brand" /> Ringkasan Health Pulse
             </h3>
-            <span className="pill bg-brand-soft text-brand font-bold text-xs">Sangat Baik</span>
+            <span className="pill bg-brand-soft text-brand font-bold text-xs">{overview?.healthPulse.current.status ?? "Belum ada data"}</span>
           </div>
           <div className="flex items-center justify-between">
             <span className="text-xs text-muted-foreground">Skor Health Pulse</span>
-            <span className="stat-num text-2xl font-extrabold text-foreground">78 / 100</span>
+            <span className="stat-num text-2xl font-extrabold text-foreground">{overview?.healthPulse.current.score ?? 0} / 100</span>
           </div>
           <p className="text-xs text-muted-foreground leading-normal">
-            Pola kesehatan secara umum baik. Aktivitas dan hidrasi menunjukkan peningkatan.
+            {overview?.healthPulse.current.recommendedNextAction ?? "Tambahkan data harian untuk membentuk ringkasan."}
           </p>
         </div>
 
@@ -450,11 +487,11 @@ export default function ProfilPage() {
             <span className="pill bg-amber/10 text-amber border border-amber/15 text-[10px] font-bold">Menengah</span>
           </div>
           <div className="space-y-1">
-            <p className="text-xs font-bold text-foreground">Perjalanan Kardio Ringan</p>
-            <p className="text-xs text-muted-foreground">Progres: 7,2 / 10,0 km (72%)</p>
+            <p className="text-xs font-bold text-foreground">{overview?.challenges[0]?.title ?? "Belum ada tantangan aktif"}</p>
+            <p className="text-xs text-muted-foreground">Progres: {overview?.challenges[0]?.currentValue ?? 0} / {overview?.challenges[0]?.targetValue ?? 0} {overview?.challenges[0]?.unit ?? ""} ({overview?.challenges[0]?.progressPercent ?? 0}%)</p>
           </div>
           <div className="chart-progress h-2 overflow-hidden rounded-full">
-            <div className="h-full rounded-full bg-brand" style={{ width: "72%" }} />
+            <div className="h-full rounded-full bg-brand" style={{ width: `${overview?.challenges[0]?.progressPercent ?? 0}%` }} />
           </div>
         </div>
       </div>
@@ -474,22 +511,28 @@ export default function ProfilPage() {
         <div className="grid gap-3 sm:grid-cols-2 text-xs">
           <div className="flex justify-between items-center border border-line p-3 rounded-xl bg-secondary/20">
             <span className="text-muted-foreground font-semibold">Visibilitas Profil</span>
-            <span className="pill bg-secondary text-muted-foreground font-bold">Lingkaran Saja</span>
+            <span className="pill bg-secondary text-muted-foreground font-bold">{privacyLabel(privacySummary?.profileVisibility)}</span>
           </div>
 
           <div className="flex justify-between items-center border border-line p-3 rounded-xl bg-secondary/20">
             <span className="text-muted-foreground font-semibold">Berbagi Skor Pulse</span>
-            <span className="pill bg-secondary text-muted-foreground font-bold">Lingkaran Saja</span>
+            <span className="pill bg-secondary text-muted-foreground font-bold">{privacyLabel(privacySummary?.pulseVisibility)}</span>
           </div>
 
           <div className="flex justify-between items-center border border-line p-3 rounded-xl bg-secondary/20">
             <span className="text-muted-foreground font-semibold">Ringkasan Aktivitas</span>
-            <span className="pill bg-secondary text-muted-foreground font-bold">Lingkaran Saja</span>
+            <span className="pill bg-secondary text-muted-foreground font-bold">{privacyLabel(privacySummary?.activityVisibility)}</span>
           </div>
 
           <div className="flex justify-between items-center border border-line p-3 rounded-xl bg-secondary/20">
             <span className="text-muted-foreground font-semibold">Progres Tantangan</span>
-            <span className="pill bg-secondary text-muted-foreground font-bold">Lingkaran Saja</span>
+            <span className="pill bg-secondary text-muted-foreground font-bold">
+              {privacySummary
+                ? privacySummary.challengeProgressVisible
+                  ? "Lingkaran Saja"
+                  : "Privat"
+                : "Memuat..."}
+            </span>
           </div>
 
           <div className="flex justify-between items-center border border-line p-3 rounded-xl bg-secondary/20 col-span-2">

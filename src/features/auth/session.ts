@@ -67,24 +67,3 @@ export function updateAuthSession(patch: Partial<AuthSession>) {
   saveAuthSession({ ...current, ...patch });
 }
 
-export function createDemoLogin(email: string): AuthSession {
-  return {
-    name: "Fathan Mubarak",
-    email,
-    username: email.split("@")[0] || "fathan.mubarak",
-    companionName: "Nora",
-    provider: "password",
-    createdAt: new Date().toISOString(),
-  };
-}
-
-export function createGoogleDemoLogin(): AuthSession {
-  return {
-    name: "Fathan Mubarak",
-    email: "fathan.mubarak@gmail.com",
-    username: "fathan.mubarak",
-    companionName: "Nora",
-    provider: "google",
-    createdAt: new Date().toISOString(),
-  };
-}

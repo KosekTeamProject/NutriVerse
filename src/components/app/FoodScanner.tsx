@@ -17,6 +17,7 @@ export type LoggedFood = {
   name: string;
   portion: string;
   photo?: string;
+  photoFile?: File;
   nutrition: Nutrition;
   activityRec: string;
   insight: string;
@@ -48,6 +49,7 @@ export function FoodScanner({ onAdd }: { onAdd?: (entry: LoggedFood) => void }) 
   const { displayName } = useCompanionName();
   const [status, setStatus] = useState<Status>("empty");
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [demoIndex, setDemoIndex] = useState<number>(0);
   const [isDemoMode, setIsDemoMode] = useState<boolean>(true);
   const [portion, setPortion] = useState(1);
@@ -79,6 +81,7 @@ export function FoodScanner({ onAdd }: { onAdd?: (entry: LoggedFood) => void }) 
     if (!file) return;
     if (imageUrl) URL.revokeObjectURL(imageUrl);
     setImageUrl(URL.createObjectURL(file));
+    setSelectedFile(file);
     setIsDemoMode(false);
     setStatus("ready");
   }
@@ -94,6 +97,7 @@ export function FoodScanner({ onAdd }: { onAdd?: (entry: LoggedFood) => void }) 
   function reset() {
     if (imageUrl) URL.revokeObjectURL(imageUrl);
     setImageUrl(null);
+    setSelectedFile(null);
     setPortion(1);
     setConfirmedIdentity(false);
     setIsEditingName(false);
@@ -114,6 +118,7 @@ export function FoodScanner({ onAdd }: { onAdd?: (entry: LoggedFood) => void }) 
       name: currentFood.name,
       portion: `${portion}x ${currentFood.portion}`,
       photo: imageUrl ?? undefined,
+      photoFile: selectedFile ?? undefined,
       nutrition: a.nutrition,
       activityRec: a.activityRec,
       insight: a.insight,

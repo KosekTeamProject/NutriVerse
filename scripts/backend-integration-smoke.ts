@@ -7,6 +7,10 @@ import { evaluateAndAwardUserBadges } from "@/server/badges/badge-service";
 import { applyVerifiedActivityToChallenges } from "@/server/challenges/challenge-service";
 import { awardVerifiedActivity } from "@/server/economy/economy-service";
 import { redeemReward } from "@/server/rewards/reward-service";
+import {
+  buildCommunityOverview,
+  buildProgressOverview,
+} from "@/server/progress/progress-service";
 
 const runId = randomUUID();
 const email = `integration-${runId}@example.invalid`;
@@ -66,6 +70,51 @@ async function main() {
       throw new Error("Automatic badge award failed");
     }
 
+    await Promise.all([
+      prisma.nutritionEntry.create({
+        data: {
+          userId: user.id,
+          foodName: "Integration Meal",
+          portionGrams: 250,
+          calories: 520,
+          protein: 38,
+          carbs: 58,
+          fat: 12,
+          fiber: 9,
+          source: "MANUAL",
+          isUserConfirmed: true,
+        },
+      }),
+      prisma.waterLog.create({
+        data: { userId: user.id, volumeMl: 750 },
+      }),
+      prisma.healthMetric.create({
+        data: { userId: user.id, weightKg: 65, heightCm: 170, bmi: 22.49 },
+      }),
+      prisma.healthPulse.create({
+        data: {
+          userId: user.id,
+          pulseDate: new Date(new Date().toISOString().slice(0, 10)),
+          sleepHours: 7.5,
+        },
+      }),
+    ]);
+    const [progressOverview, communityOverview] = await Promise.all([
+      buildProgressOverview(user.id),
+      buildCommunityOverview(user.id),
+    ]);
+    if (
+      progressOverview.daily.protein.value < 38 ||
+      progressOverview.daily.water.value < 750 ||
+      progressOverview.daily.steps.value <= 0 ||
+      progressOverview.healthPulse.current.dataCompleteness <= 0
+    ) {
+      throw new Error("Dynamic progress aggregation failed");
+    }
+    if (communityOverview.statistics.activeMembers <= 0) {
+      throw new Error("Dynamic community aggregation failed");
+    }
+
     await prisma.reward.create({
       data: {
         id: rewardId,
@@ -96,6 +145,8 @@ async function main() {
       activityReplayProtected: firstAward.idempotentReplay || replayAward.idempotentReplay,
       challengeContributionsProcessed: true,
       firstStepBadgeAwarded: true,
+      dynamicProgressAggregated: true,
+      communityMetricsAggregated: true,
       rewardReplayProtected: firstRedemption.idempotentReplay || replayRedemption.idempotentReplay,
       finalRewardStock: reward.stock,
     }, null, 2));

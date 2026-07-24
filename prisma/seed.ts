@@ -58,18 +58,100 @@ async function main() {
       isActive: true,
     },
   });
+  await Promise.all([
+    prisma.challenge.upsert({
+      where: { id: 'challenge-daily-walk-2km' },
+      update: {
+        startDate: now,
+        endDate: new Date(now.getTime() + 24 * 60 * 60 * 1000),
+        isActive: true,
+      },
+      create: {
+        id: 'challenge-daily-walk-2km',
+        title: 'Jalan Santai 2 Kilometer',
+        description: 'Kumpulkan 2 kilometer jalan kaki tervalidasi hari ini.',
+        type: 'DAILY',
+        category: 'MOBILITY',
+        trustLevel: 'GPS_VERIFIED_ONLY',
+        metric: 'DISTANCE_METERS',
+        activityType: 'WALK',
+        targetValue: 2000,
+        targetUnit: 'METERS',
+        bonusXp: 120,
+        bonusHp: 25,
+        startDate: now,
+        endDate: new Date(now.getTime() + 24 * 60 * 60 * 1000),
+      },
+    }),
+    prisma.challenge.upsert({
+      where: { id: 'challenge-daily-active-20m' },
+      update: {
+        startDate: now,
+        endDate: new Date(now.getTime() + 24 * 60 * 60 * 1000),
+        isActive: true,
+      },
+      create: {
+        id: 'challenge-daily-active-20m',
+        title: 'Aktif 20 Menit',
+        description: 'Akumulasikan 20 menit aktivitas GPS yang lolos verifikasi.',
+        type: 'DAILY',
+        category: 'CARDIO',
+        trustLevel: 'GPS_VERIFIED_ONLY',
+        metric: 'DURATION_SECONDS',
+        targetValue: 1200,
+        targetUnit: 'SECONDS',
+        bonusXp: 150,
+        bonusHp: 30,
+        startDate: now,
+        endDate: new Date(now.getTime() + 24 * 60 * 60 * 1000),
+      },
+    }),
+    prisma.challenge.upsert({
+      where: { id: 'challenge-monthly-distance-80km' },
+      update: {
+        startDate: now,
+        endDate: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000),
+        isActive: true,
+      },
+      create: {
+        id: 'challenge-monthly-distance-80km',
+        title: 'Jarak Bulanan 80 Kilometer',
+        description: 'Akumulasikan 80 kilometer aktivitas tervalidasi bulan ini.',
+        type: 'MONTHLY',
+        category: 'CARDIO',
+        trustLevel: 'GPS_VERIFIED_ONLY',
+        metric: 'DISTANCE_METERS',
+        targetValue: 80000,
+        targetUnit: 'METERS',
+        bonusXp: 2000,
+        bonusHp: 350,
+        startDate: now,
+        endDate: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000),
+      },
+    }),
+  ]);
 
   // 3. Seed Season Leaderboard Pertama
-  const season1 = (await prisma.leaderboardSeason.findFirst({
+  const existingSeason = await prisma.leaderboardSeason.findFirst({
     where: { name: 'Season 1: Origin Nutriverse' },
-  })) ?? await prisma.leaderboardSeason.create({
-    data: {
-      name: 'Season 1: Origin Nutriverse',
-      startDate: now,
-      endDate: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000),
-      isActive: true,
-    },
   });
+  const season1 = existingSeason
+    ? await prisma.leaderboardSeason.update({
+        where: { id: existingSeason.id },
+        data: {
+          startDate: now,
+          endDate: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000),
+          isActive: true,
+        },
+      })
+    : await prisma.leaderboardSeason.create({
+        data: {
+          name: 'Season 1: Origin Nutriverse',
+          startDate: now,
+          endDate: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000),
+          isActive: true,
+        },
+      });
 
   await Promise.all([
     prisma.reward.upsert({
@@ -110,6 +192,62 @@ async function main() {
         carbsPer100g: 7.6,
         fatPer100g: 11,
         isVerified: true,
+      },
+    }),
+    prisma.event.upsert({
+      where: { id: 'event-jakarta-night-walk' },
+      update: {
+        startDate: new Date(now.getTime() + 9 * 24 * 60 * 60 * 1000),
+        endDate: new Date(now.getTime() + 9 * 24 * 60 * 60 * 1000 + 4 * 60 * 60 * 1000),
+        isActive: true,
+      },
+      create: {
+        id: 'event-jakarta-night-walk',
+        title: 'Jakarta Night Walk 4K',
+        description: 'Jalan malam komunitas dengan rute ramah pemula.',
+        bannerUrl: '/images/dashboard-hero.png',
+        startDate: new Date(now.getTime() + 9 * 24 * 60 * 60 * 1000),
+        endDate: new Date(now.getTime() + 9 * 24 * 60 * 60 * 1000 + 4 * 60 * 60 * 1000),
+        location: 'Lapangan Banteng, Jakarta',
+        capacity: 450,
+        bonusXp: 320,
+        bonusHp: 80,
+      },
+    }),
+    prisma.event.upsert({
+      where: { id: 'event-amikom-morning-run' },
+      update: {
+        startDate: new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000),
+        endDate: new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000 + 4 * 60 * 60 * 1000),
+        isActive: true,
+      },
+      create: {
+        id: 'event-amikom-morning-run',
+        title: 'AMIKOM Morning Run 5K',
+        description: 'Lari pagi komunitas kampus dengan validasi kehadiran.',
+        bannerUrl: '/images/dashboard-hero.png',
+        startDate: new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000),
+        endDate: new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000 + 4 * 60 * 60 * 1000),
+        location: 'Embung AMIKOM, Yogyakarta',
+        capacity: 600,
+        bonusXp: 450,
+        bonusHp: 100,
+      },
+    }),
+    prisma.guild.upsert({
+      where: { name: 'Running Club' },
+      update: {},
+      create: {
+        name: 'Running Club',
+        description: 'Lingkaran untuk pejalan dan pelari NutriVerse.',
+      },
+    }),
+    prisma.guild.upsert({
+      where: { name: 'Hydration Squad' },
+      update: {},
+      create: {
+        name: 'Hydration Squad',
+        description: 'Saling mengingatkan kebiasaan hidrasi harian.',
       },
     }),
   ]);

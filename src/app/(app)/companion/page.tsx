@@ -13,10 +13,11 @@ import {
   MessageSquare,
   Loader2
 } from "lucide-react";
-import { companionInsights, currentWeeklyLetter } from "@/features/companion/data";
+import { companionInsights } from "@/features/companion/data";
 import { CompanionHubContainer } from "@/features/companion/components/CompanionHubContainer";
 import { CompanionSafetyNote, CompanionWeeklyLetterPreview } from "@/features/companion/components/CompanionComponents";
 import { useCompanionName } from "@/hooks/useCompanionName";
+import { useWeeklyLetter } from "@/hooks/useWeeklyLetter";
 
 type Msg = { role: "user" | "ai"; text: string; time: string };
 
@@ -27,47 +28,6 @@ const SUGGESTIONS = [
   "Jelaskan hasil pindai makanan terakhir."
 ];
 
-function simulatedReply(question: string): string {
-  const q = question.toLowerCase();
-
-  // Safety disclaimer checks
-  if (
-    q.includes("diagnosa") || q.includes("diagnose") ||
-    q.includes("sakit") || q.includes("obat") ||
-    q.includes("suplemen") || q.includes("terapi") ||
-    q.includes("medicine") || q.includes("prescription") ||
-    q.includes("dokter") || q.includes("doctor")
-  ) {
-    return "Aku dapat membantu dengan panduan kebugaran sehari-hari, tetapi tidak dapat mendiagnosis kondisi medis atau menggantikan tenaga kesehatan profesional.";
-  }
-
-  if (q.includes("pulse") || q.includes("kesehatan") || q.includes("mengapa")) {
-    return "Health Pulse-mu naik menjadi 78 karena aktivitas mingguan lebih konsisten. Nutrisi, tidur, hidrasi, dan pengelolaan berat tetap ikut membentuk nilainya.";
-  }
-
-  if (q.includes("jalan") || q.includes("walk") || q.includes("aktivitas") || q.includes("target")) {
-    return "Hari ini kamu telah berjalan 1,4 km dari target 2 km. Jika tubuhmu nyaman, sisa 600 meter dapat diselesaikan dengan pace ringan.";
-  }
-
-  if (q.includes("protein") || q.includes("gizi") || q.includes("nutrisi") || q.includes("progres")) {
-    return "Protein tercatat 56 g dari target 80 g. Kamu dapat melengkapinya lewat pilihan makanan yang sesuai kebutuhanmu.";
-  }
-
-  if (q.includes("pemulihan") || q.includes("recovery") || q.includes("istirahat") || q.includes("ringan")) {
-    return "Coba peregangan ringan 1–10 menit atau berjalan santai. Berhenti jika terasa sakit, pusing, atau tidak nyaman.";
-  }
-
-  if (q.includes("challenge") || q.includes("tantangan") || q.includes("hitung")) {
-    return "Tantangan kardio ringanmu sudah 72%. Hanya aktivitas GPS yang lolos validasi yang menambah progres.";
-  }
-
-  if (q.includes("scan") || q.includes("makanan") || q.includes("sarapan") || q.includes("breakfast") || q.includes("hasil")) {
-    return "Hasil pindai sarapan memperkirakan 430 kkal, 24 g protein, dan 49 g karbohidrat. Jika ingin bergerak, jalan santai 10–15 menit dapat menjadi pilihan—bukan kewajiban atau kompensasi makanan.";
-  }
-
-  return "Fokus pada satu langkah kecil hari ini: cukup minum, bergerak ringan, atau menyiapkan waktu tidur. Konsistensi lebih penting daripada latihan berlebihan.";
-}
-
 function ChatSection() {
   const searchParams = useSearchParams();
   const analysisId = searchParams.get("analysis");
@@ -76,9 +36,7 @@ function ChatSection() {
   const suggestedPrompt = searchParams.get("prompt");
   const { displayName } = useCompanionName();
 
-  const [messages, setMessages] = useState<Msg[]>(() => [
-    { role: "ai", text: "Halo Fathan, aku {{companion}}. Apa yang ingin kamu pahami hari ini?", time: "Baru saja" }
-  ]);
+  const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState(() => suggestedPrompt ?? "");
   const [isTyping, setIsTyping] = useState(false);
   const [hasError, setHasError] = useState(false);
@@ -97,12 +55,57 @@ function ChatSection() {
   const chatLogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    let cancelled = false;
+    fetch("/api/companion/conversations", { cache: "no-store" })
+      .then(async (response) => {
+        const result = (await response.json().catch(() => null)) as
+          | {
+              success?: boolean;
+              messages?: Array<{
+                sender: "USER" | "ASSISTANT";
+                content: string;
+                createdAt: string;
+              }>;
+              error?: string;
+            }
+          | null;
+        if (!response.ok || !result?.success) {
+          throw new Error(result?.error ?? "Percakapan gagal dimuat.");
+        }
+        if (cancelled) return;
+        const stored = (result.messages ?? []).map((message) => ({
+          role: message.sender === "USER" ? "user" as const : "ai" as const,
+          text: message.content,
+          time: new Intl.DateTimeFormat("id-ID", {
+            hour: "2-digit",
+            minute: "2-digit",
+          }).format(new Date(message.createdAt)),
+        }));
+        setMessages(
+          stored.length
+            ? stored
+            : [{
+                role: "ai",
+                text: "Halo, aku {{companion}}. Tanyakan progres yang sudah tersimpan di akunmu.",
+                time: "Baru saja",
+              }],
+        );
+      })
+      .catch(() => {
+        if (!cancelled) setHasError(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
     const chatLog = chatLogRef.current;
     if (!chatLog) return;
     chatLog.scrollTo({ top: chatLog.scrollHeight, behavior: reducedMotion ? "auto" : "smooth" });
   }, [messages, isTyping, hasError, reducedMotion]);
 
-  function ask(text: string) {
+  async function ask(text: string) {
     const q = text.trim();
     if (!q || isTyping) return;
 
@@ -112,19 +115,33 @@ function ChatSection() {
     setInput("");
     setIsTyping(true);
 
-    const delay = reducedMotion ? 100 : 1500;
-    setTimeout(() => {
-      // 10% simulation chance for retry failure test
-      if (Math.random() < 0.05) {
-        setIsTyping(false);
-        setHasError(true);
-        return;
+    try {
+      const response = await fetch("/api/companion/conversations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: q }),
+      });
+      const result = (await response.json().catch(() => null)) as
+        | {
+            success?: boolean;
+            messages?: Array<{ sender: "USER" | "ASSISTANT"; content: string }>;
+          }
+        | null;
+      const assistant = result?.messages?.find(
+        (message) => message.sender === "ASSISTANT",
+      );
+      if (!response.ok || !result?.success || !assistant) {
+        throw new Error("Pesan gagal diproses.");
       }
-
-      const response = simulatedReply(q);
-      setMessages((prev) => [...prev, { role: "ai", text: response, time: "Baru saja" }]);
+      setMessages((prev) => [
+        ...prev,
+        { role: "ai", text: assistant.content, time: "Baru saja" },
+      ]);
+    } catch {
+      setHasError(true);
+    } finally {
       setIsTyping(false);
-    }, delay);
+    }
   }
 
   function handleRetry() {
@@ -147,7 +164,7 @@ function ChatSection() {
           <span className="grid h-9 w-9 place-items-center rounded-xl bg-brand-soft text-brand"><MessageSquare className="h-5 w-5" /></span>
           <div>
             <p className="text-sm font-bold text-foreground">Percakapan ditutup</p>
-            <p className="text-xs text-muted-foreground">Pesan tetap tersimpan selama halaman ini terbuka.</p>
+            <p className="text-xs text-muted-foreground">Riwayat pesan tetap tersimpan di akunmu.</p>
           </div>
         </div>
         <button onClick={() => setChatOpen(true)} className="btn btn-primary btn-sm">Buka Percakapan</button>
@@ -274,13 +291,14 @@ function ChatSection() {
         </button>
       </div>
 
-      <p className="flex items-center gap-1.5 text-[10px] text-muted-foreground"><Info className="h-3.5 w-3.5" /> Respons pada MVP masih berupa simulasi terstruktur.</p>
+      <p className="flex items-center gap-1.5 text-[10px] text-muted-foreground"><Info className="h-3.5 w-3.5" /> Respons dihitung di backend dari progres akun yang tersimpan di database.</p>
     </div>
   );
 }
 
 export default function CompanionHubPage() {
   const { displayName } = useCompanionName();
+  const { letter: weeklyLetter, loading: weeklyLetterLoading } = useWeeklyLetter();
 
   return (
     <div className="mx-auto w-full min-w-0 max-w-5xl space-y-6 animate-fade-up-premium">
@@ -314,7 +332,15 @@ export default function CompanionHubPage() {
         {/* Sidebar widgets */}
         <div className="min-w-0 space-y-6">
           {/* Weekly Letter Preview */}
-          <CompanionWeeklyLetterPreview letter={currentWeeklyLetter} />
+          {weeklyLetter ? (
+            <CompanionWeeklyLetterPreview letter={weeklyLetter} />
+          ) : (
+            <div className="card card-pad text-xs text-muted-foreground">
+              {weeklyLetterLoading
+                ? "Memuat refleksi mingguan dari database..."
+                : "Belum ada refleksi mingguan tersimpan."}
+            </div>
+          )}
 
           {/* Safety Reminder */}
           <CompanionSafetyNote />

@@ -6,13 +6,12 @@ import { BookHeart, Check, Lock, Sparkles, Trash2 } from "lucide-react";
 type JournalEntry = {
   readonly id: string;
   readonly title: string;
-  readonly body: string;
-  readonly mood: string;
+  readonly content: string;
+  readonly mood: string | null;
   readonly createdAt: string;
-  readonly allowNora: boolean;
+  readonly allowCompanion: boolean;
 };
 
-const JOURNAL_KEY = "nutriverse.private-health-journal";
 const MOODS = ["Tenang", "Berenergi", "Lelah", "Tertekan", "Netral"];
 
 export function PrivateHealthJournal() {
@@ -22,35 +21,57 @@ export function PrivateHealthJournal() {
   const [mood, setMood] = useState("Netral");
   const [allowNora, setAllowNora] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      try {
-        const stored = window.localStorage.getItem(JOURNAL_KEY);
-        if (stored) setEntries(JSON.parse(stored));
-      } catch {
-        // Data lokal yang tidak valid tidak digunakan.
-      }
-    }, 0);
-    return () => window.clearTimeout(timer);
+    let cancelled = false;
+    fetch("/api/journal?limit=100", { cache: "no-store" })
+      .then(async (response) => {
+        const result = (await response.json().catch(() => null)) as
+          | { success?: boolean; entries?: JournalEntry[]; error?: string }
+          | null;
+        if (!response.ok || !result?.success) {
+          throw new Error(result?.error ?? "Jurnal gagal dimuat.");
+        }
+        if (!cancelled) setEntries(result.entries ?? []);
+      })
+      .catch((loadError: unknown) => {
+        if (!cancelled) {
+          setError(
+            loadError instanceof Error ? loadError.message : "Jurnal gagal dimuat.",
+          );
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  function persist(next: JournalEntry[]) {
-    setEntries(next);
-    window.localStorage.setItem(JOURNAL_KEY, JSON.stringify(next));
-  }
-
-  function saveEntry() {
+  async function saveEntry() {
     if (!body.trim()) return;
-    const nextEntry: JournalEntry = {
-      id: crypto.randomUUID(),
-      title: title.trim() || "Catatan kesehatan",
-      body: body.trim(),
-      mood,
-      createdAt: new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short" }).format(new Date()),
-      allowNora,
-    };
-    persist([nextEntry, ...entries]);
+    setError("");
+    const response = await fetch("/api/journal", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: title.trim() || "Catatan kesehatan",
+        content: body.trim(),
+        mood,
+        allowCompanion: allowNora,
+      }),
+    });
+    const result = (await response.json().catch(() => null)) as
+      | { success?: boolean; entry?: JournalEntry; error?: string }
+      | null;
+    if (!response.ok || !result?.success || !result.entry) {
+      setError(result?.error ?? "Catatan belum dapat disimpan.");
+      return;
+    }
+    setEntries((current) => [result.entry!, ...current]);
     setTitle("");
     setBody("");
     setMood("Netral");
@@ -59,9 +80,14 @@ export function PrivateHealthJournal() {
     window.setTimeout(() => setSaved(false), 1800);
   }
 
-  function removeEntry(id: string) {
-    if (!window.confirm("Hapus catatan privat ini dari browser?")) return;
-    persist(entries.filter((entry) => entry.id !== id));
+  async function removeEntry(id: string) {
+    if (!window.confirm("Hapus catatan privat ini dari akunmu?")) return;
+    const response = await fetch(`/api/journal/${id}`, { method: "DELETE" });
+    if (!response.ok) {
+      setError("Catatan belum dapat dihapus.");
+      return;
+    }
+    setEntries((current) => current.filter((entry) => entry.id !== id));
   }
 
   return (
@@ -108,6 +134,7 @@ export function PrivateHealthJournal() {
           <button onClick={saveEntry} disabled={!body.trim()} className="btn btn-primary w-full sm:w-auto" type="button">
             {saved ? <><Check className="h-4 w-4" /> Tersimpan</> : "Simpan Catatan Privat"}
           </button>
+          {error && <p className="rounded-xl bg-destructive/10 p-3 text-xs text-destructive">{error}</p>}
         </div>
       </section>
 
@@ -117,16 +144,18 @@ export function PrivateHealthJournal() {
             <Lock className="mt-0.5 h-5 w-5 shrink-0 text-brand" />
             <div>
               <h3 className="text-sm font-bold text-foreground">Privasi jurnal</h3>
-              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Pada MVP, catatan disimpan hanya di browser ini. Catatan tidak dipublikasikan dan tidak memengaruhi XP, HP, Health Pulse, atau Peringkat.</p>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Catatan disimpan privat pada akunmu di database. Catatan tidak dipublikasikan dan tidak memengaruhi XP, HP, Health Pulse, atau Peringkat.</p>
             </div>
           </div>
         </div>
 
         <div>
           <h3 className="font-display text-sm font-bold text-foreground">Catatan tersimpan</h3>
-          <p className="mt-0.5 text-xs text-muted-foreground">{entries.length} catatan privat di browser ini</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">{entries.length} catatan privat tersimpan</p>
         </div>
-        {entries.length === 0 ? (
+        {loading ? (
+          <div className="rounded-2xl border border-dashed border-line p-6 text-center text-xs text-muted-foreground">Memuat jurnal dari database...</div>
+        ) : entries.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-line p-6 text-center text-xs text-muted-foreground">Belum ada catatan. Mulai dengan satu kalimat sederhana.</div>
         ) : (
           <div className="space-y-3">
@@ -135,14 +164,14 @@ export function PrivateHealthJournal() {
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <h4 className="truncate text-sm font-bold text-foreground">{entry.title}</h4>
-                    <p className="mt-0.5 text-[10px] text-muted-foreground">{entry.createdAt} · {entry.mood}</p>
+                    <p className="mt-0.5 text-[10px] text-muted-foreground">{new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short" }).format(new Date(entry.createdAt))} · {entry.mood ?? "Netral"}</p>
                   </div>
                   <button onClick={() => removeEntry(entry.id)} className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive" aria-label={`Hapus ${entry.title}`}>
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
-                <p className="mt-3 line-clamp-4 whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground">{entry.body}</p>
-                {entry.allowNora && <span className="mt-3 inline-flex items-center gap-1 text-[10px] font-semibold text-brand"><Sparkles className="h-3 w-3" /> Ringkasan dapat dipakai Nora</span>}
+                <p className="mt-3 line-clamp-4 whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground">{entry.content}</p>
+                {entry.allowCompanion && <span className="mt-3 inline-flex items-center gap-1 text-[10px] font-semibold text-brand"><Sparkles className="h-3 w-3" /> Ringkasan dapat dipakai Nora</span>}
               </article>
             ))}
           </div>

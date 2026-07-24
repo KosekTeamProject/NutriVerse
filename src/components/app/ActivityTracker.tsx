@@ -14,6 +14,8 @@ import {
 } from "@/lib/activity";
 import { downloadActivityPng } from "@/features/activity/export-activity-png";
 import { LiveRouteMap } from "@/features/activity/components/LiveRouteMap";
+import { notifyDataChanged } from "@/lib/data-sync";
+import { useProgressData } from "@/providers/ProgressDataProvider";
 
 type Status = "idle" | "tracking" | "paused" | "finished";
 type TelemetryPoint = {
@@ -26,7 +28,6 @@ type TelemetryPoint = {
   speed: number | null;
 };
 
-const DEMO_XP_EARNED_TODAY = 120;
 const MAX_SESSION_SECONDS = 4 * 60 * 60;
 const MAX_ROUTE_POINTS = 20_000;
 const TELEMETRY_BATCH_SIZE = 100;
@@ -36,6 +37,7 @@ const CLIENT_SESSION_STORAGE_KEY = "nutriverse:active-activity-client-session";
 
 export function ActivityTracker() {
   const router = useRouter();
+  const { overview } = useProgressData();
   const [kind, setKind] = useState<ActivityKind>("run");
   const [status, setStatus] = useState<Status>("idle");
   const [useSim, setUseSim] = useState(false);
@@ -642,7 +644,8 @@ export function ActivityTracker() {
     serverRejected;
   const km = distance / 1000;
   const baseXp = computeXp(distance, kind);
-  const xpPolicy = applyDailyXpPolicy(baseXp, DEMO_XP_EARNED_TODAY);
+  const xpEarnedToday = overview?.economy.xpToday ?? 0;
+  const xpPolicy = applyDailyXpPolicy(baseXp, xpEarnedToday);
   const xp = suspicious ? 0 : xpPolicy.awarded;
   const averageSpeed = speedKmh(distance, elapsed);
   const displayedSpeed = status === "tracking" ? liveSpeed : averageSpeed;
@@ -729,6 +732,7 @@ export function ActivityTracker() {
       setServerAwardXp(finishResult.reward?.xpGrant?.amount ?? 0);
       setSaved(true);
       clearStoredClientSession();
+      notifyDataChanged();
       router.refresh();
     } catch (saveError) {
       setError(
@@ -819,13 +823,13 @@ export function ActivityTracker() {
                 </p>
               </div>
             </div>
-            <span className="pill border border-brand/20 bg-card text-[10px] font-bold text-brand">ATURAN DEMO</span>
+            <span className="pill border border-brand/20 bg-card text-[10px] font-bold text-brand">ATURAN SERVER</span>
           </div>
           <div className="chart-progress mt-3 h-2 overflow-hidden rounded-full bg-card">
-            <div className="h-full rounded-full bg-brand" style={{ width: `${Math.min(100, (DEMO_XP_EARNED_TODAY / XP_SAFETY_POLICY.dailyCap) * 100)}%` }} />
+            <div className="h-full rounded-full bg-brand" style={{ width: `${Math.min(100, (xpEarnedToday / XP_SAFETY_POLICY.dailyCap) * 100)}%` }} />
           </div>
           <div className="mt-1.5 flex justify-between text-[10px] text-muted-foreground">
-            <span>{DEMO_XP_EARNED_TODAY} XP diperoleh hari ini</span>
+            <span>{xpEarnedToday} XP diperoleh hari ini</span>
             <span>{xpPolicy.remainingToday} XP tersisa</span>
           </div>
         </div>
@@ -871,7 +875,7 @@ export function ActivityTracker() {
             </div>
           )}
           <p className="mt-1 text-[10px] leading-normal text-muted-foreground">
-            Aktivitas ini memenuhi pemeriksaan demonstrasi saat ini. Verifikasi produksi memerlukan pemrosesan server.
+            Aktivitas ini telah melewati pemeriksaan integritas di server. Keputusan reward dan progres disimpan di database.
           </p>
         </div>
       </div>
@@ -935,7 +939,7 @@ export function ActivityTracker() {
         {status === "finished" && (
           <>
             {saved ? (
-              <span className="btn bg-brand-soft text-brand"><Check className="h-5 w-5" /> {suspicious ? "Riwayat pribadi tersimpan" : "Tersimpan (demo)"}</span>
+              <span className="btn bg-brand-soft text-brand"><Check className="h-5 w-5" /> {suspicious ? "Riwayat pribadi tersimpan" : "Tersimpan di database"}</span>
             ) : (
               <button onClick={saveActivity} disabled={saving} className="btn btn-primary btn-lg disabled:opacity-60">
                 <Save className="h-5 w-5" /> {saving ? "Mengirim..." : suspicious ? "Simpan sebagai riwayat pribadi" : `Simpan (Estimasi +${xp} XP)`}

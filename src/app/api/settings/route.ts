@@ -1,6 +1,6 @@
 import { PrivacyLevel, Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
-import { apiErrorResponse, assertSameOrigin } from "@/lib/api";
+import { apiErrorResponse, assertSameOrigin, finiteNumber } from "@/lib/api";
 import { requireCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -15,9 +15,29 @@ const privacyFields = ["profileVisibility", "pulseVisibility", "activityVisibili
 export async function GET() {
   try {
     const user = await requireCurrentUser();
-    const settings = await prisma.userSettings.findUnique({ where: { userId: user.id } });
-    const companion = await prisma.companionPreference.findUnique({ where: { userId: user.id } });
-    return NextResponse.json({ success: true, settings, companion });
+    const [settings, companion, healthProfile] = await Promise.all([
+      prisma.userSettings.upsert({
+        where: { userId: user.id },
+        create: { userId: user.id },
+        update: {},
+      }),
+      prisma.companionPreference.upsert({
+        where: { userId: user.id },
+        create: { userId: user.id },
+        update: {},
+      }),
+      prisma.healthProfile.upsert({
+        where: { userId: user.id },
+        create: { userId: user.id },
+        update: {},
+      }),
+    ]);
+    return NextResponse.json({
+      success: true,
+      settings,
+      companion,
+      healthProfile,
+    });
   } catch (error) {
     return apiErrorResponse(error);
   }
@@ -66,12 +86,122 @@ export async function PATCH(request: NextRequest) {
     ) {
       data.rawGpsRetentionDays = body.rawGpsRetentionDays;
     }
-    const settings = await prisma.userSettings.upsert({
-      where: { userId: user.id },
-      create: { ...(data as Prisma.UserSettingsUncheckedCreateInput), userId: user.id },
-      update: data,
+
+    const dailyStepTarget = finiteNumber(body.dailyStepTarget, "Target langkah", {
+      min: 1_000,
+      max: 100_000,
+      optional: true,
     });
-    return NextResponse.json({ success: true, settings });
+    const dailyCalorieTarget = finiteNumber(body.dailyCalorieTarget, "Target kalori", {
+      min: 500,
+      max: 10_000,
+      optional: true,
+    });
+    const dailyProteinTargetGrams = finiteNumber(
+      body.dailyProteinTargetGrams,
+      "Target protein",
+      { min: 10, max: 1_000, optional: true },
+    );
+    const dailyCarbTargetGrams = finiteNumber(
+      body.dailyCarbTargetGrams,
+      "Target karbohidrat",
+      { min: 10, max: 2_000, optional: true },
+    );
+    const dailyFiberTargetGrams = finiteNumber(
+      body.dailyFiberTargetGrams,
+      "Target serat",
+      { min: 1, max: 200, optional: true },
+    );
+    const dailyWaterTargetMl = finiteNumber(body.dailyWaterTargetMl, "Target air", {
+      min: 250,
+      max: 10_000,
+      optional: true,
+    });
+    const dailySleepTargetHours = finiteNumber(
+      body.dailySleepTargetHours,
+      "Target tidur",
+      { min: 1, max: 24, optional: true },
+    );
+    const dailyActiveTargetMinutes = finiteNumber(
+      body.dailyActiveTargetMinutes,
+      "Target menit aktif",
+      { min: 1, max: 1_440, optional: true },
+    );
+    const healthProfileData = {
+      ...(dailyStepTarget !== undefined
+        ? { dailyStepTarget: Math.round(dailyStepTarget) }
+        : {}),
+      ...(dailyCalorieTarget !== undefined
+        ? { dailyCalorieTarget: Math.round(dailyCalorieTarget) }
+        : {}),
+      ...(dailyProteinTargetGrams !== undefined
+        ? { dailyProteinTargetGrams: Math.round(dailyProteinTargetGrams) }
+        : {}),
+      ...(dailyCarbTargetGrams !== undefined
+        ? { dailyCarbTargetGrams: Math.round(dailyCarbTargetGrams) }
+        : {}),
+      ...(dailyFiberTargetGrams !== undefined
+        ? { dailyFiberTargetGrams: Math.round(dailyFiberTargetGrams) }
+        : {}),
+      ...(dailyWaterTargetMl !== undefined
+        ? { dailyWaterTargetMl: Math.round(dailyWaterTargetMl) }
+        : {}),
+      ...(dailySleepTargetHours !== undefined ? { dailySleepTargetHours } : {}),
+      ...(dailyActiveTargetMinutes !== undefined
+        ? { dailyActiveTargetMinutes: Math.round(dailyActiveTargetMinutes) }
+        : {}),
+    };
+
+    const companionData: Prisma.CompanionPreferenceUpdateInput = {};
+    if (typeof body.morningBriefEnabled === "boolean") {
+      companionData.morningBriefEnabled = body.morningBriefEnabled;
+    }
+    if (typeof body.weeklyLetterEnabled === "boolean") {
+      companionData.weeklyLetterEnabled = body.weeklyLetterEnabled;
+    }
+    if (typeof body.breakReminderEnabled === "boolean") {
+      companionData.breakReminderEnabled = body.breakReminderEnabled;
+    }
+    if (
+      typeof body.breakReminderIntervalMinutes === "number" &&
+      [60, 90, 120].includes(body.breakReminderIntervalMinutes)
+    ) {
+      companionData.breakReminderIntervalMinutes =
+        body.breakReminderIntervalMinutes;
+    }
+
+    const [settings, companion, healthProfile] = await prisma.$transaction([
+      prisma.userSettings.upsert({
+        where: { userId: user.id },
+        create: {
+          ...(data as Prisma.UserSettingsUncheckedCreateInput),
+          userId: user.id,
+        },
+        update: data,
+      }),
+      prisma.companionPreference.upsert({
+        where: { userId: user.id },
+        create: {
+          ...(companionData as Prisma.CompanionPreferenceUncheckedCreateInput),
+          userId: user.id,
+        },
+        update: companionData,
+      }),
+      prisma.healthProfile.upsert({
+        where: { userId: user.id },
+        create: {
+          ...healthProfileData,
+          userId: user.id,
+        },
+        update: healthProfileData,
+      }),
+    ]);
+    return NextResponse.json({
+      success: true,
+      settings,
+      companion,
+      healthProfile,
+    });
   } catch (error) {
     return apiErrorResponse(error);
   }
