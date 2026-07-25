@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { Camera, PencilLine, Clock, Trash2, Info, Leaf, Database, X, Check, Filter, Sparkles, Scale } from "lucide-react";
+import { Camera, PencilLine, Clock, Trash2, Info, Leaf, Database, X, Check, Filter, Sparkles, Scale, ChevronDown } from "lucide-react";
 import { FoodScanner, type LoggedFood } from "./FoodScanner";
 import { ManualFoodInput } from "./ManualFoodInput";
 import { NutritionTrustBadge } from "@/features/nutrition/components/NutritionComponents";
@@ -278,24 +278,72 @@ export function FoodLogger() {
 
   return (
     <div className="space-y-6 animate-fade-up">
-      {/* Nutrition Summary Cards */}
-      <div className="card card-pad border-brand/20 bg-gradient-to-br from-card via-card to-brand-soft/20 shadow-soft">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line/45 pb-3">
-          <div>
-            <span className="eyebrow bg-brand-soft/40 border-brand/20 text-brand text-[10px] py-0.5 px-2">
-              NutriVerse Intelligence
-            </span>
-            <h3 className="font-display text-base font-bold text-foreground mt-1">Ringkasan Pemenuhan Gizi</h3>
+      {/* Main Tab Navigation - Progressive Disclosure */}
+      <div className="relative z-20">
+        <details className="group relative">
+          <summary className="flex cursor-pointer select-none items-center justify-between gap-3 rounded-2xl border border-line bg-card p-4 shadow-sm outline-none transition hover:bg-secondary/50">
+            <div className="flex items-center gap-3">
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brand-soft text-brand">
+                {(() => {
+                  const Icon = mainTabs.find((t) => t.key === tab)?.icon ?? Camera;
+                  return <Icon className="h-5 w-5" />;
+                })()}
+              </div>
+              <div>
+                <p className="text-[10px] font-bold tracking-[0.14em] text-muted-foreground uppercase">Mode Navigasi</p>
+                <p className="font-display text-sm font-extrabold text-foreground">{mainTabs.find(t => t.key === tab)?.label}</p>
+              </div>
+            </div>
+            <div className="grid h-8 w-8 place-items-center rounded-full bg-secondary text-muted-foreground">
+               <ChevronDown className="h-4 w-4 transition duration-300 group-open:rotate-180" />
+            </div>
+          </summary>
+          <div className="absolute left-0 right-0 top-full mt-2 overflow-hidden rounded-2xl border border-line bg-card p-2 shadow-xl opacity-0 invisible group-open:opacity-100 group-open:visible transition-all duration-200">
+            {mainTabs.map((t) => {
+              const Icon = t.icon;
+              return (
+                <button
+                  key={t.key}
+                  onClick={(e) => {
+                    setTab(t.key);
+                    e.currentTarget.closest('details')?.removeAttribute('open');
+                  }}
+                  className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left transition ${tab === t.key ? "bg-brand-soft text-brand" : "text-muted-foreground hover:bg-secondary hover:text-foreground"}`}
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                  <span className="text-sm font-bold">{t.label}</span>
+                  {tab === t.key && <Check className="ml-auto h-4 w-4" />}
+                </button>
+              );
+            })}
           </div>
-          <span className="chip text-xs font-bold">
-            <Clock className="h-3.5 w-3.5 text-brand" /> {totals.kcal} kcal Terhitung
-          </span>
-        </div>
+        </details>
+      </div>
 
-        {/* Macro Progress Bars */}
-        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+      {/* Tab Content */}
+      {tab === "scan" && <FoodScanner onAdd={addEntry} />}
+      {tab === "manual" && <ManualFoodInput onAdd={addEntry} />}
+      {tab === "recommendation" && <AIMenuRecommendation />}
+      {tab === "weight" && <BodyWeightTracker />}
+
+      {/* Nutrition Summary Cards - Progressive Disclosure */}
+      <details className="group rounded-3xl border border-line bg-card shadow-sm open:pb-4 transition-all duration-300">
+        <summary className="flex cursor-pointer items-center justify-between p-4 outline-none select-none">
+          <div className="flex items-center gap-3">
+            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-brand-soft text-brand">
+              <Clock className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="font-display text-sm font-extrabold text-foreground">Ringkasan Pemenuhan Gizi</p>
+              <p className="text-xs text-muted-foreground">{totals.kcal} kcal Terhitung Hari Ini</p>
+            </div>
+          </div>
+          <span className="text-brand text-xs font-bold group-open:hidden px-3 py-1.5 rounded-full bg-brand-soft">Lihat Detail</span>
+        </summary>
+        
+        <div className="px-4 mt-2 grid gap-3 sm:grid-cols-3">
           {/* Protein */}
-          <div className="rounded-2xl border border-line bg-card p-3.5 space-y-1.5 shadow-sm">
+          <div className="rounded-2xl border border-line bg-secondary/30 p-3.5 space-y-1.5 shadow-sm">
             <div className="flex items-center justify-between text-xs font-bold">
               <span className="text-foreground">Protein</span>
               <span className="text-brand stat-num">{proteinPct}%</span>
@@ -307,7 +355,7 @@ export function FoodLogger() {
           </div>
 
           {/* Carbs */}
-          <div className="rounded-2xl border border-line bg-card p-3.5 space-y-1.5 shadow-sm">
+          <div className="rounded-2xl border border-line bg-secondary/30 p-3.5 space-y-1.5 shadow-sm">
             <div className="flex items-center justify-between text-xs font-bold">
               <span className="text-foreground">Karbohidrat</span>
               <span className="text-sky stat-num">{carbsPct}%</span>
@@ -319,7 +367,7 @@ export function FoodLogger() {
           </div>
 
           {/* Fiber */}
-          <div className="rounded-2xl border border-line bg-card p-3.5 space-y-1.5 shadow-sm">
+          <div className="rounded-2xl border border-line bg-secondary/30 p-3.5 space-y-1.5 shadow-sm">
             <div className="flex items-center justify-between text-xs font-bold">
               <span className="text-foreground">Serat Pangan</span>
               <span className="text-lime stat-num">{fiberPct}%</span>
@@ -330,31 +378,7 @@ export function FoodLogger() {
             <p className="text-[10px] text-muted-foreground">{totals.fiber}g / {targets.fiber}g target harian</p>
           </div>
         </div>
-      </div>
-
-      {/* Main Tab Navigation */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 rounded-2xl bg-secondary p-1">
-        {mainTabs.map((t) => {
-          const Icon = t.icon;
-          return (
-            <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
-              className={`flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs sm:text-sm font-semibold transition ${
-                tab === t.key ? "bg-card text-foreground shadow-soft" : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Icon className="h-4 w-4" /> <span>{t.label}</span>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Tab Content */}
-      {tab === "scan" && <FoodScanner onAdd={addEntry} />}
-      {tab === "manual" && <ManualFoodInput onAdd={addEntry} />}
-      {tab === "recommendation" && <AIMenuRecommendation />}
-      {tab === "weight" && <BodyWeightTracker />}
+      </details>
 
       {/* Food History Section */}
       <div className="card card-pad space-y-4 border-line/60 bg-card">

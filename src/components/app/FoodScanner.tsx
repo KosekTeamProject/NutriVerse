@@ -166,13 +166,42 @@ export function FoodScanner({ onAdd }: { onAdd?: (entry: LoggedFood) => void }) 
     <div className="card card-pad space-y-6">
       <input ref={fileRef} type="file" accept="image/*" onChange={onPick} className="hidden" aria-label="Unggah foto makanan" />
 
-      {/* Demo Selector */}
+      {/* Image Preview Container - Dominant and First */}
+      <div className="relative overflow-hidden rounded-3xl border border-line bg-secondary/20 shadow-sm transition-all duration-300">
+        {imageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={imageUrl} alt="Foto makanan" className="h-48 sm:h-64 w-full object-cover" />
+        ) : isDemoMode && status !== "empty" ? (
+          <div className="flex h-48 sm:h-64 w-full flex-col items-center justify-center bg-brand/5 text-brand p-4 text-center">
+            <Leaf className="h-8 sm:h-10 w-8 sm:w-10 mb-2 sm:mb-3" />
+            <p className="text-base font-extrabold text-foreground">{currentFood.name}</p>
+            <p className="text-xs text-muted-foreground mt-1">Mode Demo: contoh susunan makanan dimuat</p>
+          </div>
+        ) : (
+          <button onClick={() => fileRef.current?.click()} className="group flex h-48 sm:h-64 w-full flex-col items-center justify-center gap-3 sm:gap-4 text-muted-foreground transition hover:bg-secondary/40">
+            <span className="grid h-14 w-14 sm:h-16 sm:w-16 place-items-center rounded-full bg-brand-soft text-brand transition-transform group-hover:scale-110 shadow-sm"><Camera className="h-6 w-6 sm:h-7 sm:w-7" /></span>
+            <div className="space-y-1 text-center">
+              <p className="text-sm sm:text-base font-bold text-foreground">Ambil foto makanan</p>
+              <p className="text-[10px] sm:text-xs">atau unggah gambar (JPG/PNG)</p>
+            </div>
+          </button>
+        )}
+        {status === "scanning" && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-ink/75 text-white backdrop-blur-md transition-all duration-300">
+            <Loader2 className="h-10 w-10 animate-spin text-brand" />
+            <p className="text-sm font-semibold">Menganalisis nutrisi dengan AI...</p>
+          </div>
+        )}
+      </div>
+
+      {/* Demo Selector - Progressive Disclosure */}
       {(status === "empty" || status === "ready") && (
-        <div className="space-y-4 border-b border-line/40 pb-4">
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
-              Contoh Analisis Demo
-            </label>
+        <details className="group rounded-2xl border border-line bg-card shadow-sm open:pb-4 transition-all duration-300">
+          <summary className="flex cursor-pointer items-center justify-between p-3 outline-none select-none text-xs font-bold text-muted-foreground hover:text-foreground">
+            <span className="flex items-center gap-2"><Sparkles className="h-4 w-4" /> Atau coba contoh Analisis Demo</span>
+            <span className="text-brand group-open:hidden">Buka</span>
+          </summary>
+          <div className="px-3 pt-1 space-y-4">
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
               {deterministicFoodEntries.map((entry, idx) => (
                 <button
@@ -185,7 +214,7 @@ export function FoodScanner({ onAdd }: { onAdd?: (entry: LoggedFood) => void }) 
                     setCustomName("");
                     setStatus("ready");
                   }}
-                  className={`rounded-xl border p-2.5 text-xs font-bold text-center transition leading-tight ${
+                  className={`rounded-xl border p-2 text-xs font-bold text-center transition leading-tight ${
                     demoIndex === idx && isDemoMode && (status === "ready" || status === "empty") && !customName
                       ? "border-brand bg-brand-soft text-brand shadow-sm"
                       : "border-line text-muted-foreground hover:bg-secondary"
@@ -195,17 +224,12 @@ export function FoodScanner({ onAdd }: { onAdd?: (entry: LoggedFood) => void }) 
                 </button>
               ))}
             </div>
-            <p className="text-[10px] text-muted-foreground italic">
-              * Pilih contoh untuk mencoba alur. Contoh tidak masuk riwayat sampai disimpan.
-            </p>
-          </div>
-
-          {/* Custom Food Name Input */}
-          <div className="pt-3 border-t border-line/20 space-y-2">
-            <label htmlFor="food-name-input" className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
-              Atau Ketik Jenis Makanan Anda
-            </label>
-            <div className="flex gap-2">
+            
+            {/* Custom Food Name Input */}
+            <div className="pt-3 border-t border-line/30 space-y-2">
+              <label htmlFor="food-name-input" className="text-xs font-bold text-foreground block">
+                Ketik Manual Jenis Makanan
+              </label>
               <input
                 id="food-name-input"
                 type="text"
@@ -219,39 +243,13 @@ export function FoodScanner({ onAdd }: { onAdd?: (entry: LoggedFood) => void }) 
                     setStatus("empty");
                   }
                 }}
-                placeholder="Ketik nama makanan, misal: Soto Ayam..."
-                className="input text-sm flex-1"
+                placeholder="misal: Soto Ayam, Nasi Goreng..."
+                className="input text-sm w-full"
               />
             </div>
           </div>
-        </div>
+        </details>
       )}
-
-      {/* Image Preview Container */}
-      <div className="relative overflow-hidden rounded-2xl border border-line bg-secondary/40">
-        {imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={imageUrl} alt="Foto makanan" className="h-64 w-full object-cover" />
-        ) : isDemoMode && status !== "empty" ? (
-          <div className="flex h-64 w-full flex-col items-center justify-center bg-brand/5 text-brand p-4 text-center">
-            <Leaf className="h-10 w-10 mb-2" />
-            <p className="text-sm font-extrabold text-foreground">{currentFood.name}</p>
-            <p className="text-xs text-muted-foreground mt-1">Mode Demo: contoh susunan makanan dimuat</p>
-          </div>
-        ) : (
-          <button onClick={() => fileRef.current?.click()} className="flex h-64 w-full flex-col items-center justify-center gap-3 text-muted-foreground transition hover:bg-secondary">
-            <span className="grid h-14 w-14 place-items-center rounded-2xl bg-brand-soft text-brand"><Camera className="h-7 w-7" /></span>
-            <p className="text-sm font-semibold text-foreground">Ambil foto atau unggah makanan</p>
-            <p className="text-xs">Format JPG/PNG</p>
-          </button>
-        )}
-        {status === "scanning" && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-ink/65 text-white backdrop-blur-sm">
-            <Loader2 className="h-8 w-8 animate-spin text-brand" />
-            <p className="text-sm font-semibold">Mengirim ke AI untuk dianalisis...</p>
-          </div>
-        )}
-      </div>
 
       {/* Upload Privacy Note */}
       <p className="text-[10px] text-muted-foreground leading-normal bg-secondary/45 rounded-xl p-3 border border-line/30">

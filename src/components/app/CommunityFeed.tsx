@@ -13,6 +13,7 @@ import { NutriVerseMoments } from "@/components/app/NutriVerseMoments";
 import type { CommunityOverview } from "@/features/progress/types";
 import { notifyDataChanged } from "@/lib/data-sync";
 import { useProgressData } from "@/providers/ProgressDataProvider";
+import { useAuthSession } from "@/hooks/useAuthSession";
 
 function initials(name: string) {
   return name.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase();
@@ -32,6 +33,7 @@ const KIND_STYLE = {
 
 function PostCard({ p }: { readonly p: Post }) {
   const [liked, setLiked] = useState(false);
+  const [showComments, setShowComments] = useState(false);
   const Icon = KIND_ICON[p.kind] ?? Footprints;
   const statusColors = p.trustLevel === "verified"
     ? "bg-brand-soft text-brand border-brand/20"
@@ -72,10 +74,44 @@ function PostCard({ p }: { readonly p: Post }) {
         >
           <Heart className={`h-3.5 w-3.5 ${liked ? "fill-current" : ""}`} /> Beri Semangat &middot; {p.encourages + (liked ? 1 : 0)}
         </button>
-        <span className="inline-flex max-w-full items-center gap-1.5 rounded-full px-2 py-1.5 text-xs font-bold text-muted-foreground sm:px-3">
+        <button
+          onClick={() => setShowComments((v) => !v)}
+          className={`inline-flex max-w-full items-center gap-1.5 rounded-full px-2 py-1.5 text-left text-xs font-bold transition sm:px-3 ${showComments ? "bg-secondary text-foreground shadow-sm" : "text-muted-foreground hover:bg-secondary"}`}
+          aria-label="Lihat komentar dukungan"
+        >
           <MessageCircle className="h-3.5 w-3.5" /> Komentar Dukungan &middot; {p.comments}
-        </span>
+        </button>
       </div>
+
+      {showComments && (
+        <div className="mt-2 border-t border-line/45 pt-4">
+          <div className="max-h-[14rem] overflow-y-auto overscroll-contain pr-2 space-y-3 custom-scrollbar">
+            {Array.from({ length: p.comments }).map((_, i) => (
+              <div key={i} className="flex gap-2.5">
+                <div className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-secondary text-[10px] font-bold text-muted-foreground">
+                  NN
+                </div>
+                <div className="flex-1 min-w-0 rounded-2xl rounded-tl-none bg-secondary/50 p-2.5">
+                  <p className="text-[11px] font-bold text-foreground">NutriFriend {i + 1}</p>
+                  <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
+                    Wah mantap banget progresnya! Lanjutkan terus ya konsistensinya 💪
+                  </p>
+                </div>
+              </div>
+            ))}
+            {p.comments === 0 && (
+              <p className="text-[11px] text-muted-foreground italic text-center py-4">Jadilah yang pertama memberi dukungan.</p>
+            )}
+          </div>
+          <div className="mt-3 relative">
+            <input 
+              type="text" 
+              placeholder="Tambahkan dukungan..." 
+              className="w-full rounded-xl border border-line bg-secondary/30 px-3 py-2 text-[11px] text-foreground placeholder:text-muted-foreground focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand/30" 
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -395,6 +431,7 @@ function drawPosterLineIcon(context: CanvasRenderingContext2D, kind: string, x: 
 
 function ShareTemplateStudio() {
   const { overview } = useProgressData();
+  const [isStudioOpen, setIsStudioOpen] = useState(false);
   const [templateIndex, setTemplateIndex] = useState(0);
   const [contentIndex, setContentIndex] = useState(0);
   const [caption, setCaption] = useState<string>("Progres sehatku hari ini tercatat di NutriVerse. #NutriVerse");
@@ -537,6 +574,24 @@ function ShareTemplateStudio() {
     }
   }
 
+  if (!isStudioOpen) {
+    return (
+      <section className="card card-pad border-line bg-card flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="pill bg-brand-soft text-[9px] font-bold text-brand"><Share2 className="h-3.5 w-3.5" /> TEMPLATE MEDIA SOSIAL</span>
+            <span className="pill border border-brand/15 bg-card text-[9px] font-bold text-brand"><Lock className="h-3.5 w-3.5" /> PRIVAT</span>
+          </div>
+          <h2 className="mt-3 font-display text-lg font-extrabold text-foreground">Studio berbagi progres NutriVerse</h2>
+          <p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted-foreground">Buat visual siap Story atau Post tanpa membagikan data spesifik dan catatan pribadi.</p>
+        </div>
+        <button onClick={() => setIsStudioOpen(true)} className="btn btn-primary sm:w-auto shrink-0 w-full text-xs shadow-sm">
+          Buka Studio
+        </button>
+      </section>
+    );
+  }
+
   return (
     <section className="card min-w-0 overflow-hidden border-brand/15 bg-card">
       <header className="flex flex-col gap-3 border-b border-line/55 bg-gradient-to-r from-card via-card to-brand-soft/30 px-4 py-5 sm:flex-row sm:items-end sm:justify-between sm:px-6">
@@ -545,7 +600,10 @@ function ShareTemplateStudio() {
           <h2 className="mt-2 font-display text-lg font-extrabold text-foreground sm:text-xl">Studio berbagi progres NutriVerse</h2>
           <p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted-foreground">Buat visual siap Story atau Post tanpa membagikan rute, lokasi presisi, jurnal, maupun catatan makanan.</p>
         </div>
-        <span className="pill w-fit border border-brand/15 bg-card text-[9px] font-bold text-brand"><Lock className="h-3.5 w-3.5" /> DATA PRIVAT TERLINDUNGI</span>
+        <div className="flex flex-col gap-3 sm:items-end">
+          <span className="pill w-fit border border-brand/15 bg-card text-[9px] font-bold text-brand"><Lock className="h-3.5 w-3.5" /> DATA PRIVAT TERLINDUNGI</span>
+          <button onClick={() => setIsStudioOpen(false)} className="btn bg-card text-foreground hover:bg-secondary text-xs w-full sm:w-auto border border-line shadow-sm">Tutup Studio</button>
+        </div>
       </header>
 
       <div className="grid min-w-0 gap-5 p-4 sm:p-6 min-[1600px]:grid-cols-[minmax(280px,360px)_minmax(0,1fr)] min-[1600px]:items-start">
@@ -647,6 +705,7 @@ export function CommunityHub() {
 }
 
 export function CommunityFeed() {
+  const session = useAuthSession();
   const [location, setLocation] = useState("Semua Area");
   const [overview, setOverview] = useState<CommunityOverview | null>(null);
   const [leaders, setLeaders] = useState<
@@ -763,9 +822,6 @@ export function CommunityFeed() {
               ); })}
             </div>
           </section>
-
-          <NutriVerseMoments />
-
           <ShareTemplateStudio />
 
           <div className="space-y-4">
@@ -799,7 +855,30 @@ export function CommunityFeed() {
           <section className="card card-pad border-line bg-card">
             <div className="flex items-center justify-between gap-2"><h2 className="font-display text-sm font-bold text-foreground">Peringkat Minggu Ini</h2><Trophy className="h-5 w-5 text-amber" /></div>
             <div className="mt-4 space-y-3">
-              {leaders.map((item, index) => <div key={item.id} className="flex items-center gap-2.5"><span className={`grid h-6 w-6 place-items-center rounded-full text-[10px] font-extrabold ${index < 3 ? "bg-amber/15 text-amber" : "bg-secondary text-muted-foreground"}`}>{index + 1}</span><span className="grid h-8 w-8 place-items-center rounded-full bg-gradient-to-br from-brand to-lime text-[9px] font-bold text-white">{initials(item.name)}</span><p className="min-w-0 flex-1 truncate text-[11px] font-bold text-foreground">{item.name}</p><p className="shrink-0 text-[10px] font-bold text-amber">{(item.economy?.totalXp ?? 0).toLocaleString("id-ID")} XP</p></div>)}
+              {leaders.map((item, index) => {
+                const isCurrentUser = session?.name === item.name;
+                const medalStyle = index === 0 ? "bg-amber/20 text-amber border-amber/40" 
+                                 : index === 1 ? "bg-slate-300/20 text-slate-400 border-slate-300/40"
+                                 : index === 2 ? "bg-orange-700/20 text-orange-600 border-orange-700/40"
+                                 : "bg-secondary text-muted-foreground border-transparent";
+                
+                return (
+                  <div key={item.id} className={`flex items-center gap-3 rounded-2xl p-2.5 transition-all ${isCurrentUser ? "bg-brand/10 border-brand/30 shadow-sm" : "border-transparent hover:bg-secondary/30"} border`}>
+                    <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-full border text-[10px] font-extrabold ${medalStyle}`}>
+                      {index + 1}
+                    </span>
+                    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-gradient-to-br from-brand to-lime text-[9px] font-bold text-white shadow-sm">{initials(item.name)}</span>
+                    <div className="min-w-0 flex-1">
+                      <p className={`truncate text-xs font-bold ${isCurrentUser ? "text-brand" : "text-foreground"}`}>
+                        {item.name} {isCurrentUser && "(Kamu)"}
+                      </p>
+                    </div>
+                    <p className="shrink-0 text-[10px] font-bold text-amber">
+                      {(item.economy?.totalXp ?? 0).toLocaleString("id-ID")} XP
+                    </p>
+                  </div>
+                );
+              })}
             </div>
             <button onClick={() => window.location.hash = "peringkat"} className="mt-4 w-full rounded-xl bg-secondary py-2 text-[10px] font-bold text-brand">Lihat Peringkat Lengkap</button>
           </section>

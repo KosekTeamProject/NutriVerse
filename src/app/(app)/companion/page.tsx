@@ -213,10 +213,10 @@ function ChatSection() {
         {messages.map((m, i) => (
           <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
             <div className="max-w-[85%] space-y-0.5">
-              <div className={`rounded-2xl px-4 py-2.5 text-xs leading-relaxed shadow-sm whitespace-pre-wrap ${
+              <div className={`rounded-3xl px-5 py-3 text-[13px] leading-relaxed shadow-soft whitespace-pre-wrap backdrop-blur-md transition-all ${
                 m.role === "user" 
-                  ? "bg-brand text-white font-bold rounded-tr-none" 
-                  : "bg-card text-foreground border border-line/50 rounded-tl-none"
+                  ? "bg-gradient-to-br from-brand to-brand/80 text-white font-medium rounded-tr-sm" 
+                  : "bg-card/70 text-foreground border border-line/40 rounded-tl-sm"
               }`}>
                 {m.text.replace("{{companion}}", displayName)}
               </div>
@@ -252,17 +252,22 @@ function ChatSection() {
       </div>
 
       {/* Suggested quick prompt chips */}
-      <div className="flex flex-wrap gap-2 pt-1">
-        {SUGGESTIONS.map((s) => (
-          <button
-            key={s}
-            onClick={() => ask(s)}
-            disabled={isTyping}
-            className="rounded-full border border-line bg-card hover:bg-secondary px-3 py-1.5 text-[10px] font-bold text-muted-foreground transition hover:text-brand text-left cursor-pointer disabled:opacity-50 min-h-[36px] flex items-center"
-          >
-            {s}
-          </button>
-        ))}
+      <div className="pt-2">
+        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5">
+          <Sparkles className="h-3 w-3 text-brand" /> Coba tanyakan ini
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {SUGGESTIONS.map((s) => (
+            <button
+              key={s}
+              onClick={() => ask(s)}
+              disabled={isTyping}
+              className="rounded-xl border border-brand/20 bg-brand-soft/20 hover:bg-brand-soft/50 px-3.5 py-2 text-[11px] font-semibold text-brand transition-all hover:scale-105 active:scale-95 text-left cursor-pointer disabled:opacity-50 min-h-[36px] flex items-center shadow-sm"
+            >
+              {s}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Message input */}

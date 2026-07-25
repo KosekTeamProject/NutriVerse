@@ -325,21 +325,21 @@ export function HealthyHabitSummary() {
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-brand">Kualitas Kebiasaan</p>
           <h2 className="mt-1 font-display text-lg font-bold text-foreground">Progres Sehatmu Minggu Ini</h2>
-          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Fokus utama adalah konsistensi gerak; total XP hanya pemanis tambahan.</p>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground hidden sm:block">Fokus utama adalah konsistensi gerak; total XP hanya pemanis tambahan.</p>
         </div>
         <Link href="/journey" className="btn btn-outline btn-xs font-bold">
-          Buka Perjalanan &amp; Jurnal <ChevronRight className="h-4 w-4" />
+          Buka Perjalanan <ChevronRight className="h-4 w-4" />
         </Link>
       </div>
-      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+      <div className="mt-4 flex overflow-x-auto gap-3 pb-2 snap-x snap-mandatory sm:grid sm:grid-cols-3 sm:overflow-visible sm:snap-none [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {metrics.map((metric) => {
           const Icon = metric.icon;
           return (
-            <div key={metric.label} className="rounded-2xl border border-line bg-card p-4 hover:scale-[1.01] transition">
+            <div key={metric.label} className="min-w-[140px] flex-1 shrink-0 snap-center rounded-2xl border border-line bg-card p-4 hover:scale-[1.01] transition">
               <Icon className="h-5 w-5 text-brand" />
               <p className="stat-num mt-3 text-2xl font-extrabold text-foreground">{metric.value}</p>
               <p className="mt-1 text-xs font-bold text-foreground">{metric.label}</p>
-              <p className="mt-0.5 text-[10px] text-muted-foreground">{metric.note}</p>
+              <p className="mt-0.5 text-[10px] text-muted-foreground truncate">{metric.note}</p>
             </div>
           );
         })}

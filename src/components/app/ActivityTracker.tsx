@@ -6,7 +6,7 @@ import {
   Play, Pause, Square, RotateCcw, Footprints, Bike, Timer, Gauge, Zap,
   TriangleAlert, ShieldCheck, Save, Check, Navigation, Radio,
   Car, ClockAlert, Scale, Accessibility, MoonStar, MessageSquareText,
-  Download,
+  Download, ChevronRight,
 } from "lucide-react";
 import {
   ACTIVITY, haversine, formatTime, paceMinPerKm, speedKmh, computeXp,
@@ -746,249 +746,192 @@ export function ActivityTracker() {
   }
 
   return (
-    <div className="card card-pad">
-      {/* activity type */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="inline-flex rounded-full bg-secondary p-1">
-          {(["walk", "run", "bike"] as ActivityKind[]).map((k) => {
-            const Icon = k === "walk" ? Footprints : k === "run" ? Footprints : Bike;
-            const on = kind === k;
-            return (
-              <button
-                key={k}
-                onClick={() => !active && setKind(k)}
-                disabled={active}
-                className={`inline-flex items-center gap-2 rounded-full px-3 sm:px-4 py-1.5 text-sm font-semibold transition disabled:cursor-not-allowed ${
-                  on ? "bg-card text-brand shadow-sm" : "text-muted-foreground"
-                }`}
-              >
-                <Icon className="h-4 w-4" /> {ACTIVITY[k].label}
-              </button>
-            );
-          })}
-        </div>
-
-        {status === "idle" && (
-          <button
-            onClick={() => setUseSim((v) => !v)}
-            disabled={starting}
-            className={`pill transition disabled:cursor-wait disabled:opacity-60 ${useSim ? "bg-sky/10 text-sky" : "bg-secondary text-muted-foreground"}`}
-          >
-            <span className={`h-2 w-2 rounded-full ${useSim ? "bg-sky" : "bg-muted-foreground/50"}`} />
-            Mode simulasi
-          </button>
-        )}
-      </div>
-
-      {/* big stat display */}
-      <div className="mt-6 text-center">
-        <p className="text-sm font-medium text-muted-foreground">Jarak tempuh</p>
-        <p className="stat-num mt-1 text-6xl leading-none">
-          {km.toFixed(2)}<span className="ml-2 text-2xl text-muted-foreground">km</span>
-        </p>
-      </div>
-
-      <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div className="rounded-2xl bg-secondary p-3 text-center">
-          <Timer className="mx-auto h-4 w-4 text-muted-foreground" />
-          <p className="stat-num mt-1.5 text-lg">{formatTime(elapsed)}</p>
-          <p className="text-[11px] text-muted-foreground">Waktu</p>
-        </div>
-        <div className="rounded-2xl bg-secondary p-3 text-center">
-          <Gauge className="mx-auto h-4 w-4 text-muted-foreground" />
-          <p className="stat-num mt-1.5 text-lg">{paceMinPerKm(distance, elapsed)}</p>
-          <p className="text-[11px] text-muted-foreground">Pace /km</p>
-        </div>
-        <div className="rounded-2xl bg-secondary p-3 text-center">
-          <Bike className="mx-auto h-4 w-4 text-muted-foreground" />
-          <p className="stat-num mt-1.5 text-lg">{displayedSpeed.toFixed(1)}</p>
-          <p className="text-[11px] text-muted-foreground">km/jam</p>
-        </div>
-        <div className="rounded-2xl bg-amber/15 p-3 text-center">
-          <Zap className="mx-auto h-4 w-4 text-amber" />
-          <p className="stat-num mt-1.5 text-lg text-amber">{xp}</p>
-          <p className="text-[11px] text-muted-foreground">Estimasi XP aman</p>
-        </div>
-      </div>
-
-      <div className="mt-4 grid gap-3 lg:grid-cols-[1.2fr_0.8fr]">
-        <div className="rounded-2xl border border-brand/20 bg-brand-soft/55 p-4">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="flex items-start gap-2.5">
-              <Scale className="mt-0.5 h-5 w-5 shrink-0 text-brand" />
-              <div>
-                <p className="text-sm font-bold text-foreground">Pengaman progres harian</p>
-                <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-                  XP penuh sampai {XP_SAFETY_POLICY.fullRateUntil}, lalu {XP_SAFETY_POLICY.reducedRate * 100}% hingga batas {XP_SAFETY_POLICY.dailyCap} XP/hari.
-                </p>
-              </div>
-            </div>
-            <span className="pill border border-brand/20 bg-card text-[10px] font-bold text-brand">ATURAN SERVER</span>
+    <div className="flex flex-col lg:grid lg:grid-cols-12 gap-4 lg:gap-6">
+      {/* LEFT COLUMN: Map, Mode, Controls */}
+      <div className="contents lg:block lg:col-span-7 xl:col-span-8 lg:space-y-6">
+        
+        {/* 1. Map (Hero) -> order-3 di mobile */}
+        <div className="order-3 lg:order-none card card-pad p-3 sm:p-4 border-line bg-card">
+          <div className="chart-surface chart-surface-sky h-48 sm:h-64 rounded-xl border border-line p-2">
+            <LiveRouteMap
+              segments={routeSegments}
+              currentLocation={currentLocation}
+              isTracking={status === "tracking"}
+            />
           </div>
-          <div className="chart-progress mt-3 h-2 overflow-hidden rounded-full bg-card">
-            <div className="h-full rounded-full bg-brand" style={{ width: `${Math.min(100, (xpEarnedToday / XP_SAFETY_POLICY.dailyCap) * 100)}%` }} />
-          </div>
-          <div className="mt-1.5 flex justify-between text-[10px] text-muted-foreground">
-            <span>{xpEarnedToday} XP diperoleh hari ini</span>
-            <span>{xpPolicy.remainingToday} XP tersisa</span>
-          </div>
-        </div>
-        <div className="rounded-2xl border border-line bg-secondary/45 p-4">
-          <div className="flex items-start gap-2.5">
-            <MoonStar className="mt-0.5 h-5 w-5 shrink-0 text-sky" />
-            <div>
-              <p className="text-sm font-bold text-foreground">Istirahat tetap bagian dari progres</p>
-              <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-                Streak Protection menjaga ritme saat hari pemulihan, tetapi tidak memberi XP tambahan.
-              </p>
-              <span className="mt-2 inline-flex text-[10px] font-bold uppercase tracking-wider text-sky">Roadmap server</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* route + validity */}
-      <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-stretch">
-        <div className="chart-surface chart-surface-sky h-40 rounded-2xl border border-line p-2">
-          <LiveRouteMap
-            segments={routeSegments}
-            currentLocation={currentLocation}
-            isTracking={status === "tracking"}
-          />
-        </div>
-        <div className="flex flex-col justify-center gap-2 rounded-2xl border border-line p-4 sm:w-52">
-          {suspicious ? (
-            <div className="flex items-start gap-2 text-amber">
-              <TriangleAlert className="mt-0.5 h-5 w-5 shrink-0" />
-              <div>
-                <p className="text-sm font-bold">Perlu Ditinjau</p>
-                <p className="text-xs text-muted-foreground">{rejected} segmen menunjukkan variasi kecepatan berlebih.</p>
-              </div>
-            </div>
-          ) : (
-            <div className="flex items-start gap-2 text-brand">
-              <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0" />
-              <div>
-                <p className="text-sm font-bold">Lolos Validasi Demo</p>
-                <p className="text-xs text-muted-foreground">Sampel saat ini lolos pemeriksaan browser.</p>
-              </div>
-            </div>
-          )}
-          <p className="mt-1 text-[10px] leading-normal text-muted-foreground">
-            Aktivitas ini telah melewati pemeriksaan integritas di server. Keputusan reward dan progres disimpan di database.
-          </p>
-        </div>
-      </div>
-
-      <div className="mt-3 rounded-2xl border border-line p-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <p className="text-sm font-bold text-foreground">Pemeriksaan integritas aktivitas</p>
-            <p className="text-xs text-muted-foreground">Beberapa sinyal dinilai bersama; satu anomali bukan otomatis kecurangan.</p>
-          </div>
-          <span className="pill bg-secondary text-[10px] font-bold text-muted-foreground">PRATINJAU BROWSER</span>
-        </div>
-        <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-          {integrityChecks.map((check) => {
-            const Icon = check.icon;
-            return (
-              <div key={check.label} className={`rounded-xl border p-3 ${check.issue ? "border-amber/30 bg-amber/10" : "border-line bg-secondary/35"}`}>
-                <div className="flex items-center gap-2">
-                  <Icon className={`h-4 w-4 ${check.issue ? "text-amber" : "text-brand"}`} />
-                  <p className="text-xs font-bold text-foreground">{check.label}</p>
-                </div>
-                <p className="mt-1 text-[10px] text-muted-foreground">{check.detail}</p>
-              </div>
-            );
-          })}
-        </div>
-        <p className="mt-3 text-[10px] leading-relaxed text-muted-foreground">
-          Deteksi spoofing GPS, replay, perangkat, dan keputusan reward final memerlukan verifikasi server.
-        </p>
-      </div>
-
-      {error && (
-        <div className="mt-4 flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
-          <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" /> {error}
-        </div>
-      )}
-
-      {/* controls */}
-      <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-        {status === "idle" && (
-          <button
-            onClick={begin}
-            disabled={starting}
-            className="btn btn-primary btn-lg disabled:cursor-wait disabled:opacity-60"
-          >
-            <Play className="h-5 w-5" /> {starting ? "Menyiapkan GPS..." : "Mulai"}
-          </button>
-        )}
-        {status === "tracking" && (
-          <>
-            <button onClick={pause} className="btn btn-outline btn-lg"><Pause className="h-5 w-5" /> Jeda</button>
-            <button onClick={finish} className="btn btn-primary btn-lg"><Square className="h-5 w-5" /> Selesai</button>
-          </>
-        )}
-        {status === "paused" && (
-          <>
-            <button onClick={resume} className="btn btn-primary btn-lg"><Play className="h-5 w-5" /> Lanjut</button>
-            <button onClick={finish} className="btn btn-outline btn-lg"><Square className="h-5 w-5" /> Selesai</button>
-          </>
-        )}
-        {status === "finished" && (
-          <>
-            {saved ? (
-              <span className="btn bg-brand-soft text-brand"><Check className="h-5 w-5" /> {suspicious ? "Riwayat pribadi tersimpan" : "Tersimpan di database"}</span>
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 px-1 text-xs text-muted-foreground">
+            {suspicious ? (
+              <span className="flex items-center gap-1.5 text-amber"><TriangleAlert className="h-4 w-4" /> Perlu ditinjau</span>
             ) : (
-              <button onClick={saveActivity} disabled={saving} className="btn btn-primary btn-lg disabled:opacity-60">
-                <Save className="h-5 w-5" /> {saving ? "Mengirim..." : suspicious ? "Simpan sebagai riwayat pribadi" : `Simpan (Estimasi +${xp} XP)`}
-              </button>
+              <span className="flex items-center gap-1.5 text-brand"><ShieldCheck className="h-4 w-4" /> Rute tervalidasi</span>
             )}
-            {suspicious && (reviewRequested ? (
-              <span className="btn bg-amber/15 text-amber"><Check className="h-5 w-5" /> Peninjauan diminta</span>
-            ) : (
-              <button onClick={() => setReviewRequested(true)} className="btn btn-outline btn-lg">
-                <MessageSquareText className="h-5 w-5" /> Ajukan peninjauan
-              </button>
-            ))}
+            <span className="pill bg-secondary text-[9px] uppercase font-bold text-muted-foreground">PETA LANGSUNG</span>
+          </div>
+        </div>
+
+        {/* 2. Mode Aktivitas -> order-1 di mobile */}
+        <div className="order-1 lg:order-none card card-pad p-4 border-line bg-card flex flex-wrap items-center justify-between gap-3">
+          <div className="inline-flex rounded-full bg-secondary p-1">
+            {(["walk", "run", "bike"] as ActivityKind[]).map((k) => {
+              const Icon = k === "walk" ? Footprints : k === "run" ? Footprints : Bike;
+              const on = kind === k;
+              return (
+                <button
+                  key={k}
+                  onClick={() => !active && setKind(k)}
+                  disabled={active}
+                  className={`inline-flex items-center gap-2 rounded-full px-3 sm:px-4 py-1.5 text-sm font-semibold transition disabled:cursor-not-allowed ${
+                    on ? "bg-card text-brand shadow-sm" : "text-muted-foreground"
+                  }`}
+                >
+                  <Icon className="h-4 w-4" /> <span className="hidden sm:inline">{ACTIVITY[k].label}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {status === "idle" && (
             <button
-              onClick={handleDownloadPng}
-              disabled={route.length < 2 || downloadingPng}
-              title={route.length < 2 ? "Rute belum memiliki cukup titik" : "Download ringkasan sebagai PNG"}
-              className="btn btn-outline btn-lg disabled:cursor-not-allowed disabled:opacity-50"
+              onClick={() => setUseSim((v) => !v)}
+              disabled={starting}
+              className={`pill transition disabled:cursor-wait disabled:opacity-60 ${useSim ? "bg-sky/10 text-sky" : "bg-secondary text-muted-foreground"}`}
             >
-              <Download className="h-5 w-5" />
-              {downloadingPng ? "Membuat PNG..." : pngDownloaded ? "PNG Terunduh" : "Download Foto"}
+              <span className={`h-2 w-2 rounded-full ${useSim ? "bg-sky" : "bg-muted-foreground/50"}`} />
+              Mode simulasi
             </button>
-            <button onClick={reset} className="btn btn-ghost btn-lg"><RotateCcw className="h-5 w-5" /> Aktivitas baru</button>
-          </>
+          )}
+        </div>
+
+        {/* error message -> menyertai mode */}
+        {error && (
+          <div className="order-2 lg:order-none flex items-start gap-2 rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+            <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" /> {error}
+          </div>
         )}
+
+        {/* 3. Controls / CTA -> order-4 di mobile */}
+        <div className="order-4 lg:order-none card card-pad p-4 sm:p-6 border-line bg-card flex flex-wrap items-center justify-center gap-3 sm:gap-4">
+          {status === "idle" && (
+            <button
+              onClick={begin}
+              disabled={starting}
+              className="btn btn-primary rounded-full w-full sm:w-auto px-8 py-3.5 text-base sm:text-lg font-bold shadow-soft transition-all hover:scale-[1.02] active:scale-95 disabled:hover:scale-100 disabled:cursor-wait disabled:opacity-60"
+            >
+              <Play className="h-5 w-5 mr-1" /> {starting ? "Menyiapkan GPS..." : "Mulai Aktivitas"}
+            </button>
+          )}
+          {status === "tracking" && (
+            <>
+              <button onClick={pause} className="btn btn-outline btn-lg flex-1 sm:flex-none"><Pause className="h-5 w-5" /> Jeda</button>
+              <button onClick={finish} className="btn btn-primary btn-lg flex-1 sm:flex-none"><Square className="h-5 w-5" /> Selesai</button>
+            </>
+          )}
+          {status === "paused" && (
+            <>
+              <button onClick={resume} className="btn btn-primary btn-lg flex-1 sm:flex-none"><Play className="h-5 w-5" /> Lanjut</button>
+              <button onClick={finish} className="btn btn-outline btn-lg flex-1 sm:flex-none"><Square className="h-5 w-5" /> Selesai</button>
+            </>
+          )}
+          {status === "finished" && (
+            <>
+              {saved ? (
+                <span className="btn bg-brand-soft text-brand w-full sm:w-auto"><Check className="h-5 w-5" /> {suspicious ? "Riwayat pribadi tersimpan" : "Tersimpan di database"}</span>
+              ) : (
+                <button onClick={saveActivity} disabled={saving} className="btn btn-primary btn-lg w-full sm:w-auto disabled:opacity-60">
+                  <Save className="h-5 w-5" /> {saving ? "Mengirim..." : suspicious ? "Simpan sebagai riwayat pribadi" : `Simpan (+${xp} XP)`}
+                </button>
+              )}
+              {suspicious && (reviewRequested ? (
+                <span className="btn bg-amber/15 text-amber w-full sm:w-auto"><Check className="h-5 w-5" /> Peninjauan diminta</span>
+              ) : (
+                <button onClick={() => setReviewRequested(true)} className="btn btn-outline btn-lg w-full sm:w-auto">
+                  <MessageSquareText className="h-5 w-5" /> Ajukan peninjauan
+                </button>
+              ))}
+              <div className="flex w-full sm:w-auto gap-3 mt-2 sm:mt-0">
+                <button
+                  onClick={handleDownloadPng}
+                  disabled={route.length < 2 || downloadingPng}
+                  title={route.length < 2 ? "Rute belum memiliki cukup titik" : "Download ringkasan sebagai PNG"}
+                  className="btn btn-outline btn-lg flex-1 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <Download className="h-5 w-5" />
+                  <span className="sr-only sm:not-sr-only">{downloadingPng ? "Membuat..." : pngDownloaded ? "Terunduh" : "Download Foto"}</span>
+                </button>
+                <button onClick={reset} className="btn btn-ghost btn-lg flex-1"><RotateCcw className="h-5 w-5" /> <span className="sr-only sm:not-sr-only">Baru</span></button>
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
-      {status === "finished" && (
-        <p className="mt-4 text-center text-xs text-muted-foreground leading-normal">
-          {suspicious
-            ? "Sesi tetap dapat disimpan sebagai riwayat pribadi, tetapi belum memberi XP sampai peninjauan selesai."
-            : saved && serverAwardXp !== null
-              ? `Aktivitas tersimpan. Reward server: ${serverAwardXp} XP.`
-              : `Kerja bagus. Kamu menempuh ${km.toFixed(2)} km. Estimasi setelah pengaman harian: ${xp} XP.`}
-        </p>
-      )}
-
-      <div className="mt-6 rounded-2xl border border-line bg-secondary/30 p-4">
-        <div className="flex items-start gap-3">
-          <Accessibility className="mt-0.5 h-5 w-5 shrink-0 text-brand" />
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-sm font-bold text-foreground">Aktivitas indoor & adaptif</p>
-              <span className="pill bg-card text-[10px] font-bold text-muted-foreground">RENCANA VALIDASI</span>
-            </div>
-            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-              Gym, olahraga indoor, kursi roda, dan aktivitas adaptif memerlukan wearable atau peninjauan terstruktur agar tetap adil. Pada MVP, jalur ini belum memberi XP kompetitif.
+      {/* RIGHT COLUMN: Stats */}
+      <div className="contents lg:block lg:col-span-5 xl:col-span-4 lg:space-y-6">
+        {/* 4. Stats -> Jarak di order-2, sisanya order-6 di mobile */}
+        <div className="order-2 lg:order-none card card-pad border-line bg-card">
+          <div className="text-center">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Jarak Tempuh</p>
+            <p className="font-display mt-1 text-6xl sm:text-7xl font-extrabold text-foreground tracking-tighter leading-none">
+              {km.toFixed(2)}<span className="ml-1 text-2xl sm:text-3xl text-muted-foreground font-medium tracking-normal">km</span>
             </p>
           </div>
+
+          <div className="order-6 lg:order-none mt-6 grid grid-cols-2 gap-3">
+            <div className="rounded-2xl bg-secondary/30 p-3 text-center">
+              <Timer className="mx-auto h-4 w-4 text-muted-foreground" />
+              <p className="stat-num mt-1.5 text-lg font-bold">{formatTime(elapsed)}</p>
+              <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground mt-0.5">Waktu</p>
+            </div>
+            <div className="rounded-2xl bg-secondary/30 p-3 text-center">
+              <Gauge className="mx-auto h-4 w-4 text-muted-foreground" />
+              <p className="stat-num mt-1.5 text-lg font-bold">{paceMinPerKm(distance, elapsed)}</p>
+              <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground mt-0.5">Pace /km</p>
+            </div>
+            <div className="rounded-2xl bg-sky/10 p-3 text-center">
+              <Bike className="mx-auto h-4 w-4 text-sky" />
+              <p className="stat-num mt-1.5 text-lg font-bold text-sky">{displayedSpeed.toFixed(1)}</p>
+              <p className="text-[9px] font-semibold uppercase tracking-wider text-sky/70 mt-0.5">km/jam</p>
+            </div>
+            <div className="rounded-2xl bg-brand-soft/50 p-3 text-center">
+              <Zap className="mx-auto h-4 w-4 text-brand" />
+              <p className="stat-num mt-1.5 text-lg font-bold text-brand">{xp}</p>
+              <p className="text-[9px] font-semibold uppercase tracking-wider text-brand/70 mt-0.5">XP</p>
+            </div>
+          </div>
         </div>
+
+        {/* Expandable/Scrollable Info -> order-5 di mobile */}
+        <div className="order-5 lg:order-none card card-pad border-line bg-card">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-3">Info Aktivitas</p>
+          
+          <div className="space-y-3">
+            <div className="rounded-xl border border-line bg-secondary/30 p-3 text-xs text-muted-foreground">
+              <div className="flex justify-between items-center mb-1 font-bold text-foreground">
+                <span>Batas XP Harian</span>
+                <span>{xpEarnedToday} / {XP_SAFETY_POLICY.dailyCap}</span>
+              </div>
+              <div className="h-1.5 rounded-full bg-line overflow-hidden mb-1">
+                <div className="h-full bg-brand rounded-full" style={{ width: `${Math.min(100, (xpEarnedToday / XP_SAFETY_POLICY.dailyCap) * 100)}%` }} />
+              </div>
+              <p className="text-[9px] leading-tight">XP penuh hingga {XP_SAFETY_POLICY.fullRateUntil}, lalu {XP_SAFETY_POLICY.reducedRate * 100}%.</p>
+            </div>
+
+            <details className="group rounded-xl border border-line bg-secondary/30 p-3 text-xs text-muted-foreground [&_summary::-webkit-details-marker]:hidden">
+              <summary className="flex cursor-pointer items-center justify-between font-bold text-foreground">
+                Pemeriksaan Integritas <ChevronRight className="h-4 w-4 transition group-open:rotate-90" />
+              </summary>
+              <div className="mt-3 space-y-2 text-[10px]">
+                {integrityChecks.map((check) => (
+                  <div key={check.label} className="flex justify-between border-b border-line/40 pb-1 last:border-0 last:pb-0">
+                    <span className="flex items-center gap-1.5"><check.icon className={`h-3 w-3 ${check.issue ? 'text-amber' : 'text-brand'}`} /> {check.label}</span>
+                    <span>{check.detail}</span>
+                  </div>
+                ))}
+              </div>
+            </details>
+          </div>
+        </div>
+
       </div>
     </div>
   );

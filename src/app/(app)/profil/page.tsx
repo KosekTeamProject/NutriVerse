@@ -23,7 +23,8 @@ import {
   RotateCcw,
   Camera,
   ImagePlus,
-  X
+  X,
+  ChevronDown
 } from "lucide-react";
 import { RankCrest } from "@/components/brand/RankCrest";
 import { ProfileCollection } from "@/components/app/ProfileCollection";
@@ -135,7 +136,7 @@ function RadialProgress({
   return (
     <div className="chart-surface chart-surface-brand flex items-center gap-4 rounded-2xl border border-line p-4 transition hover:border-brand/35 hover:shadow-soft">
       <div className="relative grid place-items-center shrink-0">
-        <svg width="56" height="56" viewBox="0 0 56 56" className="-rotate-90">
+        <svg width="48" height="48" viewBox="0 0 56 56" className="-rotate-90 sm:w-[56px] sm:h-[56px]">
           <circle cx="28" cy="28" r={r} fill="none" stroke="var(--secondary)" strokeWidth="4.5" />
           <circle 
             cx="28" 
@@ -150,12 +151,12 @@ function RadialProgress({
             style={{ strokeDashoffset: dashOffset }} 
           />
         </svg>
-        <Icon className="absolute h-4.5 w-4.5" style={{ color }} />
+        <Icon className="absolute h-4 w-4 sm:h-4.5 sm:w-4.5" style={{ color }} />
       </div>
       <div className="min-w-0 flex-1 space-y-0.5">
-        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{label}</p>
-        <p className="font-display text-sm font-extrabold text-foreground">{value} / {target} <span className="text-[10px] font-normal text-muted-foreground">{unit}</span></p>
-        <p className="text-[10px] text-muted-foreground">{pct}% target</p>
+        <p className="text-[9px] sm:text-[10px] font-bold text-muted-foreground uppercase tracking-wider truncate">{label}</p>
+        <p className="font-display text-xs sm:text-sm font-extrabold text-foreground truncate">{value} / {target} <span className="text-[9px] sm:text-[10px] font-normal text-muted-foreground">{unit}</span></p>
+        <p className="text-[9px] sm:text-[10px] text-muted-foreground">{pct}% target</p>
       </div>
     </div>
   );
@@ -402,159 +403,170 @@ export default function ProfilPage() {
         </div>
       )}
 
-      <section id="pendamping-ai" className="card card-pad scroll-mt-24 overflow-hidden border-brand/20 bg-gradient-to-br from-card via-card to-brand-soft/35">
-        <div className="grid gap-5 md:grid-cols-[minmax(0,1fr)_minmax(280px,0.9fr)] md:items-center">
-          <div className="flex items-start gap-3">
-            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-brand text-white shadow-soft"><Sparkles className="h-5 w-5" /></span>
-            <div>
-              <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-brand">Preferensi Pendamping AI</p>
-              <h2 className="mt-1 font-display text-lg font-extrabold text-foreground">Panggil teman sehatmu dengan nama pilihanmu</h2>
-              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Nama ini dipakai di percakapan, sidebar, ringkasan, reminder, dan notifikasi. Pendamping tetap tidak mendiagnosis atau memverifikasi aktivitas.</p>
-            </div>
-          </div>
-          <div className="rounded-2xl border border-line bg-card/90 p-4 shadow-sm">
-            <label htmlFor="profile-companion-name" className="label">Nama pendamping AI</label>
-            <div className="mt-2 flex flex-col gap-2 sm:flex-row">
-              <input
-                id="profile-companion-name"
-                value={companionDraftValue}
-                onChange={(event) => setCompanionDraft(event.target.value)}
-                onKeyDown={(event) => { if (event.key === "Enter") saveCompanionName(); }}
-                minLength={2}
-                maxLength={24}
-                className="input min-w-0 flex-1 font-bold"
-                placeholder="Contoh: Nora, Aira, Nara"
-              />
-              <button onClick={saveCompanionName} disabled={companionDraftValue.trim().length < 2} className="btn btn-primary btn-sm shrink-0 disabled:opacity-45"><Check className="h-4 w-4" /> {companionSaved ? "Tersimpan" : "Simpan"}</button>
-            </div>
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[10px] text-muted-foreground">
-              <span>Nama aktif: <strong className="text-foreground">{companionName.displayName}</strong></span>
-              {!companionName.isDefault && <button onClick={resetCompanionName} className="inline-flex items-center gap-1 font-bold text-brand hover:underline"><RotateCcw className="h-3.5 w-3.5" /> Kembalikan ke Nora</button>}
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* stats */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <StatCard icon={Zap} label="Progress XP" value={(overview?.economy.totalXp ?? 0).toLocaleString("id-ID")} accent="amber" />
         <StatCard icon={MapPin} label="Jarak total" value={`${overview?.profile.totalDistanceKm ?? 0} km`} accent="brand" />
         <StatCard icon={Activity} label="Aktivitas" value={`${overview?.profile.verifiedActivityCount ?? 0}`} accent="sky" />
         <StatCard icon={Flame} label="Streak" value={`${overview?.economy.streakDays ?? 0} hari`} accent="lime" />
       </div>
 
-      {/* Daily Targets - Radial Progress Rings */}
-      <div className="card card-pad border-line bg-card space-y-4">
-        <div className="flex items-center gap-2 border-b border-line/45 pb-3">
-          <span className="grid h-9 w-9 place-items-center rounded-xl bg-brand-soft text-brand">
-            <Target className="h-5 w-5" />
-          </span>
-          <h3 className="font-display text-base font-bold text-foreground">Target Konsistensi Harian</h3>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <RadialProgress value={overview?.daily.calories.value ?? 0} target={overview?.daily.calories.target ?? 2000} unit="kkal" label="Kalori" color="var(--brand)" icon={Utensils} />
-          <RadialProgress value={overview?.daily.protein.value ?? 0} target={overview?.daily.protein.target ?? 80} unit="g" label="Protein" color="var(--brand-bright)" icon={Zap} />
-          <RadialProgress value={(overview?.daily.water.value ?? 0) / 1000} target={(overview?.daily.water.target ?? 2000) / 1000} unit="L" label="Air" color="var(--sky)" icon={Droplets} />
-          <RadialProgress value={overview?.daily.sleep.value ?? 0} target={overview?.daily.sleep.target ?? 8} unit="jam" label="Tidur" color="var(--amber)" icon={Moon} />
-        </div>
-      </div>
-
-      {/* Wellness Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-2">
-        {/* Health Pulse Card */}
-        <div className="card card-pad border-line bg-card space-y-4 hover:border-brand/35 transition duration-300">
-          <div className="flex items-center justify-between pb-2 border-b border-line/45">
-            <h3 className="font-display text-sm font-bold text-foreground uppercase tracking-wider flex items-center gap-1.5">
-              <Activity className="h-4 w-4 text-brand" /> Ringkasan Health Pulse
-            </h3>
-            <span className="pill bg-brand-soft text-brand font-bold text-xs">{overview?.healthPulse.current.status ?? "Belum ada data"}</span>
+      <div className="space-y-4">
+        {/* Tier 1 - Always Visible Primary Preference */}
+        <section id="pendamping-ai" className="card border-brand/20 bg-gradient-to-br from-secondary/50 via-secondary/50 to-brand-soft/20 p-4">
+          <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(280px,0.9fr)] md:items-center">
+            <div className="flex items-start gap-3">
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-brand text-white shadow-soft"><Sparkles className="h-4 w-4" /></span>
+              <div>
+                <h2 className="font-display text-sm font-extrabold text-foreground">Preferensi Pendamping AI</h2>
+                <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">Panggil teman sehatmu dengan nama pilihanmu.</p>
+              </div>
+            </div>
+            <div className="rounded-xl border border-line bg-card/90 p-3 shadow-sm">
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <input
+                  id="profile-companion-name"
+                  value={companionDraftValue}
+                  onChange={(event) => setCompanionDraft(event.target.value)}
+                  onKeyDown={(event) => { if (event.key === "Enter") saveCompanionName(); }}
+                  minLength={2}
+                  maxLength={24}
+                  className="input min-w-0 flex-1 font-bold text-xs"
+                  placeholder="Contoh: Nora"
+                />
+                <button onClick={saveCompanionName} disabled={companionDraftValue.trim().length < 2} className="btn btn-primary btn-sm shrink-0 disabled:opacity-45 text-xs"><Check className="h-3 w-3 mr-1" /> {companionSaved ? "Tersimpan" : "Simpan"}</button>
+              </div>
+              <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-[9px] text-muted-foreground">
+                <span>Nama aktif: <strong className="text-foreground">{companionName.displayName}</strong></span>
+                {!companionName.isDefault && <button onClick={resetCompanionName} className="inline-flex items-center gap-1 font-bold text-brand hover:underline"><RotateCcw className="h-3 w-3" /> Reset</button>}
+              </div>
+            </div>
           </div>
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-muted-foreground">Skor Health Pulse</span>
-            <span className="stat-num text-2xl font-extrabold text-foreground">{overview?.healthPulse.current.score ?? 0} / 100</span>
+        </section>
+        {/* Statistik & Progres Expandable */}
+        <details className="group card border-line bg-card [&_summary::-webkit-details-marker]:hidden">
+          <summary className="flex cursor-pointer items-center justify-between p-4 sm:p-5 font-display font-bold text-foreground">
+            <div className="flex items-center gap-2.5">
+               <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-soft text-brand"><Target className="h-4 w-4" /></span>
+               <span className="text-sm sm:text-base">Statistik &amp; Target Harian</span>
+            </div>
+            <ChevronDown className="h-5 w-5 text-muted-foreground transition group-open:rotate-180" />
+          </summary>
+          <div className="p-4 sm:p-5 pt-0 border-t border-line/45 mt-2 space-y-6">
+            {/* Daily Targets - Radial Progress Rings */}
+            <div>
+              <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+                <RadialProgress value={overview?.daily.calories.value ?? 0} target={overview?.daily.calories.target ?? 2000} unit="kkal" label="Kalori" color="var(--brand)" icon={Utensils} />
+                <RadialProgress value={overview?.daily.protein.value ?? 0} target={overview?.daily.protein.target ?? 80} unit="g" label="Protein" color="var(--brand-bright)" icon={Zap} />
+                <RadialProgress value={(overview?.daily.water.value ?? 0) / 1000} target={(overview?.daily.water.target ?? 2000) / 1000} unit="L" label="Air" color="var(--sky)" icon={Droplets} />
+                <RadialProgress value={overview?.daily.sleep.value ?? 0} target={overview?.daily.sleep.target ?? 8} unit="jam" label="Tidur" color="var(--amber)" icon={Moon} />
+              </div>
+            </div>
+
+            {/* Wellness Summary Cards */}
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="rounded-2xl border border-line bg-secondary/30 p-4 space-y-4">
+                <div className="flex items-center justify-between pb-2 border-b border-line/45">
+                  <h3 className="font-display text-xs font-bold text-foreground uppercase tracking-wider flex items-center gap-1.5">
+                    <Activity className="h-3.5 w-3.5 text-brand" /> Health Pulse
+                  </h3>
+                  <span className="pill bg-brand-soft text-brand font-bold text-[10px]">{overview?.healthPulse.current.status ?? "Belum ada data"}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] sm:text-xs text-muted-foreground">Skor Pulse</span>
+                  <span className="stat-num text-xl font-extrabold text-foreground">{overview?.healthPulse.current.score ?? 0} <span className="text-xs text-muted-foreground font-normal">/ 100</span></span>
+                </div>
+                <p className="text-[10px] sm:text-xs text-muted-foreground leading-normal">
+                  {overview?.healthPulse.current.recommendedNextAction ?? "Tambahkan data harian untuk membentuk ringkasan."}
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-line bg-secondary/30 p-4 space-y-4">
+                <div className="flex items-center justify-between pb-2 border-b border-line/45">
+                  <h3 className="font-display text-xs font-bold text-foreground uppercase tracking-wider flex items-center gap-1.5">
+                    <Target className="h-3.5 w-3.5 text-amber" /> Tantangan Aktif
+                  </h3>
+                  <span className="pill bg-amber/10 text-amber border border-amber/15 text-[9px] font-bold">Menengah</span>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[10px] sm:text-xs font-bold text-foreground">{overview?.challenges[0]?.title ?? "Belum ada tantangan aktif"}</p>
+                  <p className="text-[9px] sm:text-[10px] text-muted-foreground">Progres: {overview?.challenges[0]?.currentValue ?? 0} / {overview?.challenges[0]?.targetValue ?? 0} {overview?.challenges[0]?.unit ?? ""} ({overview?.challenges[0]?.progressPercent ?? 0}%)</p>
+                </div>
+                <div className="chart-progress h-1.5 overflow-hidden rounded-full">
+                  <div className="h-full rounded-full bg-amber" style={{ width: `${overview?.challenges[0]?.progressPercent ?? 0}%` }} />
+                </div>
+              </div>
+            </div>
           </div>
-          <p className="text-xs text-muted-foreground leading-normal">
-            {overview?.healthPulse.current.recommendedNextAction ?? "Tambahkan data harian untuk membentuk ringkasan."}
-          </p>
-        </div>
+        </details>
 
-        {/* Active Challenge Card */}
-        <div className="card card-pad border-line bg-card space-y-4 hover:border-brand/35 transition duration-300">
-          <div className="flex items-center justify-between pb-2 border-b border-line/45">
-            <h3 className="font-display text-sm font-bold text-foreground uppercase tracking-wider flex items-center gap-1.5">
-              <Target className="h-4 w-4 text-brand" /> Tantangan Aktif
-            </h3>
-            <span className="pill bg-amber/10 text-amber border border-amber/15 text-[10px] font-bold">Menengah</span>
+        {/* Koleksi Expandable */}
+        <details className="group card border-line bg-card [&_summary::-webkit-details-marker]:hidden">
+          <summary className="flex cursor-pointer items-center justify-between p-4 sm:p-5 font-display font-bold text-foreground">
+            <div className="flex items-center gap-2.5">
+               <span className="grid h-8 w-8 place-items-center rounded-lg bg-sky/15 text-sky"><Sparkles className="h-4 w-4" /></span>
+               <span className="text-sm sm:text-base">Koleksi Badge &amp; Pencapaian</span>
+            </div>
+            <ChevronDown className="h-5 w-5 text-muted-foreground transition group-open:rotate-180" />
+          </summary>
+          <div className="p-4 sm:p-5 pt-0 border-t border-line/45 mt-2">
+            <ProfileCollection />
           </div>
-          <div className="space-y-1">
-            <p className="text-xs font-bold text-foreground">{overview?.challenges[0]?.title ?? "Belum ada tantangan aktif"}</p>
-            <p className="text-xs text-muted-foreground">Progres: {overview?.challenges[0]?.currentValue ?? 0} / {overview?.challenges[0]?.targetValue ?? 0} {overview?.challenges[0]?.unit ?? ""} ({overview?.challenges[0]?.progressPercent ?? 0}%)</p>
+        </details>
+
+        {/* Pengaturan & Privasi Expandable */}
+        <details className="group card border-line bg-card [&_summary::-webkit-details-marker]:hidden">
+          <summary className="flex cursor-pointer items-center justify-between p-4 sm:p-5 font-display font-bold text-foreground">
+            <div className="flex items-center gap-2.5">
+               <span className="grid h-8 w-8 place-items-center rounded-lg bg-secondary text-muted-foreground"><Lock className="h-4 w-4" /></span>
+               <span className="text-sm sm:text-base">Pengaturan &amp; Privasi Tambahan</span>
+            </div>
+            <ChevronDown className="h-5 w-5 text-muted-foreground transition group-open:rotate-180" />
+          </summary>
+          <div className="p-4 sm:p-5 pt-0 border-t border-line/45 mt-2 space-y-6">
+            <div className="space-y-3">
+              <div className="grid gap-2 sm:grid-cols-2 text-[10px] sm:text-xs">
+                <div className="flex justify-between items-center border border-line p-3 rounded-xl bg-secondary/20">
+                  <span className="text-muted-foreground font-semibold">Visibilitas Profil</span>
+                  <span className="pill bg-secondary text-muted-foreground font-bold">{privacyLabel(privacySummary?.profileVisibility)}</span>
+                </div>
+                <div className="flex justify-between items-center border border-line p-3 rounded-xl bg-secondary/20">
+                  <span className="text-muted-foreground font-semibold">Berbagi Skor Pulse</span>
+                  <span className="pill bg-secondary text-muted-foreground font-bold">{privacyLabel(privacySummary?.pulseVisibility)}</span>
+                </div>
+                <div className="flex justify-between items-center border border-line p-3 rounded-xl bg-secondary/20">
+                  <span className="text-muted-foreground font-semibold">Ringkasan Aktivitas</span>
+                  <span className="pill bg-secondary text-muted-foreground font-bold">{privacyLabel(privacySummary?.activityVisibility)}</span>
+                </div>
+                <div className="flex justify-between items-center border border-line p-3 rounded-xl bg-secondary/20">
+                  <span className="text-muted-foreground font-semibold">Progres Tantangan</span>
+                  <span className="pill bg-secondary text-muted-foreground font-bold">
+                    {privacySummary
+                      ? privacySummary.challengeProgressVisible
+                        ? "Lingkaran Saja"
+                        : "Privat"
+                      : "Memuat..."}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center border border-line p-3 rounded-xl bg-secondary/20 col-span-2">
+                  <span className="text-muted-foreground font-semibold">Catatan Nutrisi &amp; Pemulihan</span>
+                  <span className="pill bg-brand-soft text-brand font-bold flex items-center gap-0.5">
+                    <Eye className="h-3 w-3" /> Privat Penuh
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-start gap-2 text-[9px] sm:text-[10px] text-muted-foreground pt-1">
+                <Info className="h-3.5 w-3.5 shrink-0 mt-0.5 text-muted-foreground" />
+                <p>NutriVerse memakai telemetri lokasi hanya untuk memverifikasi jarak olahraga GPS. Catatan nutrisi, hidrasi, dan tidur tetap privat.</p>
+              </div>
+              <div className="pt-2">
+                <Link href="/pengaturan" className="btn btn-outline w-full py-2 text-center flex items-center justify-center gap-1.5 font-bold text-xs">
+                  <Compass className="h-4 w-4" /> Kelola Privasi Lebih Lanjut
+                </Link>
+              </div>
+            </div>
           </div>
-          <div className="chart-progress h-2 overflow-hidden rounded-full">
-            <div className="h-full rounded-full bg-brand" style={{ width: `${overview?.challenges[0]?.progressPercent ?? 0}%` }} />
-          </div>
-        </div>
-      </div>
-
-      {/* Collection */}
-      <ProfileCollection />
-
-      {/* Privacy Summary Card */}
-      <div className="card card-pad border-line bg-card space-y-4">
-        <div className="flex items-center gap-2 border-b border-line/45 pb-3">
-          <span className="grid h-9 w-9 place-items-center rounded-xl bg-brand-soft text-brand">
-            <Lock className="h-5 w-5" />
-          </span>
-          <h3 className="font-display text-base font-bold text-foreground">Privasi &amp; Berbagi Profil</h3>
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-2 text-xs">
-          <div className="flex justify-between items-center border border-line p-3 rounded-xl bg-secondary/20">
-            <span className="text-muted-foreground font-semibold">Visibilitas Profil</span>
-            <span className="pill bg-secondary text-muted-foreground font-bold">{privacyLabel(privacySummary?.profileVisibility)}</span>
-          </div>
-
-          <div className="flex justify-between items-center border border-line p-3 rounded-xl bg-secondary/20">
-            <span className="text-muted-foreground font-semibold">Berbagi Skor Pulse</span>
-            <span className="pill bg-secondary text-muted-foreground font-bold">{privacyLabel(privacySummary?.pulseVisibility)}</span>
-          </div>
-
-          <div className="flex justify-between items-center border border-line p-3 rounded-xl bg-secondary/20">
-            <span className="text-muted-foreground font-semibold">Ringkasan Aktivitas</span>
-            <span className="pill bg-secondary text-muted-foreground font-bold">{privacyLabel(privacySummary?.activityVisibility)}</span>
-          </div>
-
-          <div className="flex justify-between items-center border border-line p-3 rounded-xl bg-secondary/20">
-            <span className="text-muted-foreground font-semibold">Progres Tantangan</span>
-            <span className="pill bg-secondary text-muted-foreground font-bold">
-              {privacySummary
-                ? privacySummary.challengeProgressVisible
-                  ? "Lingkaran Saja"
-                  : "Privat"
-                : "Memuat..."}
-            </span>
-          </div>
-
-          <div className="flex justify-between items-center border border-line p-3 rounded-xl bg-secondary/20 col-span-2">
-            <span className="text-muted-foreground font-semibold">Catatan Nutrisi &amp; Pemulihan</span>
-            <span className="pill bg-brand-soft text-brand font-bold flex items-center gap-0.5">
-              <Eye className="h-3.5 w-3.5" /> Privat Penuh
-            </span>
-          </div>
-        </div>
-
-        <div className="flex items-start gap-2 text-[10px] text-muted-foreground pt-1">
-          <Info className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" />
-          <p>
-            NutriVerse memakai telemetri lokasi hanya untuk memverifikasi jarak olahraga GPS. Catatan nutrisi, hidrasi, dan tidur tetap privat.
-          </p>
-        </div>
-
-        <div className="pt-2">
-          <Link href="/pengaturan" className="btn btn-outline w-full py-2.5 text-center flex items-center justify-center gap-1.5 font-bold">
-            <Compass className="h-4.5 w-4.5" /> Kelola Privasi dan Preferensi
-          </Link>
-        </div>
+        </details>
       </div>
     </div>
   );

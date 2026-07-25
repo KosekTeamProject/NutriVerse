@@ -348,13 +348,27 @@ export function AppShell({ children }: { readonly children: React.ReactNode }) {
           </div>
         </header>
 
+
         <main className={`min-w-0 px-4 pb-12 pt-[7.5rem] sm:px-6 sm:pb-12 sm:pt-24 lg:px-8 lg:pb-12 lg:pt-24 ${!session ? "max-w-7xl mx-auto" : ""}`}>{children}</main>
         <Footer />
       </div>
 
       {session && (
-        <nav className="fixed inset-x-3 bottom-3 z-30 grid grid-cols-5 rounded-2xl border border-line bg-card/95 p-1.5 shadow-2xl backdrop-blur-xl lg:hidden" aria-label="Navigasi utama mobile">
-          {MOBILE_NAV.map((item) => { const Icon = item.icon; const active = isActive(pathname, item.href); return <Link key={item.href} href={item.href} className={`flex min-w-0 flex-col items-center gap-1 rounded-xl px-1 py-2 text-[9px] font-bold transition ${active ? "bg-brand-soft text-brand" : "text-muted-foreground"}`}><Icon className="h-[18px] w-[18px]" /><span className="truncate">{item.label}</span></Link>; })}
+        <nav className="fixed inset-x-4 bottom-4 z-30 grid grid-cols-5 rounded-3xl border border-line/80 bg-background/90 p-2 shadow-2xl backdrop-blur-xl lg:hidden" aria-label="Navigasi utama mobile">
+          {MOBILE_NAV.map((item) => { 
+            const Icon = item.icon; 
+            const active = isActive(pathname, item.href); 
+            return (
+              <Link 
+                key={item.href} 
+                href={item.href} 
+                className={`flex min-w-0 flex-col items-center gap-1 rounded-2xl px-1 py-3 text-[10px] font-extrabold transition-all duration-300 ease-out active:scale-95 ${active ? "bg-brand-soft text-brand shadow-sm" : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"}`}
+              >
+                <Icon className={`h-5 w-5 transition-transform duration-300 ${active ? "scale-110" : ""}`} />
+                <span className="truncate">{item.label}</span>
+              </Link>
+            ); 
+          })}
         </nav>
       )}
     </div>

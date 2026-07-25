@@ -120,19 +120,44 @@ export function InteractiveTourOverlay() {
       className="fixed inset-0 z-[100] overflow-hidden pointer-events-auto transition-opacity duration-500"
       style={{ opacity: isPaused ? 0 : 1 }}
     >
-      {/* Background Dimmer */}
-      <div className="absolute inset-0 bg-background/60 backdrop-blur-[2px] transition-all duration-700" />
+      {/* SVG Mask Definition */}
+      <svg className="hidden">
+        <defs>
+          <mask id="spotlight-mask">
+            <rect x="0" y="0" width="100%" height="100%" fill="white" />
+            {!isEnding && targetRect && !isNavigating && (
+              <rect
+                x={targetRect.left}
+                y={targetRect.top}
+                width={targetRect.width}
+                height={targetRect.height}
+                rx="16"
+                fill="black"
+                className="transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]"
+              />
+            )}
+          </mask>
+        </defs>
+      </svg>
+
+      {/* Background Dimmer & Blur (Masked) */}
+      <div 
+        className="absolute inset-0 bg-background/85 backdrop-blur-[3px] transition-opacity duration-700 pointer-events-none" 
+        style={{ 
+          mask: "url(#spotlight-mask)", 
+          WebkitMask: "url(#spotlight-mask)" 
+        }} 
+      />
       
-      {/* Spotlight Hole */}
+      {/* Spotlight Border Glow */}
       {!isEnding && targetRect && !isNavigating && (
         <div 
-          className="absolute rounded-2xl bg-transparent transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] shadow-[0_0_0_9999px_rgba(0,0,0,0.5)] pointer-events-none"
+          className="absolute rounded-2xl bg-transparent transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] pointer-events-none"
           style={{
             top: targetRect.top,
             left: targetRect.left,
             width: targetRect.width,
             height: targetRect.height,
-            boxShadow: '0 0 0 9999px hsl(var(--background) / 0.85)'
           }}
         >
           {/* Animated border/glow around spotlight */}
@@ -161,7 +186,7 @@ export function InteractiveTourOverlay() {
           <div className="scale-75 origin-bottom mb-[-1rem]">
             <NoraAvatar size="md" />
           </div>
-          <div className="card card-pad bg-card/95 backdrop-blur-xl border-brand/30 shadow-premium w-full text-center relative overflow-hidden flex flex-col justify-between min-h-[200px]">
+          <div className="card card-pad bg-card/95 backdrop-blur-xl border-brand/30 shadow-premium w-full text-center relative overflow-hidden flex flex-col h-[220px]">
             <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-brand to-lime opacity-50" />
             
             {/* Progress indicator */}
@@ -171,13 +196,15 @@ export function InteractiveTourOverlay() {
               </p>
             )}
 
-            <h3 className="font-display font-bold text-[15px] sm:text-base whitespace-pre-line leading-relaxed text-foreground min-h-[4rem] mb-6 flex-grow flex items-center justify-center">
-              {displayedText}
-              {isTyping && <span className="animate-pulse text-brand ml-1">|</span>}
+            <h3 className="font-display font-bold text-[15px] sm:text-base whitespace-pre-line leading-relaxed text-foreground mb-4 flex-1 overflow-y-auto overflow-x-hidden px-2 py-1 flex items-center justify-center">
+              <div>
+                {displayedText}
+                {isTyping && <span className="animate-pulse text-brand ml-1">|</span>}
+              </div>
             </h3>
             
             {/* Navigation Controls */}
-            <div className="pt-4 border-t border-line/45 flex items-center justify-between w-full">
+            <div className="pt-3 mt-auto shrink-0 border-t border-line/45 flex items-center justify-between w-full">
               {isEnding ? (
                 <div className="w-full flex justify-center">
                   <button onClick={stopTour} className="btn btn-primary w-full max-w-[200px] shadow-soft font-bold">

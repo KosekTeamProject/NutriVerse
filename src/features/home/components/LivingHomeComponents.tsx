@@ -13,8 +13,10 @@ import { JourneyRecord } from "../../journey/types";
 import { CompanionWeeklyLetter } from "../../companion/types";
 import { useCompanionName } from "@/hooks/useCompanionName";
 import { useAuthSession } from "@/hooks/useAuthSession";
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useProgressData } from "@/providers/ProgressDataProvider";
+import { Users2, Megaphone } from "lucide-react";
+import type { CommunityOverview } from "@/features/progress/types";
 
 // 1. DashboardHero (Replaces LivingHomeHeader and ProactiveNoraBanner)
 export function DashboardHero() {
@@ -117,6 +119,7 @@ export function DashboardHero() {
         </div>
       </div>
     </section>
+    
   );
 }
 
@@ -189,55 +192,124 @@ export function WeeklyReflectionCard({ letter }: { readonly letter: CompanionWee
   );
 }
 
+
 // 7. ActiveChallengeCard
 export function ActiveChallengeCard({ challenge }: { challenge: ChallengePreview }) {
   const pct = Math.min(100, Math.round((challenge.progress / challenge.target) * 100));
 
   return (
-    <div className="card card-pad space-y-4 border-line/60 bg-card">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <span className="eyebrow bg-amber/10 border-amber/20 text-amber text-[10px]">Tantangan Aktif</span>
-          <h3 className="font-display text-lg font-bold text-foreground mt-2">{challenge.title}</h3>
+    <div className="group relative overflow-hidden rounded-[2rem] border border-line bg-card p-6 shadow-sm transition-all hover:shadow-soft hover:-translate-y-1">
+      {/* Gamified Background Elements */}
+      <div className="absolute -right-12 -top-12 h-32 w-32 rounded-full bg-amber/10 blur-2xl transition-transform group-hover:scale-125" />
+      <div className="absolute -bottom-8 -left-8 h-24 w-24 rounded-full bg-brand/10 blur-xl transition-transform group-hover:scale-125" />
+      
+      <div className="relative z-10 space-y-5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-amber/15 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-amber ring-1 ring-amber/20">
+              <Flame className="h-3.5 w-3.5" /> Tantangan Aktif
+            </span>
+            <h3 className="font-display mt-3 text-xl font-extrabold text-foreground">{challenge.title}</h3>
+          </div>
+          <div className="flex shrink-0 flex-col items-end gap-2">
+            <span className="inline-flex rounded-xl bg-secondary/80 px-2.5 py-1 text-[11px] font-bold text-muted-foreground backdrop-blur-sm">
+              {challenge.status === "in-progress" ? "Sedang Berjalan" : challenge.status}
+            </span>
+          </div>
         </div>
-        <div className="flex flex-col items-end gap-1.5 shrink-0 max-w-[42%]">
-          <span className="pill bg-secondary text-muted-foreground font-semibold whitespace-normal text-right leading-tight text-[11px]">
-            {challenge.status === "in-progress" ? "Sedang Berjalan" : challenge.status}
-          </span>
-          <span className="pill bg-brand-soft text-brand text-[9px] font-bold uppercase whitespace-normal text-right leading-tight">
-            Progres Otomatis
-          </span>
+
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-xs font-bold">
+            <span className="text-muted-foreground">Progres Misi</span>
+            <span className="text-foreground">{challenge.progress} / {challenge.target} {challenge.unit} <span className="ml-1 text-brand">({pct}%)</span></span>
+          </div>
+          <div className="chart-progress h-3 overflow-hidden rounded-full bg-secondary shadow-inner">
+            <div 
+              className="h-full rounded-full bg-gradient-to-r from-amber to-brand transition-all duration-1000 ease-out" 
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line/40 bg-card/60 p-4 backdrop-blur-md">
+          <div>
+            <span className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Potensi Hadiah</span>
+            <span className="mt-0.5 block text-sm font-extrabold text-amber">
+              +{challenge.potentialReward.xp} XP &middot; +{challenge.potentialReward.hp} HP
+            </span>
+          </div>
+          <Link href="/challenge/challenge-light-cardio" className="btn btn-primary rounded-xl px-5 py-2 text-xs shadow-sm transition hover:scale-105 active:scale-95">
+            Lanjutkan Misi
+          </Link>
         </div>
       </div>
+    </div>
+  );
+}
 
-      <div className="space-y-2">
-        <div className="flex items-center justify-between text-xs font-semibold text-muted-foreground">
-          <span>Perkembangan Total</span>
-          <span className="stat-num text-foreground">{challenge.progress} / {challenge.target} {challenge.unit} ({pct}%)</span>
-        </div>
-        <div className="chart-progress h-2 overflow-hidden rounded-full">
-          <div 
-            className="h-full rounded-full bg-gradient-to-r from-amber to-brand transition-all duration-500" 
-            style={{ width: `${pct}%` }}
-          />
-        </div>
-      </div>
+// 8. DashboardCommunityHighlight
+export function DashboardCommunityHighlight() {
+  const [overview, setOverview] = useState<CommunityOverview | null>(null);
+  const [loading, setLoading] = useState(true);
 
-      <div className="rounded-xl border border-line/50 p-3 bg-secondary/20 space-y-2">
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-muted-foreground font-medium">Estimasi Hadiah</span>
-          <span className="font-bold text-amber text-xs">
-            +{challenge.potentialReward.xp} XP Potensial &middot; +{challenge.potentialReward.hp} HP Potensial
-          </span>
-        </div>
-        <p className="text-[10px] text-muted-foreground leading-tight italic">
-          * Hadiah potensial diberikan setelah penyelesaian tervalidasi. Hanya aktivitas tepercaya yang berkontribusi.
-        </p>
-      </div>
+  useEffect(() => {
+    let mounted = true;
+    fetch("/api/community/overview", { cache: "no-store" })
+      .then((res) => res.json())
+      .then((data) => {
+        if (mounted && data.success && data.overview) {
+          setOverview(data.overview);
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (mounted) setLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
-      <div className="pt-1">
-        <Link href="/challenge/challenge-light-cardio" className="btn btn-outline w-full text-center text-sm font-semibold justify-center">
-          Lihat Tantangan
+  if (loading || !overview || overview.events.length === 0) return null;
+
+  const firstEvent = overview.events[0];
+  const participants = firstEvent.participants;
+  const capacity = firstEvent.capacity;
+  const progress = capacity > 0 ? Math.min(100, Math.round((participants / capacity) * 100)) : 0;
+
+  return (
+    <div className="card border-line/60 bg-gradient-to-br from-card via-card to-brand-soft/20 shadow-sm animate-fade-up">
+      <div className="p-4 sm:p-5 flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
+        <div className="flex-1 min-w-0 w-full">
+          <div className="flex flex-wrap items-center gap-2 mb-2">
+            <span className="pill bg-brand text-[9px] font-bold text-white uppercase flex items-center gap-1">
+              <Megaphone className="h-3 w-3" /> Event Komunitas
+            </span>
+            <span className="text-[10px] text-muted-foreground font-semibold flex items-center gap-1">
+              <Users2 className="h-3 w-3" /> {participants} bergabung
+            </span>
+          </div>
+          <h3 className="font-display text-base font-bold text-foreground truncate">
+            {firstEvent.title}
+          </h3>
+          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1 sm:line-clamp-none">
+            Berlangsung di {firstEvent.location || "Lokasi menyusul"}
+          </p>
+          
+          <div className="mt-3 sm:hidden">
+            {/* Mobile progress bar */}
+            <div className="flex justify-between text-[10px] text-muted-foreground mb-1">
+              <span>Kuota terpenuhi</span>
+              <span>{progress}%</span>
+            </div>
+            <div className="h-1.5 overflow-hidden rounded-full bg-secondary">
+              <div className="h-full rounded-full bg-brand" style={{ width: `${progress}%` }} />
+            </div>
+          </div>
+        </div>
+        
+        <Link href="/komunitas" className="btn btn-primary btn-sm shrink-0 w-full sm:w-auto mt-2 sm:mt-0 justify-center">
+          Lihat Komunitas
         </Link>
       </div>
     </div>

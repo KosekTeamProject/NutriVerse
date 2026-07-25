@@ -25,16 +25,12 @@ export default async function AktivitasPage() {
         <div>
           <h1 className="font-display text-3xl font-extrabold tracking-tight text-foreground">Aktivitas</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Lari, bersepeda, atau jalan kaki untuk mengumpulkan XP. Hanya aktivitas fisik nyata yang dihitung.
+            Lacak jarak jalan, lari, atau sepedamu menggunakan GPS untuk mengumpulkan XP.
           </p>
         </div>
         <Link href="/aktivitas/kepercayaan" className="btn btn-outline btn-sm inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider self-start sm:self-center">
-          <HelpCircle className="h-4.5 w-4.5" /> Kepercayaan &amp; Keamanan
+          <HelpCircle className="h-4 w-4" /> Kepercayaan
         </Link>
-      </div>
-
-      <div className="grid gap-2 sm:grid-cols-4">
-        {[{ icon: ShieldCheck, title: "1. Beri izin", text: "Lokasi aktif hanya selama sesi." }, { icon: MousePointerClick, title: "2. Pilih aktivitas", text: "Jalan, lari, atau sepeda." }, { icon: MapPin, title: "3. Mulai lacak", text: "Jarak dan pace dihitung GPS." }, { icon: Save, title: "4. Tinjau & simpan", text: "XP menunggu hasil validasi." }].map((item) => { const Icon = item.icon; return <div key={item.title} className="rounded-2xl border border-line bg-card p-3"><Icon className="h-4 w-4 text-brand" /><p className="mt-2 text-xs font-bold text-foreground">{item.title}</p><p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">{item.text}</p></div>; })}
       </div>
 
       {/* GPS Consent Card */}

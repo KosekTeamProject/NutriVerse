@@ -391,13 +391,13 @@ export default function OnboardingPage() {
       </header>
 
       {/* Main Container */}
-      <main className="relative z-10 mx-auto w-full max-w-3xl flex-1 px-4 py-8 sm:px-6 sm:py-12 flex flex-col justify-center">
+      <main className="relative z-10 mx-auto w-full max-w-3xl flex-1 px-4 py-8 pb-24 sm:px-6 sm:py-12 flex flex-col">
         
         {/* ========================================================
             ACCOUNT REGISTRATION FORM (STEP 0)
            ======================================================== */}
         {onboardingStep === 0 && (
-          <section className="animate-fade-up card overflow-hidden border-line p-6 sm:p-10 shadow-lift">
+          <section className="my-auto animate-fade-up card overflow-hidden border-line p-6 sm:p-10 shadow-lift">
             <div className="space-y-6">
               <div>
                 <span className="eyebrow bg-brand-soft/40 border-brand/20 text-brand">Selamat Datang</span>
@@ -499,15 +499,17 @@ export default function OnboardingPage() {
             STEP 1: WELCOME SCREEN & CUSTOMIZE COMPANION
            ======================================================== */}
         {onboardingStep === 1 && (
-          <section className="flex flex-col items-center text-center max-w-lg mx-auto w-full">
-            <NoraAvatar size="lg" overrideAvatarId={companionData.avatarId} />
-            <NoraDialogueBubble 
-              text={`Halo ${account.name.split(" ")[0] || "Teman"} 👋\nAku AI Companion barumu.\nSiapa nama panggilanku yang kamu inginkan?`} 
-              isTyping={true}
-              onTypingComplete={() => setNoraTyping(false)}
-              overrideName={companionData.name}
-              subtext="Aku akan mengingat ritmemu, menyemangati tanpa paksaan, dan mendampingi tiap langkah kebaikanmu."
-            />
+          <section className="my-auto flex flex-col items-center text-center max-w-lg mx-auto w-full">
+            <div className="w-full flex flex-col justify-end min-h-[35dvh] lg:min-h-[40dvh] pb-6 sm:pb-8">
+              <NoraAvatar size="lg" overrideAvatarId={companionData.avatarId} />
+              <NoraDialogueBubble 
+                text={`Halo ${account.name.split(" ")[0] || "Teman"} 👋\n\nAku AI Companion barumu.\n\nSiapa nama panggilanku yang kamu inginkan?`} 
+                isTyping={true}
+                onTypingComplete={() => setNoraTyping(false)}
+                overrideName={companionData.name}
+                subtext="Aku akan mengingat ritmemu, menyemangati tanpa paksaan, dan mendampingi tiap langkah kebaikanmu."
+              />
+            </div>
             {!noraTyping && (
               <div className="mt-8 w-full space-y-6 animate-fade-up">
                 <div className="text-left space-y-2">
@@ -560,13 +562,15 @@ export default function OnboardingPage() {
             STEP 2: KENALI TUJUANMU (CONVERSATIONAL FORM)
            ======================================================== */}
         {onboardingStep === 2 && (
-          <section className="space-y-8 max-w-2xl mx-auto w-full">
-            <NoraAvatar size="sm" floating={false} pulsing={false} />
-            <NoraDialogueBubble 
-              text="Setiap langkah besar dimulai dari satu niat kecil.\nApa yang ingin kamu capai bersama NutriVerse saat ini?" 
-              isTyping={true}
-              onTypingComplete={() => setNoraTyping(false)}
-            />
+          <section className="my-auto space-y-8 max-w-2xl mx-auto w-full">
+            <div className="w-full flex flex-col justify-end min-h-[35dvh] lg:min-h-[40dvh] pb-2 sm:pb-4">
+              <NoraAvatar size="sm" floating={false} pulsing={false} />
+              <NoraDialogueBubble 
+                text="Setiap langkah besar dimulai dari satu niat kecil.\n\nApa yang ingin kamu capai bersama NutriVerse saat ini?" 
+                isTyping={true}
+                onTypingComplete={() => setNoraTyping(false)}
+              />
+            </div>
 
             {!noraTyping && (
               <div className="grid gap-3.5 sm:grid-cols-2 animate-fade-up" style={{ animationDelay: '200ms' }}>
@@ -624,13 +628,15 @@ export default function OnboardingPage() {
             STEP 3: TARGET AWAL
            ======================================================== */}
         {onboardingStep === 3 && (
-          <section className="space-y-8 max-w-2xl mx-auto w-full">
-            <NoraAvatar size="sm" floating={false} pulsing={false} />
-            <NoraDialogueBubble 
-              text="Pilihan yang bagus!\nNah, agar aku bisa merekomendasikan target yang pas, ceritakan sedikit tentang fisik dan kebiasaanmu ya." 
-              isTyping={true}
-              onTypingComplete={() => setNoraTyping(false)}
-            />
+          <section className="my-auto space-y-8 max-w-2xl mx-auto w-full">
+            <div className="w-full flex flex-col justify-end min-h-[35dvh] lg:min-h-[40dvh] pb-2 sm:pb-4">
+              <NoraAvatar size="sm" floating={false} pulsing={false} />
+              <NoraDialogueBubble 
+                text="Pilihan yang bagus!\n\nNah, agar aku bisa merekomendasikan target yang pas, ceritakan sedikit tentang fisik dan kebiasaanmu ya." 
+                isTyping={true}
+                onTypingComplete={() => setNoraTyping(false)}
+              />
+            </div>
 
             {!noraTyping && (
               <div className="card card-pad space-y-6 border-line shadow-soft animate-fade-up" style={{ animationDelay: '200ms' }}>
@@ -690,13 +696,15 @@ export default function OnboardingPage() {
             STEP 4: PREFERENSI (LIFESTYLE & DIET)
            ======================================================== */}
         {onboardingStep === 4 && (
-          <section className="space-y-8 max-w-2xl mx-auto w-full">
-            <NoraAvatar size="sm" floating={false} pulsing={false} />
-            <NoraDialogueBubble 
-              text="Catat! Terakhir, setiap orang punya gaya andalannya masing-masing.\nMakanan dan waktu olahraga seperti apa yang paling kamu sukai?" 
-              isTyping={true}
-              onTypingComplete={() => setNoraTyping(false)}
-            />
+          <section className="my-auto space-y-8 max-w-2xl mx-auto w-full">
+            <div className="w-full flex flex-col justify-end min-h-[35dvh] lg:min-h-[40dvh] pb-2 sm:pb-4">
+              <NoraAvatar size="sm" floating={false} pulsing={false} />
+              <NoraDialogueBubble 
+                text="Catat! Terakhir, setiap orang punya gaya andalannya masing-masing.\n\nMakanan dan waktu olahraga seperti apa yang paling kamu sukai?" 
+                isTyping={true}
+                onTypingComplete={() => setNoraTyping(false)}
+              />
+            </div>
 
             {!noraTyping && (
               <div className="card card-pad space-y-6 border-line shadow-soft animate-fade-up" style={{ animationDelay: '200ms' }}>
@@ -768,14 +776,16 @@ export default function OnboardingPage() {
             STEP 5: READY FOR GLOBAL TOUR
            ======================================================== */}
         {onboardingStep === 5 && (
-          <section className="flex flex-col items-center justify-center min-h-[50vh] text-center">
-            <NoraAvatar size="lg" overrideAvatarId={companionData.avatarId} />
-            <NoraDialogueBubble 
-              text={`Halo, akhirnya kita bertemu.\nAku ${companionData.name || "Nora"}.\nAku akan menemanimu selama menggunakan NutriVerse.\nTidak usah menghafal semua fitur.\nAyo ikut aku.`} 
-              isTyping={true}
-              onTypingComplete={() => setNoraTyping(false)}
-              overrideName={companionData.name}
-            />
+          <section className="my-auto flex flex-col items-center justify-center min-h-[50vh] text-center">
+            <div className="w-full flex flex-col justify-end min-h-[35dvh] lg:min-h-[40dvh] pb-6 sm:pb-8">
+              <NoraAvatar size="lg" overrideAvatarId={companionData.avatarId} />
+              <NoraDialogueBubble 
+                text={`Halo, akhirnya kita bertemu.\nAku ${companionData.name || "Nora"}.\nAku akan menemanimu selama menggunakan NutriVerse.\nTidak usah menghafal semua fitur.\nAyo ikut aku.`} 
+                isTyping={true}
+                onTypingComplete={() => setNoraTyping(false)}
+                overrideName={companionData.name}
+              />
+            </div>
             {!noraTyping && (
               <button
                 type="button"

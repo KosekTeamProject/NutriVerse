@@ -1,7 +1,7 @@
 "use client";
 /* eslint-disable react-hooks/set-state-in-effect */
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Sparkles, Bot, Ghost, Cat, Bird, Trees } from "lucide-react";
 
 import { useAuthSession } from "@/hooks/useAuthSession";
@@ -27,6 +27,12 @@ export function NoraDialogueBubble({
   const [displayedText, setDisplayedText] = useState("");
   const [typing, setTyping] = useState(isTyping);
   const { displayName } = useCompanionName();
+  
+  // Use a ref to keep track of the latest callback without triggering re-renders
+  const latestOnTypingComplete = useRef(onTypingComplete);
+  useEffect(() => {
+    latestOnTypingComplete.current = onTypingComplete;
+  }, [onTypingComplete]);
 
   const finalName = overrideName || displayName;
 
@@ -47,25 +53,33 @@ export function NoraDialogueBubble({
       } else {
         clearInterval(interval);
         setTyping(false);
-        if (onTypingComplete) onTypingComplete();
+        if (latestOnTypingComplete.current) {
+          latestOnTypingComplete.current();
+        }
       }
     }, typingSpeed);
 
     return () => clearInterval(interval);
-  }, [text, isTyping, typingSpeed, onTypingComplete]);
+  }, [text, isTyping, typingSpeed]); // Excluded onTypingComplete to prevent reset
+
+  const remainingText = text.slice(displayedText.length);
 
   return (
-    <div className="card card-pad relative mx-auto w-full max-w-lg border-brand/30 bg-card/95 backdrop-blur-xl p-6 sm:p-8 shadow-premium animate-fade-up">
+    <div className="card card-pad mx-auto w-full max-w-lg border-brand/20 bg-card/95 backdrop-blur-xl p-6 sm:p-8 shadow-soft animate-fade-up">
       <div className="flex items-center gap-2 mb-4 justify-center">
-        <span className="h-2.5 w-2.5 rounded-full bg-brand animate-ping" />
-        <span className="text-xs font-bold uppercase tracking-[0.15em] text-brand">{finalName} AI Companion</span>
+        <span className="h-1.5 w-1.5 rounded-full bg-brand/60" />
+        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand/80">{finalName} AI Companion</span>
       </div>
-      <h2 className="font-display text-2xl font-extrabold sm:text-3xl text-foreground whitespace-pre-line leading-relaxed min-h-[4rem] text-center transition-all">
-        {displayedText}
-        {typing && <span className="animate-pulse text-brand">|</span>}
+      
+      {/* Lightweight Typewriter: Dual-Span Masking */}
+      <h2 className="font-display text-lg sm:text-xl font-semibold text-foreground whitespace-pre-line leading-relaxed text-center">
+        <span>{displayedText}</span>
+        {typing && <span className="absolute animate-pulse text-brand/50">|</span>}
+        <span className="opacity-0 select-none pointer-events-none" aria-hidden="true">{remainingText}</span>
       </h2>
+
       {subtext && !typing && (
-        <p className="mt-4 text-sm text-center text-muted-foreground leading-relaxed animate-fade-up">
+        <p className="mt-5 text-[13px] text-center text-muted-foreground leading-relaxed animate-fade-up">
           {subtext}
         </p>
       )}
@@ -101,7 +115,7 @@ export function NoraAvatar({ floating = true, pulsing = true, size = "md", overr
 
   return (
     <div className="relative mx-auto mb-6 flex justify-center">
-      {pulsing && <div className="absolute -inset-4 rounded-full bg-gradient-to-tr from-brand to-lime opacity-30 blur-xl animate-pulse" />}
+      {pulsing && <div className="absolute -inset-4 rounded-full bg-gradient-to-tr from-brand to-lime opacity-10 blur-xl animate-pulse" />}
       <div className={`relative grid ${sizeMap[size]} place-items-center bg-gradient-to-tr from-brand to-lime text-white shadow-2xl ${floating ? 'animate-float' : ''}`}>
         {getIcon()}
       </div>
