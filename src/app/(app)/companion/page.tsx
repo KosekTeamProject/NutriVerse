@@ -116,28 +116,24 @@ function ChatSection() {
     setIsTyping(true);
 
     try {
-      const response = await fetch("/api/companion/conversations", {
+      const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: q }),
+        body: JSON.stringify({ message: q }),
       });
-      const result = (await response.json().catch(() => null)) as
-        | {
-            success?: boolean;
-            messages?: Array<{ sender: "USER" | "ASSISTANT"; content: string }>;
-          }
-        | null;
-      const assistant = result?.messages?.find(
-        (message) => message.sender === "ASSISTANT",
-      );
-      if (!response.ok || !result?.success || !assistant) {
-        throw new Error("Pesan gagal diproses.");
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || "Pesan gagal diproses.");
       }
+      
       setMessages((prev) => [
         ...prev,
-        { role: "ai", text: assistant.content, time: "Baru saja" },
+        { role: "ai", text: data.reply || "Maaf, respons tidak dikenali.", time: "Baru saja" },
       ]);
-    } catch {
+    } catch (err) {
+      console.error(err);
       setHasError(true);
     } finally {
       setIsTyping(false);
