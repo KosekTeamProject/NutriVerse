@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import Link from "next/link";
 import {
   Camera, Upload, Loader2, RotateCcw, Footprints, Bike,
   Flame, Sparkles, Check, X, HelpCircle, Plus, Leaf, Edit2, ArrowRight, HeartPulse
 } from "lucide-react";
-import { analyze, verdict, type Food, type Nutrition, type NutritionTrustLevel } from "@/lib/food";
+import { analyze, verdict, type Food, type Nutrition, type NutritionTrustLevel, FOODS } from "@/lib/food";
 import { deterministicFoodEntries } from "@/features/nutrition/data";
 import { NutritionTrustBadge, NutritionLimitationCard } from "@/features/nutrition/components/NutritionComponents";
 import { companionInsights } from "@/features/companion/data";
@@ -62,19 +62,48 @@ export function FoodScanner({ onAdd }: { onAdd?: (entry: LoggedFood) => void }) 
 
   const activeEntry = deterministicFoodEntries[demoIndex];
 
-  // Map the demo data to FOOD structure for calculations
-  const currentFood: Food = {
-    name: customName || activeEntry.title,
-    portion: activeEntry.portion,
-    kcal: activeEntry.nutrition.kcal,
-    protein: activeEntry.nutrition.protein,
-    carbs: activeEntry.nutrition.carbs,
-    fat: activeEntry.nutrition.fat,
-    fiber: activeEntry.nutrition.fiber,
-    sugar: activeEntry.nutrition.sugar ?? 0,
-    sodium: activeEntry.nutrition.sodium ?? 0,
-    vitamins: activeEntry.nutrition.vitamins || "A, B"
-  };
+  // Find matching food in FOODS if customName matches or is search-based
+  const matchedFood = useMemo(() => {
+    if (!customName) return null;
+    const nameLower = customName.toLowerCase().trim();
+    return FOODS.find(f => f.name.toLowerCase() === nameLower) || 
+           FOODS.find(f => f.name.toLowerCase().includes(nameLower)) || 
+           null;
+  }, [customName]);
+
+  const currentFood: Food = useMemo(() => {
+    if (isDemoMode || (!customName && activeEntry)) {
+      return {
+        name: activeEntry.title,
+        portion: activeEntry.portion,
+        kcal: activeEntry.nutrition.kcal,
+        protein: activeEntry.nutrition.protein,
+        carbs: activeEntry.nutrition.carbs,
+        fat: activeEntry.nutrition.fat,
+        fiber: activeEntry.nutrition.fiber,
+        sugar: activeEntry.nutrition.sugar ?? 0,
+        sodium: activeEntry.nutrition.sodium ?? 0,
+        vitamins: activeEntry.nutrition.vitamins || "A, B"
+      };
+    }
+
+    if (matchedFood) {
+      return matchedFood;
+    }
+
+    return {
+      name: customName,
+      portion: "1 porsi",
+      kcal: 250,
+      protein: 8,
+      carbs: 35,
+      fat: 8,
+      fiber: 2,
+      sugar: 5,
+      sodium: 400,
+      vitamins: "B1, B2"
+    };
+  }, [isDemoMode, activeEntry, matchedFood, customName]);
 
   function onPick(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -139,33 +168,62 @@ export function FoodScanner({ onAdd }: { onAdd?: (entry: LoggedFood) => void }) 
 
       {/* Demo Selector */}
       {(status === "empty" || status === "ready") && (
-        <div className="space-y-2 border-b border-line/40 pb-4">
-          <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
-            Contoh Analisis Demo
-          </label>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-            {deterministicFoodEntries.map((entry, idx) => (
-              <button
-                key={entry.id}
-                onClick={() => {
-                  setDemoIndex(idx);
-                  setIsDemoMode(true);
-                  setImageUrl(null);
-                  setStatus("ready");
-                }}
-                className={`rounded-xl border p-2.5 text-xs font-bold text-center transition leading-tight ${
-                  demoIndex === idx && isDemoMode && (status === "ready" || status === "empty")
-                    ? "border-brand bg-brand-soft text-brand shadow-sm"
-                    : "border-line text-muted-foreground hover:bg-secondary"
-                }`}
-              >
-                {entry.title}
-              </button>
-            ))}
+        <div className="space-y-4 border-b border-line/40 pb-4">
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
+              Contoh Analisis Demo
+            </label>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+              {deterministicFoodEntries.map((entry, idx) => (
+                <button
+                  type="button"
+                  key={entry.id}
+                  onClick={() => {
+                    setDemoIndex(idx);
+                    setIsDemoMode(true);
+                    setImageUrl(null);
+                    setCustomName("");
+                    setStatus("ready");
+                  }}
+                  className={`rounded-xl border p-2.5 text-xs font-bold text-center transition leading-tight ${
+                    demoIndex === idx && isDemoMode && (status === "ready" || status === "empty") && !customName
+                      ? "border-brand bg-brand-soft text-brand shadow-sm"
+                      : "border-line text-muted-foreground hover:bg-secondary"
+                  }`}
+                >
+                  {entry.title}
+                </button>
+              ))}
+            </div>
+            <p className="text-[10px] text-muted-foreground italic">
+              * Pilih contoh untuk mencoba alur. Contoh tidak masuk riwayat sampai disimpan.
+            </p>
           </div>
-          <p className="text-[10px] text-muted-foreground italic">
-            * Pilih contoh untuk mencoba alur. Contoh tidak masuk riwayat sampai disimpan.
-          </p>
+
+          {/* Custom Food Name Input */}
+          <div className="pt-3 border-t border-line/20 space-y-2">
+            <label htmlFor="food-name-input" className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
+              Atau Ketik Jenis Makanan Anda
+            </label>
+            <div className="flex gap-2">
+              <input
+                id="food-name-input"
+                type="text"
+                value={customName}
+                onChange={(e) => {
+                  setCustomName(e.target.value);
+                  setIsDemoMode(false);
+                  if (status === "empty" && e.target.value.trim()) {
+                    setStatus("ready");
+                  } else if (status === "ready" && !e.target.value.trim() && !imageUrl) {
+                    setStatus("empty");
+                  }
+                }}
+                placeholder="Ketik nama makanan, misal: Soto Ayam..."
+                className="input text-sm flex-1"
+              />
+            </div>
+          </div>
         </div>
       )}
 
