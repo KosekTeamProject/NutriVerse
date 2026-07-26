@@ -6,6 +6,7 @@
     "dev": "next dev --webpack",
     "build": "next build",
     "start": "next start",
+    "postinstall": "prisma generate",
     "lint": "eslint",
     "test:backend": "tsx --test --test-concurrency=1 src/server/**/*.test.ts",
     "test:integration": "tsx scripts/backend-integration-smoke.ts",
