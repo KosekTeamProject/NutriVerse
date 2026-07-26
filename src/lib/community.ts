@@ -18,6 +18,8 @@ export type Post = {
   detail: string;
   encourages: number;
   comments: number;
+  commentList?: { id: string; userName: string; text: string }[];
+  reactionList?: string[];
   trustLevel?: string;
 };
 

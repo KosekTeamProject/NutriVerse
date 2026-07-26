@@ -1,13 +1,29 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Send, MessageCircle, X } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { useAuthSession } from "@/hooks/useAuthSession";
+import { useProgressData } from "@/providers/ProgressDataProvider";
 
 export function AIChat() {
+  const session = useAuthSession();
+  const { overview } = useProgressData();
+  const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<{ role: "user" | "ai"; content: string }[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [sessionId, setSessionId] = useState("");
+
+  useEffect(() => {
+    let storedSessionId = localStorage.getItem("nutriverse_chat_session");
+    if (!storedSessionId) {
+      storedSessionId = "session-" + Math.random().toString(36).substring(2, 15);
+      localStorage.setItem("nutriverse_chat_session", storedSessionId);
+    }
+    setSessionId(storedSessionId);
+  }, []);
 
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -18,11 +34,31 @@ export function AIChat() {
     setInput("");
     setIsLoading(true);
 
+    const companionName = session?.companionName || "Nora"; // Nama AI diubah secara dinamis
+
+    const userContext = {
+      username: session?.username,
+      name: session?.name,
+      bmi: session?.baseline?.bmi,
+      weight: session?.baseline?.weightKg,
+      height: session?.baseline?.heightCm,
+      goal: session?.baseline?.goal,
+      activityLevel: session?.baseline?.activityLevel,
+      preferredActivities: session?.preferences?.preferredActivities,
+    };
+
+    const progress = overview?.daily ? 
+      `Langkah: ${overview.daily.steps.value} (Target: ${overview.daily.steps.target}), ` +
+      `Air: ${overview.daily.water.value}ml (Target: ${overview.daily.water.target}), ` +
+      `Tidur: ${overview.daily.sleep.value} jam (Target: ${overview.daily.sleep.target}), ` +
+      `Kalori: ${overview.daily.calories.value} kkal (Target: ${overview.daily.calories.target})` 
+      : "belum ada data hari ini";
+
     try {
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: userMessage }),
+        body: JSON.stringify({ message: userMessage, sessionId, companionName, userContext, progress }),
       });
 
       const data = await response.json();
@@ -40,7 +76,7 @@ export function AIChat() {
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
+    <div className={`fixed ${pathname === "/komunitas" ? "bottom-44" : "bottom-24"} right-4 sm:bottom-6 sm:right-6 z-50 flex flex-col items-end`}>
       {/* Chat Window */}
       {isOpen && (
         <div className="w-[350px] mb-4 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-2xl bg-white dark:bg-zinc-950 flex flex-col h-[500px] transition-all duration-300 animate-in slide-in-from-bottom-5">
@@ -50,7 +86,7 @@ export function AIChat() {
                 <span className="text-xl">👩‍⚕️</span>
               </div>
               <div>
-                <h2 className="text-sm font-bold">Nora (AI Nutriverse)</h2>
+                <h2 className="text-sm font-bold">{session?.companionName || "Nora"} (AI Nutriverse)</h2>
                 <p className="text-xs text-emerald-100 font-normal">Tanya seputar nutrisi</p>
               </div>
             </div>
@@ -66,7 +102,7 @@ export function AIChat() {
             {messages.length === 0 ? (
               <div className="text-center text-sm text-zinc-500 my-auto flex flex-col items-center gap-3">
                 <span className="text-4xl opacity-80">🥗</span>
-                <p>Halo! Saya Nora, asisten gizi Anda.<br/>Ada yang bisa saya bantu hari ini?</p>
+                <p>Halo! Saya {session?.companionName || "Nora"}, asisten gizi Anda.<br/>Ada yang bisa saya bantu hari ini?</p>
               </div>
             ) : (
               messages.map((msg, index) => (

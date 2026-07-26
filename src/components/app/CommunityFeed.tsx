@@ -6,7 +6,7 @@ import {
   CalendarDays, Clock3, Gift, MapPin, Megaphone, Palette, RefreshCw, Share2, Trophy, Target, TrendingUp,
   Download, Droplets, ImagePlus, Trash2, ChevronDown, ChevronLeft, ChevronRight
 } from "lucide-react";
-import { POSTS, type Post } from "@/lib/community";
+import { type Post } from "@/lib/community";
 import { LeaderboardView } from "@/components/app/LeaderboardView";
 import { BrandLogo } from "@/components/brand/BrandLogo";
 import { NutriVerseMoments } from "@/components/app/NutriVerseMoments";
@@ -31,9 +31,41 @@ const KIND_STYLE = {
   reflection: "bg-sky/15 text-sky border-sky/20",
 };
 
-function PostCard({ p }: { readonly p: Post }) {
+function PostCard({ p, onCommentAdded }: { readonly p: Post; readonly onCommentAdded?: () => void }) {
+  const session = useAuthSession();
   const [liked, setLiked] = useState(false);
   const [showComments, setShowComments] = useState(false);
+  const [commentText, setCommentText] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (session?.username && p.reactionList) {
+      setLiked(p.reactionList.includes(session.username));
+    }
+  }, [session?.username, p.reactionList]);
+
+  const submitComment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!commentText.trim() || isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      await fetch(`/api/community/feed/${p.id}/comment`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: session?.username,
+          text: commentText,
+        })
+      });
+      setCommentText("");
+      if (onCommentAdded) onCommentAdded();
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const Icon = KIND_ICON[p.kind] ?? Footprints;
   const statusColors = p.trustLevel === "verified"
     ? "bg-brand-soft text-brand border-brand/20"
@@ -68,11 +100,26 @@ function PostCard({ p }: { readonly p: Post }) {
 
       <div className="flex min-w-0 flex-col items-start gap-1 border-t border-line/45 pt-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
         <button
-          onClick={() => setLiked((v) => !v)}
+          onClick={async () => {
+            setLiked((v) => !v);
+            try {
+              await fetch(`/api/community/feed/${p.id}/reaction`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ username: session?.username })
+              });
+              if (onCommentAdded) onCommentAdded();
+            } catch (error) {
+              console.error(error);
+              setLiked((v) => !v); // revert on error
+            }
+          }}
           className={`inline-flex max-w-full items-center gap-1.5 rounded-full px-2 py-1.5 text-left text-xs font-bold transition sm:px-3 ${liked ? "bg-brand-soft text-brand shadow-sm" : "text-muted-foreground hover:bg-secondary"}`}
           aria-label="Beri semangat pada kiriman"
         >
-          <Heart className={`h-3.5 w-3.5 ${liked ? "fill-current" : ""}`} /> Beri Semangat &middot; {p.encourages + (liked ? 1 : 0)}
+          <Heart className={`h-3.5 w-3.5 ${liked ? "fill-current" : ""}`} /> Beri Semangat &middot; {
+            p.encourages + (liked && !(p.reactionList?.includes(session?.username ?? "")) ? 1 : (!liked && (p.reactionList?.includes(session?.username ?? "")) ? -1 : 0))
+          }
         </button>
         <button
           onClick={() => setShowComments((v) => !v)}
@@ -86,30 +133,33 @@ function PostCard({ p }: { readonly p: Post }) {
       {showComments && (
         <div className="mt-2 border-t border-line/45 pt-4">
           <div className="max-h-[14rem] overflow-y-auto overscroll-contain pr-2 space-y-3 custom-scrollbar">
-            {Array.from({ length: p.comments }).map((_, i) => (
-              <div key={i} className="flex gap-2.5">
+            {p.commentList && p.commentList.length > 0 ? p.commentList.map((c) => (
+              <div key={c.id} className="flex gap-2.5">
                 <div className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-secondary text-[10px] font-bold text-muted-foreground">
-                  NN
+                  {initials(c.userName)}
                 </div>
                 <div className="flex-1 min-w-0 rounded-2xl rounded-tl-none bg-secondary/50 p-2.5">
-                  <p className="text-[11px] font-bold text-foreground">NutriFriend {i + 1}</p>
+                  <p className="text-[11px] font-bold text-foreground">{c.userName}</p>
                   <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
-                    Wah mantap banget progresnya! Lanjutkan terus ya konsistensinya 💪
+                    {c.text}
                   </p>
                 </div>
               </div>
-            ))}
+            )) : null}
             {p.comments === 0 && (
               <p className="text-[11px] text-muted-foreground italic text-center py-4">Jadilah yang pertama memberi dukungan.</p>
             )}
           </div>
-          <div className="mt-3 relative">
+          <form onSubmit={submitComment} className="mt-3 relative">
             <input 
               type="text" 
-              placeholder="Tambahkan dukungan..." 
-              className="w-full rounded-xl border border-line bg-secondary/30 px-3 py-2 text-[11px] text-foreground placeholder:text-muted-foreground focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand/30" 
+              value={commentText}
+              onChange={(e) => setCommentText(e.target.value)}
+              disabled={isSubmitting}
+              placeholder={isSubmitting ? "Mengirim..." : "Tambahkan dukungan (Enter untuk mengirim)..."} 
+              className="w-full rounded-xl border border-line bg-secondary/30 px-3 py-2 text-[11px] text-foreground placeholder:text-muted-foreground focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand/30 disabled:opacity-50" 
             />
-          </div>
+          </form>
         </div>
       )}
     </div>
@@ -715,6 +765,21 @@ export function CommunityFeed() {
       economy: { totalXp: number } | null;
     }>
   >([]);
+  const [feedPosts, setFeedPosts] = useState<Post[]>([]);
+  const [postText, setPostText] = useState("");
+  const [isPosting, setIsPosting] = useState(false);
+
+  const loadFeed = useCallback(async () => {
+    try {
+      const res = await fetch("/api/community/feed");
+      const data = await res.json();
+      if (data.success && data.posts) {
+        setFeedPosts(data.posts);
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  }, []);
 
   const loadCommunity = useCallback(async () => {
     const response = await fetch("/api/community/overview", {
@@ -747,8 +812,34 @@ export function CommunityFeed() {
         },
       )
       .catch(() => undefined);
+    
+    void loadFeed();
+
     return () => window.clearTimeout(initialLoad);
-  }, [loadCommunity]);
+  }, [loadCommunity, loadFeed]);
+
+  async function submitPost(e: React.FormEvent) {
+    e.preventDefault();
+    if (!postText.trim() || isPosting) return;
+    setIsPosting(true);
+    try {
+      await fetch("/api/community/feed", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: session?.username,
+          text: postText,
+          kind: "REFLECTION"
+        })
+      });
+      setPostText("");
+      await loadFeed();
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsPosting(false);
+    }
+  }
 
   const cc = overview?.challenge ?? null;
   const pct = cc?.progressPercent ?? 0;
@@ -829,7 +920,38 @@ export function CommunityFeed() {
               <div><h2 className="font-display text-base font-bold text-foreground">Perjalanan Komunitas Terbaru</h2><p className="mt-0.5 text-xs text-muted-foreground">Dukungan dan progres aman dari lingkaranmu.</p></div>
               <span className="pill border border-line bg-card text-[10px] font-bold text-muted-foreground">Aktivitas Terbaru</span>
             </div>
-            {POSTS.map((p) => <PostCard key={p.id} p={p} />)}
+            
+            <form onSubmit={submitPost} className="card card-pad border-line bg-card flex gap-3 items-start">
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-gradient-to-br from-brand to-lime text-sm font-bold text-white shadow-sm">
+                {session?.name ? initials(session.name) : "ME"}
+              </div>
+              <div className="flex-1 min-w-0">
+                <input
+                  type="text"
+                  value={postText}
+                  onChange={(e) => setPostText(e.target.value)}
+                  disabled={isPosting}
+                  placeholder="Bagikan pencapaian atau refleksimu hari ini..."
+                  className="w-full rounded-xl border border-line bg-secondary/30 px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand/30 transition disabled:opacity-50"
+                />
+                <div className="mt-2 flex justify-end">
+                  <button type="submit" disabled={!postText.trim() || isPosting} className="btn btn-primary btn-sm rounded-full px-5 shadow-sm disabled:opacity-50">
+                    {isPosting ? "Membagikan..." : "Bagikan"}
+                  </button>
+                </div>
+              </div>
+            </form>
+
+            <div className="max-h-[600px] overflow-y-auto overscroll-contain space-y-4 custom-scrollbar pr-2">
+              {feedPosts.length === 0 ? (
+                 <div className="card card-pad py-12 text-center border-line bg-card">
+                   <p className="text-sm font-bold text-muted-foreground">Belum ada perjalanan komunitas.</p>
+                   <p className="mt-1 text-xs text-muted-foreground">Jadilah yang pertama berbagi hari ini!</p>
+                 </div>
+              ) : (
+                feedPosts.map((p) => <PostCard key={p.id} p={p} onCommentAdded={loadFeed} />)
+              )}
+            </div>
           </div>
         </div>
 

@@ -18,6 +18,8 @@ import { CompanionHubContainer } from "@/features/companion/components/Companion
 import { CompanionSafetyNote, CompanionWeeklyLetterPreview } from "@/features/companion/components/CompanionComponents";
 import { useCompanionName } from "@/hooks/useCompanionName";
 import { useWeeklyLetter } from "@/hooks/useWeeklyLetter";
+import { useAuthSession } from "@/hooks/useAuthSession";
+import { useProgressData } from "@/providers/ProgressDataProvider";
 
 type Msg = { role: "user" | "ai"; text: string; time: string };
 
@@ -35,12 +37,25 @@ function ChatSection() {
   const journeyTitle = searchParams.get("journeyTitle");
   const suggestedPrompt = searchParams.get("prompt");
   const { displayName } = useCompanionName();
+  const session = useAuthSession();
+  const { overview } = useProgressData();
 
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState(() => suggestedPrompt ?? "");
   const [isTyping, setIsTyping] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [lastQuestion, setLastQuestion] = useState("");
+  const [sessionId, setSessionId] = useState("");
+
+  useEffect(() => {
+    let storedSessionId = localStorage.getItem("nutriverse_chat_session");
+    if (!storedSessionId) {
+      storedSessionId = "session-" + Math.random().toString(36).substring(2, 15);
+      localStorage.setItem("nutriverse_chat_session", storedSessionId);
+    }
+    setSessionId(storedSessionId);
+  }, []);
+
   const reducedMotion = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const contextLabel: string | null = useMemo(() => {
     if (journeyId) return `Konteks Journey: ${journeyTitle || "Catatan Journey terpilih"}`;
@@ -116,10 +131,26 @@ function ChatSection() {
     setIsTyping(true);
 
     try {
+      const userContext = {
+        username: session?.username,
+        name: session?.name,
+        bmi: session?.baseline?.bmi,
+        goal: session?.baseline?.goal,
+        activityLevel: session?.baseline?.activityLevel,
+        preferredActivities: session?.preferences?.preferredActivities,
+      };
+
+      const progress = overview?.daily ? 
+        `Langkah: ${overview.daily.steps.value} (Target: ${overview.daily.steps.target}), ` +
+        `Air: ${overview.daily.water.value}ml (Target: ${overview.daily.water.target}), ` +
+        `Tidur: ${overview.daily.sleep.value} jam (Target: ${overview.daily.sleep.target}), ` +
+        `Kalori: ${overview.daily.calories.value} kkal (Target: ${overview.daily.calories.target})` 
+        : "belum ada data hari ini";
+
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: q }),
+        body: JSON.stringify({ message: q, sessionId, companionName: displayName, userContext, progress }),
       });
       
       const data = await response.json();

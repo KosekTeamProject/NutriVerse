@@ -34,8 +34,8 @@ const NAV_GROUPS = [
 
 const MOBILE_NAV = [
   { href: "/dashboard", label: "Beranda", icon: Home },
-  { href: "/scan", label: "Makanan", icon: ScanLine },
   { href: "/aktivitas", label: "Aktivitas", icon: Activity },
+  { href: "/scan", label: "Makanan", icon: ScanLine },
   { href: "/komunitas", label: "Komunitas", icon: UsersRound },
   { href: "/profil", label: "Profil", icon: UserRound },
 ];
@@ -172,20 +172,27 @@ export function AppShell({ children }: { readonly children: React.ReactNode }) {
   useEffect(() => {
     if (!authChecked || !session) return;
     let cancelled = false;
-    fetch("/api/notifications", { cache: "no-store" })
-      .then(async (response) => {
+    
+    const fetchNotifs = async () => {
+      try {
+        const response = await fetch("/api/notifications", { cache: "no-store" });
         const result = (await response.json().catch(() => null)) as
           | { success?: boolean; notifications?: HeaderNotification[] }
           | null;
         if (!cancelled && response.ok && result?.success) {
           setNotifications(result.notifications ?? []);
         }
-      })
-      .catch(() => {
+      } catch (e) {
         // Notifikasi tidak menggagalkan shell saat koneksi terputus.
-      });
+      }
+    };
+
+    fetchNotifs();
+    const interval = setInterval(fetchNotifs, 3000);
+    
     return () => {
       cancelled = true;
+      clearInterval(interval);
     };
   }, [authChecked, session]);
 

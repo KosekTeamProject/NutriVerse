@@ -24,7 +24,7 @@ function DailyCheckIn() {
 
   async function save(event: React.FormEvent) {
     event.preventDefault();
-    const sleep = Number(sleepHours);
+    const sleep = Number(sleepHours.replace(",", "."));
     const water = Number(waterMl);
     if ((!sleep || sleep <= 0) && (!water || water <= 0)) return;
     setSaving(true);
@@ -80,14 +80,12 @@ function DailyCheckIn() {
         <label className="text-xs font-bold">
           Tidur terakhir (jam)
           <input
-            type="number"
-            min="0.5"
-            max="24"
-            step="0.5"
+            type="text"
+            inputMode="decimal"
             value={sleepHours}
             onChange={(event) => setSleepHours(event.target.value)}
             className="input mt-1 w-full"
-            placeholder="Contoh: 7.5"
+            placeholder="Contoh: 7.5 atau 7,5"
           />
         </label>
         <label className="text-xs font-bold">

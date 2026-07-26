@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { LatLng } from "@/lib/activity";
@@ -56,24 +56,26 @@ export function LiveRouteMap({
   const userMovedMapRef = useRef(false);
   const resumeFollowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const feature = useMemo(() => routeFeature(segments), [segments]);
+  const [webglError, setWebglError] = useState(false);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
-    const map = new maplibregl.Map({
-      container: containerRef.current,
-      style: OPENFREEMAP_STYLE,
-      center: [117.5, -2.5],
-      zoom: 3.25,
-      attributionControl: {},
-      cooperativeGestures: false,
-    });
-    mapRef.current = map;
+    try {
+      const map = new maplibregl.Map({
+        container: containerRef.current,
+        style: OPENFREEMAP_STYLE,
+        center: [117.5, -2.5],
+        zoom: 3.25,
+        attributionControl: {},
+        cooperativeGestures: false,
+      });
+      mapRef.current = map;
 
-    map.addControl(
-      new maplibregl.NavigationControl({ showCompass: false, visualizePitch: false }),
-      "top-right",
-    );
+      map.addControl(
+        new maplibregl.NavigationControl({ showCompass: false, visualizePitch: false }),
+        "top-right",
+      );
 
     map.on("style.load", () => {
       loadedRef.current = true;
@@ -131,15 +133,19 @@ export function LiveRouteMap({
     const resizeObserver = new ResizeObserver(() => map.resize());
     resizeObserver.observe(containerRef.current);
 
-    return () => {
-      if (resumeFollowTimerRef.current) clearTimeout(resumeFollowTimerRef.current);
-      resizeObserver.disconnect();
-      markerRef.current?.remove();
-      markerRef.current = null;
-      loadedRef.current = false;
-      map.remove();
-      mapRef.current = null;
-    };
+      return () => {
+        if (resumeFollowTimerRef.current) clearTimeout(resumeFollowTimerRef.current);
+        resizeObserver.disconnect();
+        markerRef.current?.remove();
+        markerRef.current = null;
+        loadedRef.current = false;
+        map.remove();
+        mapRef.current = null;
+      };
+    } catch (error) {
+      console.warn("WebGL Initialization failed:", error);
+      setWebglError(true);
+    }
   }, []);
 
   useEffect(() => {
@@ -177,6 +183,17 @@ export function LiveRouteMap({
       });
     }
   }, [currentLocation, isTracking]);
+
+  if (webglError) {
+    return (
+      <div className="flex h-full w-full items-center justify-center rounded-xl bg-secondary/20 p-4 text-center">
+        <div className="max-w-xs space-y-2">
+          <p className="text-sm font-bold text-foreground">Peta Tidak Tersedia</p>
+          <p className="text-xs text-muted-foreground">Perangkat atau browser Anda saat ini tidak mendukung WebGL yang diperlukan untuk menampilkan peta.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative h-full w-full overflow-hidden rounded-xl">

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { createPortal } from "react-dom";
 import NextImage from "next/image";
 import { Camera, Check, ChevronLeft, ChevronRight, Download, Lock, Maximize2, RefreshCw, ShieldCheck, Trash2, Users, X } from "lucide-react";
 import { BrandLogo } from "@/components/brand/BrandLogo";
@@ -157,10 +158,88 @@ export function NutriVerseMoments() {
   const [publishing, setPublishing] = useState(false);
   const [viewerMoment, setViewerMoment] = useState<Moment | null>(null);
   const [moments, setMoments] = useState<Moment[]>([]);
+  const [isHovered, setIsHovered] = useState(false);
+  const progressBarRef = useRef<HTMLDivElement>(null);
+
+  const MIN_ITEMS = 12;
+  const duplicateCount = moments.length > 0 ? Math.max(2, Math.ceil(MIN_ITEMS / moments.length)) : 0;
 
   useEffect(() => () => {
     streamRef.current?.getTracks().forEach((track) => track.stop());
   }, []);
+
+  useEffect(() => {
+    if (moments.length === 0 || isHovered || railDragging || composerOpen || viewerMoment) return;
+    if (window.innerWidth < 640) return; // Stop auto-scroll on mobile
+    
+    let animationFrameId: number;
+    let lastTime = performance.now();
+    let fractionalScroll = 0;
+    let isPaused = false;
+    
+    const scrollStep = (time: number) => {
+      const rail = railRef.current;
+      if (!rail) return;
+      
+      const delta = time - lastTime;
+      lastTime = time;
+
+      const setWidth = rail.scrollWidth / duplicateCount;
+      if (progressBarRef.current) {
+        // Calculate progress based on the FIRST original set's width
+        const progress = Math.min(100, Math.max(0, (rail.scrollLeft / setWidth) * 100));
+        progressBarRef.current.style.width = `${progress}%`;
+      }
+      
+      if (!isPaused) {
+        fractionalScroll += (45 * delta) / 1000; // 45 pixels per second
+        
+        if (fractionalScroll >= 1) {
+          const pixelsToScroll = Math.floor(fractionalScroll);
+          fractionalScroll -= pixelsToScroll;
+          rail.scrollLeft += pixelsToScroll;
+          
+          if (rail.scrollLeft >= setWidth) {
+            rail.scrollLeft -= setWidth; // Reset seamlessly
+            isPaused = true;
+            setTimeout(() => {
+              isPaused = false;
+              lastTime = performance.now();
+            }, 4000);
+          }
+        }
+      }
+      
+      animationFrameId = requestAnimationFrame(scrollStep);
+    };
+    
+    animationFrameId = requestAnimationFrame(scrollStep);
+    
+    return () => cancelAnimationFrame(animationFrameId);
+  }, [moments.length, isHovered, railDragging, composerOpen, viewerMoment, duplicateCount]);
+
+  // Peek animation for mobile viewer
+  useEffect(() => {
+    if (viewerMoment && window.innerWidth < 640) {
+      const viewer = document.getElementById("mobile-moment-viewer");
+      const el = document.getElementById(`mobile-moment-${viewerMoment.id}`);
+      if (viewer && el) {
+        // Snap immediately to the selected photo
+        viewer.scrollTo({ top: el.offsetTop, behavior: "instant" });
+        
+        // Peek animation on first open in this session
+        if (!sessionStorage.getItem("moment_peek_played")) {
+          setTimeout(() => {
+            viewer.scrollBy({ top: 120, behavior: "smooth" });
+            setTimeout(() => {
+              viewer.scrollTo({ top: el.offsetTop, behavior: "smooth" });
+            }, 500);
+          }, 800);
+          sessionStorage.setItem("moment_peek_played", "true");
+        }
+      }
+    }
+  }, [viewerMoment]);
 
   useEffect(() => {
     let cancelled = false;
@@ -432,34 +511,34 @@ export function NutriVerseMoments() {
 
   return (
     <section className="card min-w-0 overflow-hidden border-brand/15 bg-card">
-      <div className="relative overflow-hidden bg-gradient-to-br from-brand via-brand/90 to-emerald-700 p-5 sm:p-6 text-white border-b border-line/60">
-        <div className="absolute -top-12 -right-10 opacity-10 pointer-events-none">
+      <div className="relative overflow-hidden bg-white/40 dark:bg-black/40 backdrop-blur-xl p-5 sm:p-6 border-b border-line shadow-[inset_0_1px_1px_rgba(255,255,255,0.4)] dark:shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]">
+        <div className="absolute -top-12 -right-10 opacity-[0.03] dark:opacity-5 pointer-events-none text-foreground">
            <Camera className="h-64 w-64" />
         </div>
         <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0 space-y-2">
-            <h1 className="font-display text-3xl font-extrabold tracking-tight text-white mb-4">Komunitas</h1>
+            <h1 className="font-display text-3xl font-extrabold tracking-tight text-foreground mb-4">Komunitas</h1>
             <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-brand shadow-sm">
+              <span className="inline-flex items-center gap-1 rounded-full bg-brand/10 dark:bg-brand/20 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-brand shadow-sm ring-1 ring-brand/20">
                 <Camera className="h-3 w-3" /> NutriVerse Moments
               </span>
-              <span className="inline-flex items-center rounded-full bg-black/20 px-2 py-1 text-[9px] font-bold uppercase tracking-wider text-white backdrop-blur-sm">
+              <span className="inline-flex items-center rounded-full bg-secondary/80 px-2 py-1 text-[9px] font-bold uppercase tracking-wider text-foreground backdrop-blur-sm">
                 Kamera Langsung
               </span>
             </div>
-            <h2 className="font-display text-xl sm:text-2xl font-extrabold leading-tight tracking-tight text-white">
+            <h2 className="font-display text-xl sm:text-2xl font-extrabold leading-tight tracking-tight text-foreground">
               Tangkap momen sehat, <br className="hidden sm:block" /> bukan sekadar angka
             </h2>
-            <p className="max-w-xl text-xs sm:text-sm font-medium leading-relaxed text-white/85">
+            <p className="max-w-xl text-xs sm:text-sm font-medium leading-relaxed text-muted-foreground">
               Bagikan aktivitasmu hari ini. Sosial &middot; Tanpa XP &middot; 100% Kamera Langsung
             </p>
           </div>
           <div className="flex w-full sm:w-auto items-center gap-3">
             <div className="hidden sm:flex gap-2 mr-2">
-              <button onClick={() => scrollMoments(-1)} className="grid h-10 w-10 place-items-center rounded-xl bg-black/20 text-white backdrop-blur-sm transition hover:bg-white hover:text-brand" aria-label="Moment sebelumnya"><ChevronLeft className="h-5 w-5" /></button>
-              <button onClick={() => scrollMoments(1)} className="grid h-10 w-10 place-items-center rounded-xl bg-black/20 text-white backdrop-blur-sm transition hover:bg-white hover:text-brand" aria-label="Moment berikutnya"><ChevronRight className="h-5 w-5" /></button>
+              <button onClick={() => scrollMoments(-1)} className="grid h-10 w-10 place-items-center rounded-xl bg-card text-foreground shadow-sm ring-1 ring-line backdrop-blur-sm transition hover:bg-brand hover:text-white" aria-label="Moment sebelumnya"><ChevronLeft className="h-5 w-5" /></button>
+              <button onClick={() => scrollMoments(1)} className="grid h-10 w-10 place-items-center rounded-xl bg-card text-foreground shadow-sm ring-1 ring-line backdrop-blur-sm transition hover:bg-brand hover:text-white" aria-label="Moment berikutnya"><ChevronRight className="h-5 w-5" /></button>
             </div>
-            <button onClick={() => setComposerOpen(true)} className="btn bg-white text-brand hover:bg-white/90 shadow-xl btn-lg w-full sm:w-auto font-extrabold text-sm sm:text-base px-6">
+            <button onClick={() => setComposerOpen(true)} className="btn btn-primary shadow-xl btn-lg hidden sm:flex w-full sm:w-auto font-extrabold text-sm sm:text-base px-6">
               <Camera className="h-5 w-5 mr-1.5" /> Tangkap Sekarang
             </button>
           </div>
@@ -468,11 +547,15 @@ export function NutriVerseMoments() {
 
       <div
         ref={railRef}
-        className={`grid touch-pan-y auto-cols-[minmax(140px,42vw)] grid-flow-col gap-3 overflow-x-auto p-3.5 pb-4 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:auto-cols-[160px] sm:px-4 ${railDragging ? "cursor-grabbing snap-none select-none" : "cursor-grab"}`}
+        className={`grid touch-pan-y auto-cols-[minmax(140px,42vw)] grid-flow-col gap-3 overflow-x-auto p-3.5 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:auto-cols-[160px] sm:px-4 ${railDragging ? "cursor-grabbing select-none" : "cursor-grab"}`}
         onPointerDown={startRailDrag}
         onPointerMove={moveRail}
         onPointerUp={stopRailDrag}
         onPointerCancel={stopRailDrag}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        onTouchStart={() => setIsHovered(true)}
+        onTouchEnd={() => setIsHovered(false)}
         aria-label="Carousel NutriVerse Moments"
       >
         {moments.length === 0 && (
@@ -480,8 +563,8 @@ export function NutriVerseMoments() {
             Belum ada Moment di database. Tangkap momen pertama melalui kamera.
           </div>
         )}
-        {moments.map((moment, index) => (
-          <article key={moment.id} className="min-w-0 snap-start overflow-hidden rounded-[1.4rem] border border-line bg-secondary/25 shadow-sm">
+        {Array.from({ length: duplicateCount }).flatMap(() => moments).map((moment, index) => (
+          <article key={`${moment.id}-${index}`} className="min-w-0 overflow-hidden rounded-[1.4rem] border border-line bg-secondary/25 shadow-sm">
             <button type="button" onClick={() => moment.image && setViewerMoment(moment)} disabled={!moment.image} className={`group relative block aspect-square w-full overflow-hidden text-left ${moment.image ? "cursor-zoom-in bg-[#07150f]" : index % 2 ? "bg-gradient-to-br from-[#15334a] via-[#1d7f87] to-[#efb46c]" : "bg-gradient-to-br from-[#063d2b] via-[#0b8054] to-[#a3e635]"}`} aria-label={moment.image ? `Lihat foto ${moment.name} secara penuh` : undefined}>
               {moment.image && <NextImage src={moment.image} alt={`Moment ${moment.name}`} fill unoptimized className="object-cover" />}
               <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/55 via-black/15 to-transparent" />
@@ -494,40 +577,85 @@ export function NutriVerseMoments() {
           </article>
         ))}
       </div>
-
-      {viewerMoment?.image && (
-        <div className="fixed inset-0 z-[90] grid place-items-center bg-black/85 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label={`Foto penuh dari ${viewerMoment.name}`} onClick={() => setViewerMoment(null)}>
-          <section className="relative flex max-h-[calc(100dvh-2rem)] w-full max-w-4xl flex-col overflow-hidden rounded-3xl border border-white/15 bg-[#07150f] shadow-2xl" onClick={(event) => event.stopPropagation()}>
-            <div className="flex items-center justify-between border-b border-white/10 px-4 py-3 text-white sm:px-5"><div className="min-w-0"><p className="truncate text-sm font-bold">Moment {viewerMoment.name}</p><p className="mt-0.5 text-[10px] text-white/60">{viewerMoment.privacy === "public" ? "Komunitas" : viewerMoment.privacy === "friends" ? "Teman" : "Privat"} · {viewerMoment.time}</p></div><button type="button" onClick={() => setViewerMoment(null)} className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-white/70 transition hover:bg-white/10 hover:text-white" aria-label="Tutup foto penuh"><X className="h-5 w-5" /></button></div>
-            <div className="relative min-h-[50vh] flex-1 bg-black w-full"><NextImage src={viewerMoment.image} alt={`Moment penuh ${viewerMoment.name}`} fill unoptimized className="object-contain" /></div>
-            <div className="border-t border-white/10 px-4 py-3 text-white sm:px-5"><p className="text-sm font-bold">{viewerMoment.caption}</p>{viewerMoment.duringActivity && <p className="mt-1 text-[10px] text-white/65">Diambil saat aktivitas · tidak menghasilkan XP</p>}</div>
-          </section>
+      
+      {moments.length > 4 && (
+        <div className="mx-4 mb-4 mt-1 hidden h-1.5 overflow-hidden rounded-full bg-secondary/60 shadow-inner sm:block">
+          <div ref={progressBarRef} className="h-full w-0 bg-brand rounded-full transition-none" />
         </div>
       )}
 
+      {typeof document !== 'undefined' && createPortal(
+        <>
+          {/* Desktop Viewer */}
+          {viewerMoment?.image && (
+            <div className="fixed inset-0 z-[90] hidden sm:grid place-items-center bg-black/85 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label={`Foto penuh dari ${viewerMoment.name}`} onClick={() => setViewerMoment(null)}>
+              <section className="relative flex max-h-[calc(100dvh-2rem)] w-full max-w-4xl flex-col overflow-hidden rounded-3xl border border-white/15 bg-[#07150f] shadow-2xl" onClick={(event) => event.stopPropagation()}>
+                <div className="flex items-center justify-between border-b border-white/10 px-4 py-3 text-white sm:px-5"><div className="min-w-0"><p className="truncate text-sm font-bold">Moment {viewerMoment.name}</p><p className="mt-0.5 text-[10px] text-white/60">{viewerMoment.privacy === "public" ? "Komunitas" : viewerMoment.privacy === "friends" ? "Teman" : "Privat"} · {viewerMoment.time}</p></div><button type="button" onClick={() => setViewerMoment(null)} className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-white/70 transition hover:bg-white/10 hover:text-white" aria-label="Tutup foto penuh"><X className="h-5 w-5" /></button></div>
+                <div className="relative min-h-[50vh] flex-1 bg-black w-full"><NextImage src={viewerMoment.image} alt={`Moment penuh ${viewerMoment.name}`} fill unoptimized className="object-contain" /></div>
+                <div className="border-t border-white/10 px-4 py-3 text-white sm:px-5"><p className="text-sm font-bold">{viewerMoment.caption}</p>{viewerMoment.duringActivity && <p className="mt-1 text-[10px] text-white/65">Diambil saat aktivitas · tidak menghasilkan XP</p>}</div>
+              </section>
+            </div>
+          )}
+
+          {/* Mobile Snap Scroll Viewer */}
+          {viewerMoment && (
+            <div className="fixed inset-0 z-[100] flex flex-col bg-black overflow-y-auto snap-y snap-mandatory scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:hidden" id="mobile-moment-viewer">
+              {moments.filter((m, index, self) => index === self.findIndex((t) => t.id === m.id)).map((moment) => (
+                <section key={moment.id} id={`mobile-moment-${moment.id}`} className="relative h-[100dvh] w-full shrink-0 snap-start snap-always bg-black flex flex-col justify-between" onClick={(e) => e.stopPropagation()}>
+                  <div className="absolute inset-0 z-0">
+                    <NextImage src={moment.image} alt={`Moment penuh ${moment.name}`} fill unoptimized className="object-cover" />
+                  </div>
+                  <div className="relative z-10 flex items-center justify-between bg-gradient-to-b from-black/80 via-black/40 to-transparent p-4 pt-12 pb-24 text-white">
+                    <div className="min-w-0 drop-shadow-md">
+                      <p className="truncate text-sm font-extrabold">{moment.name}</p>
+                      <p className="mt-0.5 text-[10px] font-medium text-white/90">{moment.privacy === "public" ? "Komunitas" : moment.privacy === "friends" ? "Teman" : "Privat"} · {moment.time}</p>
+                    </div>
+                  </div>
+                  <div className="relative z-10 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-4 pb-12 pt-24 text-white">
+                    <p className="text-sm font-bold drop-shadow-md">{moment.caption}</p>
+                    {moment.duringActivity && <p className="mt-1.5 text-[10px] font-semibold text-brand drop-shadow-md">SAAT AKTIVITAS</p>}
+                  </div>
+                </section>
+              ))}
+              <button type="button" onClick={() => setViewerMoment(null)} className="fixed right-4 top-10 z-[110] grid h-10 w-10 shrink-0 place-items-center rounded-full bg-black/40 text-white backdrop-blur-md transition active:scale-90 sm:hidden shadow-lg border border-white/20" aria-label="Tutup foto penuh"><X className="h-5 w-5" /></button>
+            </div>
+          )}
+        </>,
+        document.body
+      )}
+
       {composerOpen && (
-        <div className="fixed inset-0 z-[80] flex items-start justify-center overflow-hidden bg-black/70 p-0 backdrop-blur-sm sm:items-center sm:p-3" role="dialog" aria-modal="true" aria-labelledby="moment-title">
-          <section className="h-[100dvh] w-full max-w-3xl overflow-y-auto rounded-none border border-line bg-card shadow-2xl sm:h-auto sm:max-h-[calc(100dvh-1.5rem)] sm:rounded-[2rem]">
-            <header className="sticky top-0 z-10 flex items-center justify-between border-b border-line bg-card px-5 py-4"><div><p className="text-[9px] font-bold uppercase tracking-[0.16em] text-brand">NutriVerse Moments</p><h2 id="moment-title" className="mt-1 font-display text-lg font-extrabold">Bagikan momen sehatmu</h2></div><button onClick={closeComposer} className="grid h-9 w-9 place-items-center rounded-xl text-muted-foreground hover:bg-secondary" aria-label="Tutup pembuat Moment"><X className="h-5 w-5" /></button></header>
-            <div className="grid gap-5 p-5 sm:grid-cols-[minmax(0,1fr)_280px] sm:p-6">
-              <div className="relative aspect-[4/5] overflow-hidden rounded-3xl bg-[#101314]">
-                {photo ? <><NextImage src={photo} alt="" fill unoptimized className="scale-110 object-cover opacity-45 grayscale blur-2xl" /><NextImage src={photo} alt="Preview Moment penuh" fill unoptimized className="object-contain" /><div aria-hidden className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#07090a]/95" /><div className="pointer-events-none absolute inset-x-4 top-4 flex items-center gap-2.5 text-white drop-shadow-lg"><BrandLogo compact className="!h-9 !w-9" /><span className="font-display text-base font-extrabold tracking-[-0.05em]">Nutri<span className="text-emerald-300">Verse</span></span></div><div className="pointer-events-none absolute inset-x-5 bottom-5 text-center text-white"><p className="line-clamp-3 font-display text-[clamp(1.15rem,6vw,2rem)] font-extrabold leading-[1.04] tracking-tight drop-shadow-lg">{caption.trim() || "Satu momen sehat hari ini."}</p><div className="mx-auto mt-4 h-px w-3/4 bg-white/20" /><p className="mt-3 text-[8px] font-bold tracking-[0.12em] text-white/75">NUTRIVERSE • MOMENT SEHAT</p></div></> : <video ref={videoRef} muted playsInline className={`h-full w-full scale-x-[-1] object-contain ${cameraActive ? "block" : "hidden"}`} />}
-                {!photo && !cameraActive && <div className="absolute inset-0 grid place-items-center p-6 text-center"><div><span className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-white/10 text-white"><Camera className="h-8 w-8" /></span><p className="mt-4 text-sm font-bold text-white">Kamera belum aktif</p><p className="mt-1 text-xs text-white/60">Izin hanya diminta ketika tombol kamera ditekan.</p><button onClick={startCamera} className="btn mt-5 bg-white text-[#07150f]">Aktifkan Kamera</button></div></div>}
-                {cameraActive && <button onClick={capturePhoto} className="absolute bottom-5 left-1/2 grid h-16 w-16 -translate-x-1/2 place-items-center rounded-full border-4 border-white bg-brand text-white shadow-xl" aria-label="Ambil foto"><Camera className="h-7 w-7" /></button>}
-                {!photo && <div className="absolute left-4 top-4 rounded-full bg-black/50 px-2.5 py-1.5 text-[8px] font-bold text-white backdrop-blur">NUTRIVERSE • TANPA XP</div>}
-              </div>
-              <div className="min-w-0 space-y-4">
-                {cameraError && <div className="rounded-xl border border-amber/25 bg-amber/10 p-3 text-[10px] leading-relaxed text-amber">{cameraError}</div>}
-                {photo && <button onClick={() => setPhoto(null)} className="btn btn-outline btn-sm w-full"><RefreshCw className="h-4 w-4" /> Ambil Ulang</button>}
-                <div><label htmlFor="moment-caption" className="label">Caption untuk template</label><p id="moment-caption-help" className="mt-1 text-[10px] leading-relaxed text-muted-foreground">Teks ini bisa diedit dan akan tampil sebagai typography di bagian bawah preview serta PNG unduhan.</p><textarea id="moment-caption" value={caption} onChange={(event) => setCaption(event.target.value)} aria-describedby="moment-caption-help" maxLength={180} rows={4} className="input mt-2 min-h-24 resize-none" placeholder="Ceritakan momen sehatmu…" /><p className="mt-1 text-right text-[9px] text-muted-foreground">{caption.length}/180</p></div>
-                <div><p className="label">Siapa yang dapat melihat?</p><div className="grid grid-cols-3 gap-1.5">{PRIVACY_OPTIONS.map((option) => { const Icon = option.icon; return <button key={option.value} onClick={() => setPrivacy(option.value)} className={`rounded-xl border p-2 text-[9px] font-bold ${privacy === option.value ? "border-brand bg-brand-soft text-brand" : "border-line text-muted-foreground"}`}><Icon className="mx-auto mb-1 h-4 w-4" />{option.label}</button>; })}</div></div>
-                <label className="flex cursor-pointer items-start gap-2.5 rounded-xl bg-secondary/50 p-3"><input type="checkbox" checked={duringActivity} onChange={(event) => setDuringActivity(event.target.checked)} className="mt-0.5 accent-[var(--brand)]" /><span className="text-[10px] leading-relaxed text-muted-foreground"><span className="font-bold text-foreground">Diambil saat aktivitas berlangsung</span><br />Label konteks saja, bukan bukti anti-cheat atau sumber XP.</span></label>
-                <div className="grid gap-2"><button onClick={() => downloadWatermarkedMoment()} disabled={!photo || publishing} className="btn btn-outline"><Download className="h-4 w-4" /> {downloaded ? "PNG Tersimpan" : "Simpan PNG Template"}</button><button onClick={publishMoment} disabled={!photo || publishing} className="btn btn-primary"><Check className="h-4 w-4" /> {publishing ? "Menyimpan..." : "Bagikan Moment"}</button></div>
-                <p className="text-[9px] leading-relaxed text-muted-foreground">Moment hanya dapat dibuat melalui kamera langsung. Foto dinormalisasi ulang untuk membuang metadata EXIF/lokasi; PNG unduhan memadukan foto penuh, gradasi, identitas NutriVerse, dan caption.</p>
+        <div className="fixed inset-0 z-[80] flex items-center justify-center overflow-hidden bg-black/70 p-0 backdrop-blur-sm sm:p-4" role="dialog" aria-modal="true" aria-labelledby="moment-title">
+          <section className="flex h-full max-h-[100dvh] w-full max-w-3xl flex-col rounded-none border border-line bg-card shadow-2xl sm:h-auto sm:max-h-[calc(100dvh-2rem)] sm:rounded-[2rem]">
+            <header className="shrink-0 z-10 flex items-center justify-between border-b border-line bg-card px-5 py-4"><div><p className="text-[9px] font-bold uppercase tracking-[0.16em] text-brand">NutriVerse Moments</p><h2 id="moment-title" className="mt-1 font-display text-lg font-extrabold">Bagikan momen sehatmu</h2></div><button onClick={closeComposer} className="grid h-9 w-9 place-items-center rounded-xl text-muted-foreground hover:bg-secondary" aria-label="Tutup pembuat Moment"><X className="h-5 w-5" /></button></header>
+            <div className="flex-1 overflow-y-auto">
+              <div className="grid gap-5 p-5 sm:grid-cols-[minmax(0,1fr)_280px] sm:p-6">
+                <div className="relative aspect-[4/5] overflow-hidden rounded-3xl bg-[#101314]">
+                  {photo ? <><NextImage src={photo} alt="" fill unoptimized className="scale-110 object-cover opacity-45 grayscale blur-2xl" /><NextImage src={photo} alt="Preview Moment penuh" fill unoptimized className="object-contain" /><div aria-hidden className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#07090a]/95" /><div className="pointer-events-none absolute inset-x-4 top-4 flex items-center gap-2.5 text-white drop-shadow-lg"><BrandLogo compact className="!h-9 !w-9" /><span className="font-display text-base font-extrabold tracking-[-0.05em]">Nutri<span className="text-emerald-300">Verse</span></span></div><div className="pointer-events-none absolute inset-x-5 bottom-5 text-center text-white"><p className="line-clamp-3 font-display text-[clamp(1.15rem,6vw,2rem)] font-extrabold leading-[1.04] tracking-tight drop-shadow-lg">{caption.trim() || "Satu momen sehat hari ini."}</p><div className="mx-auto mt-4 h-px w-3/4 bg-white/20" /><p className="mt-3 text-[8px] font-bold tracking-[0.12em] text-white/75">NUTRIVERSE • MOMENT SEHAT</p></div></> : <video ref={videoRef} muted playsInline className={`h-full w-full scale-x-[-1] object-contain ${cameraActive ? "block" : "hidden"}`} />}
+                  {!photo && !cameraActive && <div className="absolute inset-0 grid place-items-center p-6 text-center"><div><span className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-white/10 text-white"><Camera className="h-8 w-8" /></span><p className="mt-4 text-sm font-bold text-white">Kamera belum aktif</p><p className="mt-1 text-xs text-white/60">Izin hanya diminta ketika tombol kamera ditekan.</p><button onClick={startCamera} className="btn mt-5 bg-white text-[#07150f]">Aktifkan Kamera</button></div></div>}
+                  {cameraActive && <button onClick={capturePhoto} className="absolute bottom-5 left-1/2 grid h-16 w-16 -translate-x-1/2 place-items-center rounded-full border-4 border-white bg-brand text-white shadow-xl" aria-label="Ambil foto"><Camera className="h-7 w-7" /></button>}
+                  {!photo && <div className="absolute left-4 top-4 rounded-full bg-black/50 px-2.5 py-1.5 text-[8px] font-bold text-white backdrop-blur">NUTRIVERSE • TANPA XP</div>}
+                </div>
+                <div className="min-w-0 space-y-4">
+                  {cameraError && <div className="rounded-xl border border-amber/25 bg-amber/10 p-3 text-[10px] leading-relaxed text-amber">{cameraError}</div>}
+                  {photo && <button onClick={() => setPhoto(null)} className="btn btn-outline btn-sm w-full"><RefreshCw className="h-4 w-4" /> Ambil Ulang</button>}
+                  <div><label htmlFor="moment-caption" className="label">Caption untuk template</label><p id="moment-caption-help" className="mt-1 text-[10px] leading-relaxed text-muted-foreground">Teks ini bisa diedit dan akan tampil sebagai typography di bagian bawah preview serta PNG unduhan.</p><textarea id="moment-caption" value={caption} onChange={(event) => setCaption(event.target.value)} aria-describedby="moment-caption-help" maxLength={180} rows={4} className="input mt-2 min-h-24 resize-none" placeholder="Ceritakan momen sehatmu…" /><p className="mt-1 text-right text-[9px] text-muted-foreground">{caption.length}/180</p></div>
+                  <div><p className="label">Siapa yang dapat melihat?</p><div className="grid grid-cols-3 gap-1.5">{PRIVACY_OPTIONS.map((option) => { const Icon = option.icon; return <button key={option.value} onClick={() => setPrivacy(option.value)} className={`rounded-xl border p-2 text-[9px] font-bold ${privacy === option.value ? "border-brand bg-brand-soft text-brand" : "border-line text-muted-foreground"}`}><Icon className="mx-auto mb-1 h-4 w-4" />{option.label}</button>; })}</div></div>
+                  <label className="flex cursor-pointer items-start gap-2.5 rounded-xl bg-secondary/50 p-3"><input type="checkbox" checked={duringActivity} onChange={(event) => setDuringActivity(event.target.checked)} className="mt-0.5 accent-[var(--brand)]" /><span className="text-[10px] leading-relaxed text-muted-foreground"><span className="font-bold text-foreground">Diambil saat aktivitas berlangsung</span><br />Label konteks saja, bukan bukti anti-cheat atau sumber XP.</span></label>
+                  <div className="grid gap-2"><button onClick={() => downloadWatermarkedMoment()} disabled={!photo || publishing} className="btn btn-outline"><Download className="h-4 w-4" /> {downloaded ? "PNG Tersimpan" : "Simpan PNG Template"}</button><button onClick={publishMoment} disabled={!photo || publishing} className="btn btn-primary"><Check className="h-4 w-4" /> {publishing ? "Menyimpan..." : "Bagikan Moment"}</button></div>
+                  <p className="text-[9px] leading-relaxed text-muted-foreground">Moment hanya dapat dibuat melalui kamera langsung. Foto dinormalisasi ulang untuk membuang metadata EXIF/lokasi; PNG unduhan memadukan foto penuh, gradasi, identitas NutriVerse, dan caption.</p>
+                </div>
               </div>
             </div>
           </section>
         </div>
+      )}
+      
+      {typeof document !== 'undefined' && createPortal(
+        <button onClick={() => setComposerOpen(true)} className="fixed bottom-24 right-4 z-[60] grid h-16 w-16 place-items-center rounded-full bg-brand text-white shadow-2xl transition-transform active:scale-95 sm:hidden" aria-label="Tangkap Momen">
+          <Camera className="h-8 w-8" />
+        </button>,
+        document.body
       )}
     </section>
   );
