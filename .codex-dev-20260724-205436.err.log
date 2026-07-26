@@ -23,3 +23,55 @@ $ next dev --webpack
 [browser] Image "atm" could not be loaded. Please make sure you have added the image with map.addImage() or a "sprite" property in your style. You can provide missing images by listening for the "styleimagemissing" map event. (<anonymous>)
 [browser] Image "swimming_pool" could not be loaded. Please make sure you have added the image with map.addImage() or a "sprite" property in your style. You can provide missing images by listening for the "styleimagemissing" map event. (<anonymous>)
 [browser] Image "motorcycle_parking" could not be loaded. Please make sure you have added the image with map.addImage() or a "sprite" property in your style. You can provide missing images by listening for the "styleimagemissing" map event. (<anonymous>)
+⚠ Fast Refresh had to perform a full reload due to a runtime error.
+[64bcbffc-59ef-4265-a4d4-91b1b7050625] Unhandled API error Error [PrismaClientValidationError]: 
+Invalid `prisma.nutritionEntry.findMany()` invocation:
+
+{
+  where: {
+    userId: "d0583158-96a3-47a3-bbe4-c1e1fd3e1f7f",
+    loggedAt: {
+    ~~~~~~~~
+      gte: new Date("2026-06-25T17:00:00.000Z"),
+      lt: new Date("2026-07-25T17:00:00.000Z")
+    },
+?   AND?: NutritionEntryWhereInput | NutritionEntryWhereInput[],
+?   OR?: NutritionEntryWhereInput[],
+?   NOT?: NutritionEntryWhereInput | NutritionEntryWhereInput[],
+?   id?: StringFilter | String,
+?   foodItemId?: StringNullableFilter | String | Null,
+?   foodName?: StringFilter | String,
+?   portionGrams?: FloatNullableFilter | Float | Null,
+?   calories?: FloatFilter | Float,
+?   protein?: FloatFilter | Float,
+?   carbs?: FloatFilter | Float,
+?   fat?: FloatFilter | Float,
+?   confidenceScore?: FloatFilter | Float,
+?   imageUrl?: StringNullableFilter | String | Null,
+?   recommendationText?: StringNullableFilter | String | Null,
+?   createdAt?: DateTimeFilter | DateTime,
+?   user?: UserScalarRelationFilter | UserWhereInput,
+?   foodItem?: FoodItemNullableScalarRelationFilter | FoodItemWhereInput | Null,
+?   journeyEntries?: JourneyEntryListRelationFilter
+  },
+  select: {
+    loggedAt: true,
+    calories: true,
+    protein: true,
+    carbs: true,
+    fiber: true
+  }
+}
+
+Unknown argument `loggedAt`. Available options are marked with ?.
+    at async buildProgressOverview (src\server\progress\progress-service.ts:208:7)
+    at async GET (src\app\api\progress\overview\route.ts:9:22)
+  206 |     verifiedActivityCount,
+  207 |     totalDistance,
+> 208 |   ] = await Promise.all([
+      |       ^
+  209 |     prisma.activitySession.findMany({
+  210 |       where: {
+  211 |         userId, {
+  clientVersion: '7.9.0'
+}
