@@ -35,10 +35,13 @@ export function NoraDialogueBubble({
   }, [onTypingComplete]);
 
   const finalName = overrideName || displayName;
+  
+  // Sanitize the text: replace literal "\n" strings with actual newlines
+  const sanitizedText = text.replaceAll("\\n", "\n");
 
   useEffect(() => {
     if (!isTyping) {
-      setDisplayedText(text);
+      setDisplayedText(sanitizedText);
       setTyping(false);
       return;
     }
@@ -47,8 +50,8 @@ export function NoraDialogueBubble({
     setTyping(true);
     let i = 0;
     const interval = setInterval(() => {
-      if (i <= text.length) {
-        setDisplayedText(text.slice(0, i));
+      if (i <= sanitizedText.length) {
+        setDisplayedText(sanitizedText.slice(0, i));
         i++;
       } else {
         clearInterval(interval);
@@ -60,9 +63,9 @@ export function NoraDialogueBubble({
     }, typingSpeed);
 
     return () => clearInterval(interval);
-  }, [text, isTyping, typingSpeed]); // Excluded onTypingComplete to prevent reset
+  }, [sanitizedText, isTyping, typingSpeed]); // Excluded onTypingComplete to prevent reset
 
-  const remainingText = text.slice(displayedText.length);
+  const remainingText = sanitizedText.slice(displayedText.length);
 
   return (
     <div className="card card-pad mx-auto w-full max-w-lg border-brand/20 bg-card/95 backdrop-blur-xl p-6 sm:p-8 shadow-soft animate-fade-up">

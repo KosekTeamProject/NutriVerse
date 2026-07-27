@@ -160,6 +160,111 @@ export function NutriVerseMoments() {
   const [moments, setMoments] = useState<Moment[]>([]);
   const [isHovered, setIsHovered] = useState(false);
   const progressBarRef = useRef<HTMLDivElement>(null);
+  
+  const [pullDistance, setPullDistance] = useState(0);
+  const [isDismissing, setIsDismissing] = useState(false);
+  const pullDistanceRef = useRef(0);
+  const mobileViewerRef = useRef<HTMLDivElement>(null);
+
+  // Sync ref with state so the touchEnd listener has access to the latest pullDistance
+  useEffect(() => {
+    pullDistanceRef.current = pullDistance;
+  }, [pullDistance]);
+
+  // Auto scroll to clicked moment on mobile open
+  useEffect(() => {
+    if (viewerMoment) {
+      const timer = setTimeout(() => {
+        const el = document.getElementById(`mobile-moment-${viewerMoment.id}`);
+        if (el) {
+          el.scrollIntoView({ behavior: "auto", block: "start" });
+        }
+      }, 60);
+      return () => clearTimeout(timer);
+    }
+  }, [viewerMoment]);
+
+  // Body scroll lock on mobile modal open
+  useEffect(() => {
+    if (viewerMoment) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [viewerMoment]);
+
+  // Setup DOM touch listeners with passive: false to bypass mobile overscroll constraints
+  useEffect(() => {
+    const el = mobileViewerRef.current;
+    if (!el) return;
+
+    let startY = 0;
+    let isAtBottom = false;
+
+    const onTouchStart = (e: TouchEvent) => {
+      startY = e.touches[0].clientY;
+      const maxScroll = el.scrollHeight - el.clientHeight;
+      isAtBottom = el.scrollTop >= maxScroll - 45;
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      const currentY = e.touches[0].clientY;
+      const diff = startY - currentY; // positive = swiping up
+      
+      const maxScroll = el.scrollHeight - el.clientHeight;
+      const atBottom = el.scrollTop >= maxScroll - 45;
+      
+      if (atBottom && diff > 0) {
+        if (e.cancelable) {
+          e.preventDefault();
+        }
+        const resistance = Math.min(150, diff * 0.6);
+        setPullDistance(resistance);
+
+        // Real-time dismiss when pull threshold is exceeded
+        if (resistance > 80) {
+          setIsDismissing(true);
+          el.removeEventListener("touchmove", onTouchMove);
+          setTimeout(() => {
+            setViewerMoment(null);
+            setPullDistance(0);
+            setIsDismissing(false);
+          }, 250);
+        }
+      } else {
+        setPullDistance(0);
+      }
+    };
+
+    const onTouchEnd = () => {
+      const currentPull = pullDistanceRef.current;
+      if (currentPull > 75) {
+        setIsDismissing(true);
+        setTimeout(() => {
+          setViewerMoment(null);
+          setPullDistance(0);
+          setIsDismissing(false);
+        }, 250);
+      } else {
+        setPullDistance(0);
+      }
+      startY = 0;
+      isAtBottom = false;
+    };
+
+    el.addEventListener("touchstart", onTouchStart, { passive: true });
+    el.addEventListener("touchmove", onTouchMove, { passive: false });
+    el.addEventListener("touchend", onTouchEnd, { passive: true });
+
+    return () => {
+      el.removeEventListener("touchstart", onTouchStart);
+      el.removeEventListener("touchmove", onTouchMove);
+      el.removeEventListener("touchend", onTouchEnd);
+    };
+  }, [viewerMoment, moments]);
 
   const MIN_ITEMS = 12;
   const duplicateCount = moments.length > 0 ? Math.max(2, Math.ceil(MIN_ITEMS / moments.length)) : 0;
@@ -599,26 +704,47 @@ export function NutriVerseMoments() {
 
           {/* Mobile Snap Scroll Viewer */}
           {viewerMoment && (
-            <div className="fixed inset-0 z-[100] flex flex-col bg-black overflow-y-auto snap-y snap-mandatory scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:hidden" id="mobile-moment-viewer">
-              {moments.filter((m, index, self) => index === self.findIndex((t) => t.id === m.id)).map((moment) => (
-                <section key={moment.id} id={`mobile-moment-${moment.id}`} className="relative h-[100dvh] w-full shrink-0 snap-start snap-always bg-black flex flex-col justify-between" onClick={(e) => e.stopPropagation()}>
-                  <div className="absolute inset-0 z-0">
-                    <NextImage src={moment.image} alt={`Moment penuh ${moment.name}`} fill unoptimized className="object-cover" />
-                  </div>
-                  <div className="relative z-10 flex items-center justify-between bg-gradient-to-b from-black/80 via-black/40 to-transparent p-4 pt-12 pb-24 text-white">
-                    <div className="min-w-0 drop-shadow-md">
-                      <p className="truncate text-sm font-extrabold">{moment.name}</p>
-                      <p className="mt-0.5 text-[10px] font-medium text-white/90">{moment.privacy === "public" ? "Komunitas" : moment.privacy === "friends" ? "Teman" : "Privat"} · {moment.time}</p>
+            <>
+              <div 
+                ref={mobileViewerRef}
+                className="fixed inset-0 z-[100] flex flex-col bg-black overflow-y-auto snap-y snap-mandatory scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:hidden" 
+                id="mobile-moment-viewer"
+                style={{
+                  transform: `translateY(-${pullDistance}px)`,
+                  opacity: isDismissing ? 0 : Math.max(0, 1 - pullDistance / 250),
+                  transition: pullDistance === 0 || isDismissing ? "transform 0.25s ease-out, opacity 0.25s ease-out" : "none",
+                  overscrollBehaviorY: "contain"
+                }}
+              >
+                {moments.filter((m, index, self) => index === self.findIndex((t) => t.id === m.id)).map((moment) => (
+                  <section key={moment.id} id={`mobile-moment-${moment.id}`} className="relative h-[100dvh] w-full shrink-0 snap-start snap-always bg-black flex flex-col justify-between" onClick={(e) => e.stopPropagation()}>
+                    <div className="absolute inset-0 z-0">
+                      <NextImage src={moment.image} alt={`Moment penuh ${moment.name}`} fill unoptimized className="object-cover" />
                     </div>
-                  </div>
-                  <div className="relative z-10 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-4 pb-12 pt-24 text-white">
-                    <p className="text-sm font-bold drop-shadow-md">{moment.caption}</p>
-                    {moment.duringActivity && <p className="mt-1.5 text-[10px] font-semibold text-brand drop-shadow-md">SAAT AKTIVITAS</p>}
-                  </div>
-                </section>
-              ))}
-              <button type="button" onClick={() => setViewerMoment(null)} className="fixed right-4 top-10 z-[110] grid h-10 w-10 shrink-0 place-items-center rounded-full bg-black/40 text-white backdrop-blur-md transition active:scale-90 sm:hidden shadow-lg border border-white/20" aria-label="Tutup foto penuh"><X className="h-5 w-5" /></button>
-            </div>
+                    <div className="relative z-10 flex items-center justify-between bg-gradient-to-b from-black/80 via-black/40 to-transparent p-4 pt-12 pb-24 text-white">
+                      <div className="min-w-0 drop-shadow-md">
+                        <p className="truncate text-sm font-extrabold">{moment.name}</p>
+                        <p className="mt-0.5 text-[10px] font-medium text-white/90">{moment.privacy === "public" ? "Komunitas" : moment.privacy === "friends" ? "Teman" : "Privat"} · {moment.time}</p>
+                      </div>
+                    </div>
+                    <div className="relative z-10 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-4 pb-12 pt-24 text-white">
+                      <p className="text-sm font-bold drop-shadow-md">{moment.caption}</p>
+                      {moment.duringActivity && <p className="mt-1.5 text-[10px] font-semibold text-brand drop-shadow-md">SAAT AKTIVITAS</p>}
+                    </div>
+                  </section>
+                ))}
+              </div>
+              
+              {/* Close Button - Placed outside scrollable parent to ensure it stays fixed at top right */}
+              <button 
+                type="button" 
+                onClick={() => setViewerMoment(null)} 
+                className="fixed right-4 top-12 z-[110] grid h-10 w-10 place-items-center rounded-full bg-black/50 text-white backdrop-blur-md transition active:scale-95 sm:hidden shadow-lg border border-white/20" 
+                aria-label="Tutup foto penuh"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </>
           )}
         </>,
         document.body
@@ -652,7 +778,7 @@ export function NutriVerseMoments() {
       )}
       
       {typeof document !== 'undefined' && createPortal(
-        <button onClick={() => setComposerOpen(true)} className="fixed bottom-24 right-4 z-[60] grid h-16 w-16 place-items-center rounded-full bg-brand text-white shadow-2xl transition-transform active:scale-95 sm:hidden" aria-label="Tangkap Momen">
+        <button onClick={() => setComposerOpen(true)} className="fixed bottom-28 right-4 z-[60] grid h-16 w-16 place-items-center rounded-full bg-brand text-white shadow-2xl transition-transform active:scale-95 sm:hidden" aria-label="Tangkap Momen">
           <Camera className="h-8 w-8" />
         </button>,
         document.body

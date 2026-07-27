@@ -36,11 +36,13 @@ export default function DashboardPage() {
               <DashboardHero />
             </div>
             
-            <DashboardStarter />
+            <div data-tour="quick-actions-widget">
+              <DashboardStarter />
+            </div>
           </div>
 
           {/* KANAN: Health Pulse */}
-          <div className="col-span-full md:col-span-4 flex w-full">
+          <div className="col-span-full md:col-span-4 flex w-full" data-tour="health-pulse-widget">
             {overview ? (
               <HealthPulseCard snapshot={overview.healthPulse.current} variant="compact" className="h-full w-full" />
             ) : (
@@ -54,21 +56,23 @@ export default function DashboardPage() {
 
         {/* Tantangan Aktif (Full Width) */}
         {overview?.challenges[0] && (
-          <ActiveChallengeCard
-            challenge={{
-              title: overview.challenges[0].title,
-              progress: overview.challenges[0].currentValue,
-              target: overview.challenges[0].targetValue,
-              unit: overview.challenges[0].unit,
-              status: overview.challenges[0].isCompleted
-                ? "completed"
-                : "in-progress",
-              potentialReward: {
-                xp: overview.challenges[0].bonusXp,
-                hp: overview.challenges[0].bonusHp,
-              },
-            }}
-          />
+          <div data-tour="challenges-widget">
+            <ActiveChallengeCard
+              challenge={{
+                title: overview.challenges[0].title,
+                progress: overview.challenges[0].currentValue,
+                target: overview.challenges[0].targetValue,
+                unit: overview.challenges[0].unit,
+                status: overview.challenges[0].isCompleted
+                  ? "completed"
+                  : "in-progress",
+                potentialReward: {
+                  xp: overview.challenges[0].bonusXp,
+                  hp: overview.challenges[0].bonusHp,
+                },
+              }}
+            />
+          </div>
         )}
 
         {/* ROW 3: Fitur Pendukung (Collapsible Secondary Information) */}
@@ -84,18 +88,24 @@ export default function DashboardPage() {
           <div className="p-4 sm:p-5 pt-0 border-t border-line/45 mt-2">
             <div className="grid grid-cols-1 md:grid-cols-12 gap-4 sm:gap-6">
               
-              <div className="col-span-full">
+              <div className="col-span-full" data-tour="community-widget">
                 <DashboardCommunityHighlight />
               </div>
 
               {/* Visual Progress & Lifestyle Widgets */}
               <div className="col-span-full md:col-span-12 lg:col-span-7 flex flex-col gap-4 sm:gap-6">
-                <VisualProgressWidget />
-                <HealthyHabitSummary />
+                <div data-tour="rings-widget">
+                  <VisualProgressWidget />
+                </div>
+                <div data-tour="weekly-stats-widget">
+                  <HealthyHabitSummary />
+                </div>
               </div>
 
               <div className="col-span-full md:col-span-12 lg:col-span-5 flex flex-col gap-4 sm:gap-6">
-                <TodaysFocusCard />
+                <div data-tour="focus-widget">
+                  <TodaysFocusCard />
+                </div>
                 <DailyMotivationCard />
               </div>
 

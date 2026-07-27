@@ -503,24 +503,32 @@ export default function OnboardingPage() {
             <div className="w-full flex flex-col justify-end min-h-[35dvh] lg:min-h-[40dvh] pb-6 sm:pb-8">
               <NoraAvatar size="lg" overrideAvatarId={companionData.avatarId} />
               <NoraDialogueBubble 
-                text={`Halo ${account.name.split(" ")[0] || "Teman"} 👋\n\nAku AI Companion barumu.\n\nSiapa nama panggilanku yang kamu inginkan?`} 
+                text={`Halo ${account.name.split(" ")[0] || "Teman"} 👋\n\nAku Nora, AI Companion barumu.\n\nYuk, pilih avatar penampilanku yang kamu inginkan!`} 
                 isTyping={true}
                 onTypingComplete={() => setNoraTyping(false)}
-                overrideName={companionData.name}
+                overrideName="Nora"
                 subtext="Aku akan mengingat ritmemu, menyemangati tanpa paksaan, dan mendampingi tiap langkah kebaikanmu."
               />
             </div>
             {!noraTyping && (
               <div className="mt-8 w-full space-y-6 animate-fade-up">
                 <div className="text-left space-y-2">
-                  <label htmlFor="companion-name" className="label text-brand font-bold">Nama Panggilan AI</label>
-                  <input 
-                    id="companion-name"
-                    value={companionData.name}
-                    onChange={(e) => setCompanionData({...companionData, name: e.target.value})}
-                    className="input text-center text-lg font-bold"
-                    placeholder="Contoh: Nora, Jarvis, Baymax..."
-                  />
+                  <div className="flex items-center justify-between">
+                    <label htmlFor="companion-name" className="label text-brand font-bold">Nama Panggilan AI</label>
+                    <span className="pill bg-brand/10 text-brand font-bold text-[9px] border border-brand/20 uppercase">PRO</span>
+                  </div>
+                  <div className="relative">
+                    <input 
+                      id="companion-name"
+                      value="Nora"
+                      disabled
+                      className="input text-center text-lg font-bold bg-secondary/50 text-muted-foreground cursor-not-allowed pr-10"
+                    />
+                    <LockKeyhole className="absolute right-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                  </div>
+                  <p className="text-[10px] text-muted-foreground text-center mt-1.5">
+                    Kustomisasi nama AI terkunci pada versi gratis (Fitur Pro).
+                  </p>
                 </div>
                 
                 <div className="text-left space-y-2">
@@ -566,7 +574,7 @@ export default function OnboardingPage() {
             <div className="w-full flex flex-col justify-end min-h-[35dvh] lg:min-h-[40dvh] pb-2 sm:pb-4">
               <NoraAvatar size="sm" floating={false} pulsing={false} />
               <NoraDialogueBubble 
-                text="Setiap langkah besar dimulai dari satu niat kecil.\n\nApa yang ingin kamu capai bersama NutriVerse saat ini?" 
+                text={`Setiap langkah besar dimulai dari satu niat kecil.\n\nApa yang ingin kamu capai bersama NutriVerse saat ini?`} 
                 isTyping={true}
                 onTypingComplete={() => setNoraTyping(false)}
               />
@@ -632,7 +640,7 @@ export default function OnboardingPage() {
             <div className="w-full flex flex-col justify-end min-h-[35dvh] lg:min-h-[40dvh] pb-2 sm:pb-4">
               <NoraAvatar size="sm" floating={false} pulsing={false} />
               <NoraDialogueBubble 
-                text="Pilihan yang bagus!\n\nNah, agar aku bisa merekomendasikan target yang pas, ceritakan sedikit tentang fisik dan kebiasaanmu ya." 
+                text={`Pilihan yang bagus!\n\nNah, agar aku bisa merekomendasikan target yang pas, ceritakan sedikit tentang fisik dan kebiasaanmu ya.`} 
                 isTyping={true}
                 onTypingComplete={() => setNoraTyping(false)}
               />
@@ -700,7 +708,7 @@ export default function OnboardingPage() {
             <div className="w-full flex flex-col justify-end min-h-[35dvh] lg:min-h-[40dvh] pb-2 sm:pb-4">
               <NoraAvatar size="sm" floating={false} pulsing={false} />
               <NoraDialogueBubble 
-                text="Catat! Terakhir, setiap orang punya gaya andalannya masing-masing.\n\nMakanan dan waktu olahraga seperti apa yang paling kamu sukai?" 
+                text={`Catat! Terakhir, setiap orang punya gaya andalannya masing-masing.\n\nMakanan dan waktu olahraga seperti apa yang paling kamu sukai?`} 
                 isTyping={true}
                 onTypingComplete={() => setNoraTyping(false)}
               />
@@ -780,10 +788,10 @@ export default function OnboardingPage() {
             <div className="w-full flex flex-col justify-end min-h-[35dvh] lg:min-h-[40dvh] pb-6 sm:pb-8">
               <NoraAvatar size="lg" overrideAvatarId={companionData.avatarId} />
               <NoraDialogueBubble 
-                text={`Halo, akhirnya kita bertemu.\nAku ${companionData.name || "Nora"}.\nAku akan menemanimu selama menggunakan NutriVerse.\nTidak usah menghafal semua fitur.\nAyo ikut aku.`} 
+                text={`Halo, akhirnya kita bertemu.\nAku Nora.\nAku akan menemanimu selama menggunakan NutriVerse.\nTidak usah menghafal semua fitur.\nAyo ikut aku.`} 
                 isTyping={true}
                 onTypingComplete={() => setNoraTyping(false)}
-                overrideName={companionData.name}
+                overrideName="Nora"
               />
             </div>
             {!noraTyping && (

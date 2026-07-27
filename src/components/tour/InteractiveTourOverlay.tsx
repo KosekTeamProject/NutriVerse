@@ -51,6 +51,8 @@ export function InteractiveTourOverlay() {
       return;
     }
 
+    let activeEl: Element | null = null;
+
     const updateRect = () => {
       const el = document.querySelector(currentStep.selector);
       if (el) {
@@ -62,6 +64,15 @@ export function InteractiveTourOverlay() {
           width: rect.width + 16,
           height: rect.height + 16
         });
+
+        // Add spotlight target class to elevate and highlight
+        if (activeEl !== el) {
+          if (activeEl) {
+            activeEl.classList.remove("tour-active-target");
+          }
+          activeEl = el;
+          el.classList.add("tour-active-target");
+        }
         
         // Auto scroll into view smoothly if not fully visible
         const isMobile = window.innerWidth < 768;
@@ -83,6 +94,9 @@ export function InteractiveTourOverlay() {
     return () => {
       clearInterval(interval);
       clearTimeout(timeout);
+      if (activeEl) {
+        activeEl.classList.remove("tour-active-target");
+      }
     };
   }, [isActive, isPaused, currentStep, windowSize, isNavigating]); // re-run if window resizes
 
@@ -111,6 +125,7 @@ export function InteractiveTourOverlay() {
 
   const isEnding = currentStep?.id === "ending";
   const isMobile = windowSize.width > 0 && windowSize.width < 768;
+  const isTargetInBottomHalf = targetRect ? (targetRect.top + targetRect.height / 2) > windowSize.height / 2 : false;
 
   // The dialogue bubble opacity depends on navigation status
   const bubbleOpacity = isNavigating ? 0 : 1;
@@ -121,7 +136,7 @@ export function InteractiveTourOverlay() {
       style={{ opacity: isPaused ? 0 : 1 }}
     >
       {/* SVG Mask Definition */}
-      <svg className="hidden">
+      <svg style={{ position: "absolute", width: 0, height: 0, overflow: "hidden" }} aria-hidden="true">
         <defs>
           <mask id="spotlight-mask">
             <rect x="0" y="0" width="100%" height="100%" fill="white" />
@@ -142,7 +157,7 @@ export function InteractiveTourOverlay() {
 
       {/* Background Dimmer & Blur (Masked) */}
       <div 
-        className="absolute inset-0 bg-background/85 backdrop-blur-[3px] transition-opacity duration-700 pointer-events-none" 
+        className="absolute inset-0 bg-[#040806]/85 backdrop-blur-md transition-opacity duration-700 pointer-events-none" 
         style={{ 
           mask: "url(#spotlight-mask)", 
           WebkitMask: "url(#spotlight-mask)" 
@@ -161,7 +176,13 @@ export function InteractiveTourOverlay() {
           }}
         >
           {/* Animated border/glow around spotlight */}
-          <div className="absolute -inset-2 rounded-2xl border-2 border-brand/40 animate-pulse pointer-events-none" />
+          <div className="absolute -inset-1 rounded-2xl border-2 border-brand/50 spotlight-active-highlight pointer-events-none" />
+          
+          {/* Sonar ripple wave 1 */}
+          <div className="absolute -inset-3 rounded-2xl border border-brand/30 sonar-wave pointer-events-none" />
+          
+          {/* Sonar ripple wave 2 */}
+          <div className="absolute -inset-6 rounded-2xl border border-brand/10 sonar-wave pointer-events-none" style={{ animationDelay: "0.8s" }} />
         </div>
       )}
 
@@ -172,10 +193,12 @@ export function InteractiveTourOverlay() {
           isEnding 
             ? { top: "50%", left: "50%", transform: "translate(-50%, -50%)", opacity: bubbleOpacity }
             : isMobile
-              ? { bottom: "20px", left: "50%", transform: "translateX(-50%)", opacity: bubbleOpacity }
+              ? isTargetInBottomHalf
+                ? { top: "80px", left: "50%", transform: "translateX(-50%)", opacity: bubbleOpacity }
+                : { bottom: "20px", left: "50%", transform: "translateX(-50%)", opacity: bubbleOpacity }
               : targetRect
                 ? { 
-                    top: Math.max(20, Math.min(windowSize.height - 300, targetRect.top + (currentStep?.placement === "bottom" ? targetRect.height + 20 : -100))),
+                    top: Math.max(20, Math.min(windowSize.height - 390, targetRect.top + (currentStep?.placement === "bottom" ? targetRect.height + 20 : -120))),
                     left: Math.max(20, Math.min(windowSize.width - 440, targetRect.left + (currentStep?.placement === "right" ? targetRect.width + 20 : targetRect.width / 2 - 200))),
                     opacity: bubbleOpacity
                   }
@@ -186,7 +209,7 @@ export function InteractiveTourOverlay() {
           <div className="scale-75 origin-bottom mb-[-1rem]">
             <NoraAvatar size="md" />
           </div>
-          <div className="card card-pad bg-card/95 backdrop-blur-xl border-brand/30 shadow-premium w-full text-center relative overflow-hidden flex flex-col h-[220px]">
+          <div className="card card-pad bg-card/95 backdrop-blur-xl border-brand/30 shadow-premium w-full text-center relative overflow-hidden flex flex-col min-h-[200px] h-auto pb-5">
             <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-brand to-lime opacity-50" />
             
             {/* Progress indicator */}
@@ -196,7 +219,7 @@ export function InteractiveTourOverlay() {
               </p>
             )}
 
-            <h3 className="font-display font-bold text-[15px] sm:text-base whitespace-pre-line leading-relaxed text-foreground mb-4 flex-1 overflow-y-auto overflow-x-hidden px-2 py-1 flex items-center justify-center">
+            <h3 className="font-display font-bold text-[14px] sm:text-base whitespace-pre-line leading-relaxed text-foreground mb-4 flex-1 overflow-visible px-2 py-1 flex items-center justify-center">
               <div>
                 {displayedText}
                 {isTyping && <span className="animate-pulse text-brand ml-1">|</span>}
