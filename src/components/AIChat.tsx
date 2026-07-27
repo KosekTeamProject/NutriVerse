@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Send, MessageCircle, X } from "lucide-react";
+import { Send, MessageCircle, X, Sparkles } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useAuthSession } from "@/hooks/useAuthSession";
 import { useProgressData } from "@/providers/ProgressDataProvider";
@@ -76,7 +76,7 @@ export function AIChat() {
   };
 
   return (
-    <div className={`fixed ${pathname === "/komunitas" ? "bottom-44" : "bottom-24"} right-4 sm:bottom-6 sm:right-6 z-50 flex flex-col items-end`}>
+    <div className={`fixed ${pathname === "/komunitas" ? "bottom-48" : "bottom-28"} right-4 sm:bottom-6 sm:right-6 z-50 flex flex-col items-end`}>
       {/* Chat Window */}
       {isOpen && (
         <div className="w-[350px] mb-4 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-2xl bg-white dark:bg-zinc-950 flex flex-col h-[500px] transition-all duration-300 animate-in slide-in-from-bottom-5">
@@ -151,10 +151,12 @@ export function AIChat() {
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={`${
-          isOpen ? "bg-zinc-800 hover:bg-zinc-700" : "bg-emerald-600 hover:bg-emerald-700"
+          isOpen 
+            ? "bg-zinc-800 hover:bg-zinc-700" 
+            : "bg-gradient-to-tr from-emerald-600 via-emerald-500 to-teal-400 hover:brightness-105 active:scale-95"
         } text-white p-4 rounded-full shadow-xl transition-all duration-300 hover:scale-105 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500`}
       >
-        {isOpen ? <X size={24} /> : <MessageCircle size={24} />}
+        {isOpen ? <X size={24} /> : <Sparkles size={24} className="animate-pulse" />}
       </button>
     </div>
   );

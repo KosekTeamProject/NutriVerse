@@ -422,24 +422,22 @@ export default function ProfilPage() {
                 <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">Panggil teman sehatmu dengan nama pilihanmu.</p>
               </div>
             </div>
-            <div className="rounded-xl border border-line bg-card/90 p-3 shadow-sm">
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <input
-                  id="profile-companion-name"
-                  value={companionDraftValue}
-                  onChange={(event) => setCompanionDraft(event.target.value)}
-                  onKeyDown={(event) => { if (event.key === "Enter") saveCompanionName(); }}
-                  minLength={2}
-                  maxLength={24}
-                  className="input min-w-0 flex-1 font-bold text-xs"
-                  placeholder="Contoh: Nora"
-                />
-                <button onClick={saveCompanionName} disabled={companionDraftValue.trim().length < 2} className="btn btn-primary btn-sm shrink-0 disabled:opacity-45 text-xs"><Check className="h-3 w-3 mr-1" /> {companionSaved ? "Tersimpan" : "Simpan"}</button>
+            <div className="rounded-xl border border-line bg-card/90 p-3 shadow-sm relative overflow-hidden">
+              <div className="flex flex-col gap-2 sm:flex-row items-center w-full">
+                <div className="relative flex-1 w-full">
+                  <input
+                    id="profile-companion-name"
+                    value="Nora"
+                    disabled
+                    className="input min-w-0 w-full font-bold text-xs bg-secondary/50 text-muted-foreground cursor-not-allowed pr-8"
+                  />
+                  <Lock className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                </div>
+                <span className="pill bg-brand/10 text-brand font-bold text-[10px] shrink-0 border border-brand/20 uppercase">PRO</span>
               </div>
-              <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-[9px] text-muted-foreground">
-                <span>Nama aktif: <strong className="text-foreground">{companionName.displayName}</strong></span>
-                {!companionName.isDefault && <button onClick={resetCompanionName} className="inline-flex items-center gap-1 font-bold text-brand hover:underline"><RotateCcw className="h-3 w-3" /> Reset</button>}
-              </div>
+              <p className="mt-2 text-[9px] text-muted-foreground leading-relaxed">
+                Kustomisasi Nama AI hanya tersedia di versi <span className="font-bold text-brand">NutriVerse Pro</span>.
+              </p>
             </div>
           </div>
         </section>

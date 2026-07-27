@@ -19,79 +19,63 @@ export const TOUR_STEPS: TourStep[] = [
     path: "/dashboard",
     selector: '[data-tour="dashboard-summary"]',
     title: "Dashboard",
-    dialogue: "Selamat datang di berandamu! Di sini, aku akan menyapamu setiap hari.\nKamu bisa melihat aktivitas utamamu hari ini tanpa perlu bingung harus mulai dari mana.",
-    placement: "bottom"
-  },
-  {
-    id: "todays-journey",
-    path: "/todays-journey",
-    selector: '[data-tour="todays-mission"]',
-    title: "Hari Ini",
-    dialogue: "Ini adalah 'Perjalanan Hari Ini'. Kamu tidak perlu mengerjakan semuanya sekaligus.\nPilih satu langkah kecil saja, seperti minum segelas air. Sedikit demi sedikit, itu akan menjadi kebiasaan hebat!",
+    dialogue: "Selamat datang di berandamu! Di sini, aku akan menyapamu setiap hari dan memberikan ringkasan status kesehatanmu.",
     placement: "bottom"
   },
   {
     id: "health-pulse",
-    path: "/health-pulse",
-    selector: '[data-tour="health-pulse-score"]',
+    path: "/dashboard",
+    selector: '[data-tour="health-pulse-widget"]',
     title: "Health Pulse",
     dialogue: "Ini adalah 'Health Pulse' milikmu. Bukan untuk menilai, melainkan sebagai kompas.\nNilainya akan naik secara alami jika kamu konsisten melakukan hal-hal kecil yang baik bagi tubuh.",
     placement: "bottom"
   },
   {
-    id: "companion",
-    path: "/companion",
-    selector: '[data-tour="nora-chat"]',
-    title: "Nora AI",
-    dialogue: "Halo, ini ruang pribadiku! Kamu bebas bertanya apa saja kepadaku di sini.\nMulai dari info nutrisi sarapan sampai cara beristirahat yang nyaman, aku akan bantu jawab.",
-    placement: "right"
-  },
-  {
-    id: "scan",
-    path: "/scan",
-    selector: '[data-tour="scan-demo"]',
-    title: "Scan Makanan",
-    dialogue: "Bingung apakah sebuah makanan sehat atau tidak? Cukup ambil foto makanannya di sini.\nBiar aku yang periksa kandungannya dan memberikan masukan terbaik untukmu.",
+    id: "focus",
+    path: "/dashboard",
+    selector: '[data-tour="focus-widget"]',
+    title: "Today's Focus",
+    dialogue: "Ini adalah target fokus utama harianmu. Pilih satu tindakan kecil yang bisa dicapai terlebih dahulu, seperti minum segelas air atau mencatat makanan.",
     placement: "bottom"
   },
   {
-    id: "aktivitas",
-    path: "/aktivitas",
-    selector: '[data-tour="gps-demo"]',
-    title: "Aktivitas GPS",
-    dialogue: "Saat kamu ingin jalan santai atau lari di luar rumah, tekan tombol mulai di sini.\nAplikasi akan melacak jarakmu dengan aman supaya kamu bisa melihat pencapaian nyata.",
+    id: "rings",
+    path: "/dashboard",
+    selector: '[data-tour="rings-widget"]',
+    title: "Visual Ring Harian",
+    dialogue: "Pantau pencapaian langkah kaki, asupan air, dan menit aktif harianmu secara visual dalam bentuk cincin progres yang dinamis di sini.",
     placement: "bottom"
   },
   {
-    id: "challenge",
-    path: "/challenge",
-    selector: '[data-tour="challenge-cards"]',
-    title: "Tantangan",
-    dialogue: "Ingin sedikit bermain? Di sini ada tantangan-tantangan seru.\nJangan terbebani, ini cuma cara menyenangkan untuk memotivasi diri, bukan kompetisi yang berat.",
+    id: "quick-actions",
+    path: "/dashboard",
+    selector: '[data-tour="quick-actions-widget"]',
+    title: "Aksi Cepat",
+    dialogue: "Gunakan menu aksi cepat ini untuk langsung mulai berlari dengan GPS, memindai makanan dengan kamera AI, atau mengobrol langsung denganku.",
+    placement: "bottom"
+  },
+  {
+    id: "weekly-stats",
+    path: "/dashboard",
+    selector: '[data-tour="weekly-stats-widget"]',
+    title: "Kualitas Kebiasaan",
+    dialogue: "Di sini kamu bisa melihat streak aktivitas sehatmu minggu ini. Ingat, fokus utama kita adalah menjaga konsistensi dengan santai.",
+    placement: "bottom"
+  },
+  {
+    id: "challenges",
+    path: "/dashboard",
+    selector: '[data-tour="challenges-widget"]',
+    title: "Tantangan Aktif",
+    dialogue: "Ingin sedikit bermain? Di sini ada tantangan-tantangan seru untuk memotivasi diri secara menyenangkan sekaligus mengumpulkan XP & HP.",
     placement: "bottom"
   },
   {
     id: "komunitas",
-    path: "/komunitas",
-    selector: '[data-tour="community-leaderboard"]',
+    path: "/dashboard",
+    selector: '[data-tour="community-widget"]',
     title: "Komunitas",
-    dialogue: "Kamu tidak berjalan sendirian. Di ruang ini, banyak teman-teman lain yang sedang belajar hidup sehat.\nKalian bisa saling memberi dukungan dan semangat setiap harinya.",
-    placement: "left"
-  },
-  {
-    id: "reward",
-    path: "/reward",
-    selector: '[data-tour="reward-cards"]',
-    title: "Reward",
-    dialogue: "Ini bagian favorit banyak orang!\nPoin yang kamu kumpulkan pelan-pelan bisa ditukarkan dengan berbagai hadiah menarik di sini.",
-    placement: "bottom"
-  },
-  {
-    id: "pengaturan",
-    path: "/pengaturan",
-    selector: '[data-tour="settings-area"]',
-    title: "Pengaturan",
-    dialogue: "Terakhir, di menu ini kamu bisa mengatur semuanya. Mulai dari profil sampai keamanan.\nJangan takut salah klik, kamu selalu bisa meminta bantuanku kalau ada yang bingung.",
+    dialogue: "Kamu tidak berjalan sendirian. Di bagian komunitas ini, kamu bisa melihat pencapaian, leaderboard, serta saling mendukung dengan teman lainnya.",
     placement: "bottom"
   },
   {
@@ -137,16 +121,23 @@ export function GuidedTourProvider({ children }: { children: ReactNode }) {
 
   const currentStep = isActive ? TOUR_STEPS[currentStepIndex] : null;
 
-  // Auto-start tour if flag is set (after onboarding)
+  // Auto-start tour on first dashboard entry if not completed yet
   useEffect(() => {
+    const tourCompleted = localStorage.getItem("nutriverse.tour_completed");
     const needsTour = localStorage.getItem("nutriverse.needs_tour");
-    if (needsTour === "true") {
+    
+    if (pathname === "/dashboard" && tourCompleted !== "true") {
+      setIsActive(true);
+      setCurrentStepIndex(0);
+      setIsPaused(false);
+      localStorage.removeItem("nutriverse.needs_tour");
+    } else if (needsTour === "true") {
       setIsActive(true);
       setCurrentStepIndex(0);
       setIsPaused(false);
       localStorage.removeItem("nutriverse.needs_tour");
     }
-  }, []);
+  }, [pathname]);
 
   // Handle route matching during tour
   useEffect(() => {
@@ -180,6 +171,7 @@ export function GuidedTourProvider({ children }: { children: ReactNode }) {
     setIsActive(false);
     setIsPaused(false);
     setCurrentStepIndex(0);
+    localStorage.setItem("nutriverse.tour_completed", "true");
   }, []);
 
   const pauseTour = useCallback(() => setIsPaused(true), []);
