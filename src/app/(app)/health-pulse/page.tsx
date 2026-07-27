@@ -24,9 +24,9 @@ function DailyCheckIn() {
 
   async function save(event: React.FormEvent) {
     event.preventDefault();
-    const sleep = Number(sleepHours.replace(",", "."));
-    const water = Number(waterMl);
-    if ((!sleep || sleep <= 0) && (!water || water <= 0)) return;
+    const sleep = parseFloat(sleepHours.replace(",", ".")) || 0;
+    const water = parseFloat(waterMl) || 0;
+    if (sleep <= 0 && water <= 0) return;
     setSaving(true);
     setMessage(null);
     try {

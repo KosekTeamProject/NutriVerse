@@ -5,10 +5,12 @@ import { Send, MessageCircle, X, Sparkles } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useAuthSession } from "@/hooks/useAuthSession";
 import { useProgressData } from "@/providers/ProgressDataProvider";
+import { useGuidedTour } from "@/providers/GuidedTourProvider";
 
 export function AIChat() {
   const session = useAuthSession();
   const { overview } = useProgressData();
+  const { isActive: isTourActive } = useGuidedTour();
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState("");
@@ -23,6 +25,21 @@ export function AIChat() {
       localStorage.setItem("nutriverse_chat_session", storedSessionId);
     }
     setSessionId(storedSessionId);
+
+    // Load history
+    fetch("/api/companion/conversations")
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.messages) {
+          setMessages(
+            data.messages.map((m: any) => ({
+              role: m.sender === "USER" ? "user" : "ai",
+              content: m.content,
+            }))
+          );
+        }
+      })
+      .catch(console.error);
   }, []);
 
   const sendMessage = async (e: React.FormEvent) => {

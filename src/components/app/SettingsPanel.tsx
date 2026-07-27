@@ -589,12 +589,12 @@ export function SettingsPanel() {
       {/* 6. Activity & Location settings */}
       <SectionCard icon={Activity} title="Latihan &amp; Lokasi">
         <div className="space-y-4 text-xs text-muted-foreground">
-          <div className="flex justify-between items-center border border-line p-3.5 rounded-xl bg-secondary/15">
-            <div>
+          <div className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-center gap-4 border border-line p-4 rounded-xl bg-secondary/15">
+            <div className="flex-1">
               <p className="font-bold text-foreground">Izin Lokasi untuk Aktivitas</p>
-              <p className="mt-0.5 text-[11px]">NutriVerse memakai lokasi hanya selama sesi aktif untuk mengukur jarak dan pace.</p>
+              <p className="mt-0.5 text-[11px] leading-relaxed pr-2">NutriVerse memakai lokasi hanya selama sesi aktif untuk mengukur jarak dan pace.</p>
             </div>
-            <Link href="/aktivitas/kepercayaan" className="btn btn-outline btn-xs shrink-0 font-bold flex items-center gap-1">
+            <Link href="/aktivitas/kepercayaan" className="btn btn-outline btn-xs shrink-0 font-bold flex items-center justify-center gap-1 w-full sm:w-auto mt-2 sm:mt-0">
               Kepercayaan &amp; Keamanan <HelpCircle className="h-3.5 w-3.5" />
             </Link>
           </div>
@@ -608,7 +608,6 @@ export function SettingsPanel() {
       <SectionCard icon={HelpCircle} title="Demo &amp; Simulasi">
         <div className="divide-y divide-line/35">
           <ToggleRow label="Gunakan Data Demo Tetap" desc="Muat dataset bawaan untuk simulasi perjalanan" on={simulation.useDemoData} onToggle={() => setSimulation((s) => ({ ...s, useDemoData: !s.useDemoData }))} />
-          <ToggleRow label="Tampilkan Label Simulasi" desc="Perlihatkan tanda Simulasi pada panel data demo" on={simulation.showSimLabels} onToggle={() => setSimulation((s) => ({ ...s, showSimLabels: !s.showSimLabels }))} />
           <ToggleRow label="Simulasi GPS Lokasi" desc="Izinkan mode simulator lokasi di tracker latihan" on={simulation.gpsSimEnabled} onToggle={() => setSimulation((s) => ({ ...s, gpsSimEnabled: !s.gpsSimEnabled }))} />
           <ToggleRow label="Simulasi Foto Makanan" desc="Gunakan daftar demo makanan di scanner AI" on={simulation.foodSimEnabled} onToggle={() => setSimulation((s) => ({ ...s, foodSimEnabled: !s.foodSimEnabled }))} />
         </div>

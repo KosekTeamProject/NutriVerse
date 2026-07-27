@@ -59,6 +59,7 @@ export default function DashboardPage() {
           <div data-tour="challenges-widget">
             <ActiveChallengeCard
               challenge={{
+                id: overview.challenges[0].id,
                 title: overview.challenges[0].title,
                 progress: overview.challenges[0].currentValue,
                 target: overview.challenges[0].targetValue,

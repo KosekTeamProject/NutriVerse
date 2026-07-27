@@ -238,7 +238,7 @@ export function ActiveChallengeCard({ challenge }: { challenge: ChallengePreview
               +{challenge.potentialReward.xp} XP &middot; +{challenge.potentialReward.hp} HP
             </span>
           </div>
-          <Link href="/challenge/challenge-light-cardio" className="btn btn-primary rounded-xl px-5 py-2 text-xs shadow-sm transition hover:scale-105 active:scale-95">
+          <Link href="/challenge" className="btn btn-primary rounded-xl px-5 py-2 text-xs shadow-sm transition hover:scale-105 active:scale-95">
             Lanjutkan Misi
           </Link>
         </div>

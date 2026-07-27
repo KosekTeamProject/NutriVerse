@@ -435,14 +435,32 @@ export function NutriVerseMoments() {
   async function capturePhoto() {
     const video = videoRef.current;
     if (!video || !video.videoWidth) return;
+    
+    const targetAspect = 4 / 5;
+    const videoAspect = video.videoWidth / video.videoHeight;
+    
+    let cropWidth = video.videoWidth;
+    let cropHeight = video.videoHeight;
+    let offsetX = 0;
+    let offsetY = 0;
+    
+    if (videoAspect > targetAspect) {
+      cropWidth = video.videoHeight * targetAspect;
+      offsetX = (video.videoWidth - cropWidth) / 2;
+    } else {
+      cropHeight = video.videoWidth / targetAspect;
+      offsetY = (video.videoHeight - cropHeight) / 2;
+    }
+    
     const canvas = document.createElement("canvas");
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
+    canvas.width = cropWidth;
+    canvas.height = cropHeight;
     const context = canvas.getContext("2d");
     if (!context) return;
     context.translate(canvas.width, 0);
     context.scale(-1, 1);
-    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    context.drawImage(video, offsetX, offsetY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
+    
     setPhoto(await normalizePhoto(canvas.toDataURL("image/jpeg", 0.92)));
     stopCamera();
   }
@@ -750,14 +768,14 @@ export function NutriVerseMoments() {
         document.body
       )}
 
-      {composerOpen && (
+      {composerOpen && typeof document !== 'undefined' && createPortal(
         <div className="fixed inset-0 z-[80] flex items-center justify-center overflow-hidden bg-black/70 p-0 backdrop-blur-sm sm:p-4" role="dialog" aria-modal="true" aria-labelledby="moment-title">
           <section className="flex h-full max-h-[100dvh] w-full max-w-3xl flex-col rounded-none border border-line bg-card shadow-2xl sm:h-auto sm:max-h-[calc(100dvh-2rem)] sm:rounded-[2rem]">
             <header className="shrink-0 z-10 flex items-center justify-between border-b border-line bg-card px-5 py-4"><div><p className="text-[9px] font-bold uppercase tracking-[0.16em] text-brand">NutriVerse Moments</p><h2 id="moment-title" className="mt-1 font-display text-lg font-extrabold">Bagikan momen sehatmu</h2></div><button onClick={closeComposer} className="grid h-9 w-9 place-items-center rounded-xl text-muted-foreground hover:bg-secondary" aria-label="Tutup pembuat Moment"><X className="h-5 w-5" /></button></header>
             <div className="flex-1 overflow-y-auto">
               <div className="grid gap-5 p-5 sm:grid-cols-[minmax(0,1fr)_280px] sm:p-6">
                 <div className="relative aspect-[4/5] overflow-hidden rounded-3xl bg-[#101314]">
-                  {photo ? <><NextImage src={photo} alt="" fill unoptimized className="scale-110 object-cover opacity-45 grayscale blur-2xl" /><NextImage src={photo} alt="Preview Moment penuh" fill unoptimized className="object-contain" /><div aria-hidden className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#07090a]/95" /><div className="pointer-events-none absolute inset-x-4 top-4 flex items-center gap-2.5 text-white drop-shadow-lg"><BrandLogo compact className="!h-9 !w-9" /><span className="font-display text-base font-extrabold tracking-[-0.05em]">Nutri<span className="text-emerald-300">Verse</span></span></div><div className="pointer-events-none absolute inset-x-5 bottom-5 text-center text-white"><p className="line-clamp-3 font-display text-[clamp(1.15rem,6vw,2rem)] font-extrabold leading-[1.04] tracking-tight drop-shadow-lg">{caption.trim() || "Satu momen sehat hari ini."}</p><div className="mx-auto mt-4 h-px w-3/4 bg-white/20" /><p className="mt-3 text-[8px] font-bold tracking-[0.12em] text-white/75">NUTRIVERSE • MOMENT SEHAT</p></div></> : <video ref={videoRef} muted playsInline className={`h-full w-full scale-x-[-1] object-contain ${cameraActive ? "block" : "hidden"}`} />}
+                  {photo ? <><NextImage src={photo} alt="" fill unoptimized className="scale-110 object-cover opacity-45 grayscale blur-2xl" /><NextImage src={photo} alt="Preview Moment penuh" fill unoptimized className="object-contain" /><div aria-hidden className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#07090a]/95" /><div className="pointer-events-none absolute inset-x-4 top-4 flex items-center gap-2.5 text-white drop-shadow-lg"><BrandLogo compact className="!h-9 !w-9" /><span className="font-display text-base font-extrabold tracking-[-0.05em]">Nutri<span className="text-emerald-300">Verse</span></span></div><div className="pointer-events-none absolute inset-x-5 bottom-5 text-center text-white"><p className="line-clamp-3 font-display text-[clamp(1.15rem,6vw,2rem)] font-extrabold leading-[1.04] tracking-tight drop-shadow-lg">{caption.trim() || "Satu momen sehat hari ini."}</p><div className="mx-auto mt-4 h-px w-3/4 bg-white/20" /><p className="mt-3 text-[8px] font-bold tracking-[0.12em] text-white/75">NUTRIVERSE • MOMENT SEHAT</p></div></> : <video ref={videoRef} muted playsInline className={`h-full w-full scale-x-[-1] object-cover ${cameraActive ? "block" : "hidden"}`} />}
                   {!photo && !cameraActive && <div className="absolute inset-0 grid place-items-center p-6 text-center"><div><span className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-white/10 text-white"><Camera className="h-8 w-8" /></span><p className="mt-4 text-sm font-bold text-white">Kamera belum aktif</p><p className="mt-1 text-xs text-white/60">Izin hanya diminta ketika tombol kamera ditekan.</p><button onClick={startCamera} className="btn mt-5 bg-white text-[#07150f]">Aktifkan Kamera</button></div></div>}
                   {cameraActive && <button onClick={capturePhoto} className="absolute bottom-5 left-1/2 grid h-16 w-16 -translate-x-1/2 place-items-center rounded-full border-4 border-white bg-brand text-white shadow-xl" aria-label="Ambil foto"><Camera className="h-7 w-7" /></button>}
                   {!photo && <div className="absolute left-4 top-4 rounded-full bg-black/50 px-2.5 py-1.5 text-[8px] font-bold text-white backdrop-blur">NUTRIVERSE • TANPA XP</div>}
@@ -774,7 +792,8 @@ export function NutriVerseMoments() {
               </div>
             </div>
           </section>
-        </div>
+        </div>,
+        document.body
       )}
       
       {typeof document !== 'undefined' && createPortal(

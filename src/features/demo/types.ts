@@ -23,6 +23,7 @@ export interface TodayJourneySummary {
 
 
 export interface ChallengePreview {
+  id?: string;
   title: string;
   progress: number;
   target: number;

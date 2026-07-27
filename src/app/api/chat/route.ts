@@ -1,12 +1,23 @@
 import { NextResponse } from 'next/server';
-
+import { prisma } from "@/lib/prisma";
+import { requireCurrentUser } from "@/lib/auth";
 export async function POST(request: Request) {
   try {
+    const user = await requireCurrentUser();
     const { message, sessionId, companionName, userContext, progress } = await request.json();
 
     if (!message) {
       return NextResponse.json({ error: "Pesan tidak boleh kosong" }, { status: 400 });
     }
+
+    // Save User message to database
+    await prisma.companionConversation.create({
+      data: {
+        userId: user.id,
+        sender: "USER",
+        content: message,
+      },
+    });
 
     const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL;
     if (!n8nWebhookUrl) {
@@ -35,7 +46,11 @@ export async function POST(request: Request) {
     } catch (e) {
       // Jika n8n membalas dengan teks biasa (bukan JSON)
       console.log("Response dari n8n bukan JSON:", textResponse);
-      return NextResponse.json({ reply: textResponse || "AI merespons tanpa teks." });
+      const reply = textResponse || "AI merespons tanpa teks.";
+      await prisma.companionConversation.create({
+        data: { userId: user.id, sender: "ASSISTANT", content: reply },
+      });
+      return NextResponse.json({ reply });
     }
     
     // Sesuaikan 'data.reply' dengan format JSON yang dikembalikan oleh node 'Respond to Webhook' di n8n
@@ -46,7 +61,18 @@ export async function POST(request: Request) {
       data = data[0];
     }
     
-    return NextResponse.json({ reply: data.reply || data.output || data.text || "AI merespons, namun format tidak dikenali." });
+    const finalReply = data.reply || data.output || data.text || "AI merespons, namun format tidak dikenali.";
+    
+    // Save AI reply to database
+    await prisma.companionConversation.create({
+      data: {
+        userId: user.id,
+        sender: "ASSISTANT",
+        content: finalReply,
+      },
+    });
+
+    return NextResponse.json({ reply: finalReply });
   } catch (error) {
     console.error("Error memanggil n8n:", error);
     const errorMessage = error instanceof Error ? error.message : "Gagal terhubung ke AI Agent";
