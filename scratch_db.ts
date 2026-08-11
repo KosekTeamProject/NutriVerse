@@ -1,0 +1,1 @@
+import { prisma } from './src/lib/prisma'; prisma.moment.findMany().then(console.log).catch(console.error).finally(() => prisma.$disconnect());

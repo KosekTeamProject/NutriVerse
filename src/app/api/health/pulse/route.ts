@@ -65,15 +65,15 @@ export async function POST(request: NextRequest) {
     ]);
     const nutritionScore = Math.min(
       100,
-      ((nutrition._sum.protein ?? 0) / (profile?.dailyProteinTargetGrams ?? 80)) * 100,
+      ((nutrition._sum.protein ?? 0) / Math.max(1, profile?.dailyProteinTargetGrams ?? 80)) * 100,
     );
     const activityScore = Math.min(100, ((activity._sum.durationSeconds ?? 0) / 1800) * 100);
     const sleepScore =
-      sleepHours === undefined ? 0 : Math.min(100, (sleepHours / (profile?.dailySleepTargetHours ?? 8)) * 100);
+      sleepHours === undefined ? 0 : Math.min(100, (sleepHours / Math.max(1, profile?.dailySleepTargetHours ?? 8)) * 100);
     const hydrationScore =
       hydrationLiters === undefined
         ? 0
-        : Math.min(100, (hydrationLiters * 1000 / (profile?.dailyWaterTargetMl ?? 2000)) * 100);
+        : Math.min(100, ((hydrationLiters * 1000) / Math.max(1, profile?.dailyWaterTargetMl ?? 2000)) * 100);
     const availableScores = [
       nutritionScore,
       activityScore,
@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
       ...(hydrationLiters !== undefined ? [hydrationScore] : []),
     ];
     const overallScore =
-      availableScores.reduce((total, score) => total + score, 0) / availableScores.length;
+      availableScores.reduce((total, score) => total + score, 0) / Math.max(1, availableScores.length);
     const pulse = await prisma.healthPulse.upsert({
       where: { userId_pulseDate: { userId: user.id, pulseDate } },
       create: {

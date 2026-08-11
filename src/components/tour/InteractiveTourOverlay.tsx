@@ -26,6 +26,9 @@ export function InteractiveTourOverlay() {
   const [windowSize, setWindowSize] = useState({ width: 0, height: 0 });
   const [dialogueText, setDialogueText] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  
+  const maskRef = useRef<SVGRectElement>(null);
+  const boxRef = useRef<HTMLDivElement>(null);
 
   // Handle Resize
   useEffect(() => {
@@ -52,6 +55,7 @@ export function InteractiveTourOverlay() {
     }
 
     let activeEl: Element | null = null;
+    let scrollTimeout: NodeJS.Timeout | null = null;
 
     const updateRect = () => {
       const el = document.querySelector(currentStep.selector);
@@ -84,6 +88,19 @@ export function InteractiveTourOverlay() {
       }
     };
 
+    const handleScroll = () => {
+      if (maskRef.current && boxRef.current) {
+        maskRef.current.style.transition = "none";
+        boxRef.current.style.transition = "none";
+        if (scrollTimeout) clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(() => {
+          if (maskRef.current) maskRef.current.style.transition = "";
+          if (boxRef.current) boxRef.current.style.transition = "";
+        }, 100);
+      }
+      updateRect();
+    };
+
     // Initial find
     updateRect();
     
@@ -91,9 +108,16 @@ export function InteractiveTourOverlay() {
     const interval = setInterval(updateRect, 500);
     const timeout = setTimeout(() => clearInterval(interval), 3000);
 
+    // Listen to scroll events to update highlight position
+    window.addEventListener("scroll", handleScroll, true);
+    window.addEventListener("resize", updateRect);
+
     return () => {
       clearInterval(interval);
       clearTimeout(timeout);
+      if (scrollTimeout) clearTimeout(scrollTimeout);
+      window.removeEventListener("scroll", handleScroll, true);
+      window.removeEventListener("resize", updateRect);
       if (activeEl) {
         activeEl.classList.remove("tour-active-target");
       }
@@ -132,7 +156,7 @@ export function InteractiveTourOverlay() {
 
   return (
     <div 
-      className="fixed inset-0 z-[100] overflow-hidden pointer-events-auto transition-opacity duration-500"
+      className="fixed inset-0 z-[100] overflow-hidden pointer-events-none transition-opacity duration-500"
       style={{ opacity: isPaused ? 0 : 1 }}
     >
       {/* SVG Mask Definition */}
@@ -142,6 +166,7 @@ export function InteractiveTourOverlay() {
             <rect x="0" y="0" width="100%" height="100%" fill="white" />
             {!isEnding && targetRect && !isNavigating && (
               <rect
+                ref={maskRef}
                 x={targetRect.left}
                 y={targetRect.top}
                 width={targetRect.width}
@@ -167,6 +192,7 @@ export function InteractiveTourOverlay() {
       {/* Spotlight Border Glow */}
       {!isEnding && targetRect && !isNavigating && (
         <div 
+          ref={boxRef}
           className="absolute rounded-2xl bg-transparent transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] pointer-events-none"
           style={{
             top: targetRect.top,

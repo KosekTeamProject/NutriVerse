@@ -244,7 +244,10 @@ export async function buildProgressOverview(
     prisma.healthPulse.findMany({
       where: {
         userId,
-        pulseDate: { gte: firstBounds.start, lt: todayBounds.end },
+        pulseDate: { 
+          gte: new Date(`${dayKeys[0]}T00:00:00.000Z`), 
+          lte: new Date(`${todayKey}T00:00:00.000Z`) 
+        },
       },
       orderBy: { pulseDate: "asc" },
     }),
