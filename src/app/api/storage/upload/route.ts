@@ -35,6 +35,12 @@ const BUCKETS = {
     maxDimension: 4_096,
     mimeTypes: ["image/jpeg", "image/png", "image/webp"],
   },
+  "cms-media": {
+    max: 10 * 1024 * 1024,
+    public: true,
+    maxDimension: 4_096,
+    mimeTypes: ["image/jpeg", "image/png", "image/webp"],
+  },
 } as const;
 
 export async function POST(request: NextRequest) {

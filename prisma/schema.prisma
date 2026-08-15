@@ -14,6 +14,8 @@ enum UserRole {
   USER
   ADMIN
   MODERATOR
+  EDITOR
+  AUTHOR
   ANALYST
 }
 
@@ -180,6 +182,13 @@ enum PostKind {
   REFLECTION
 }
 
+enum CmsPublicationStatus {
+  DRAFT
+  REVIEW
+  PUBLISHED
+  ARCHIVED
+}
+
 // ==========================================
 // 1. AKUN, PROFIL, PREFERENSI & SETTINGS
 // ==========================================
@@ -221,54 +230,60 @@ model User {
   healthPulses           HealthPulse[]
   healthMetrics          HealthMetric[]
   moments                Moment[]
-  reportsSubmitted       ContentReport[]         @relation("ReportedBy")
-  auditLogs              AuditLog[]              @relation("ActorUser")
+  reportsSubmitted       ContentReport[]           @relation("ReportedBy")
+  auditLogs              AuditLog[]                @relation("ActorUser")
   notifications          UserNotification[]
   deviceTokens           UserDeviceToken[]
   companionConversations CompanionConversation[]
   companionMemories      CompanionMemory[]
   weeklyLetters          WeeklyLetterArchive[]
   journalReactions       JournalReaction[]
-  guildsLed              Guild[]                 @relation("GuildLeader")
+  guildsLed              Guild[]                   @relation("GuildLeader")
   guildMemberships       GuildMember[]
   posts                  Post[]
   postComments           PostComment[]
   postReactions          PostReaction[]
   momentReactions        MomentReaction[]
   eventRegistrations     EventRegistration[]
-  connectionsSent        UserConnection[]        @relation("ConnectionRequester")
-  connectionsReceived    UserConnection[]        @relation("ConnectionAddressee")
-  connectionsBlocked     UserConnection[]        @relation("ConnectionBlocker")
+  connectionsSent        UserConnection[]          @relation("ConnectionRequester")
+  connectionsReceived    UserConnection[]          @relation("ConnectionAddressee")
+  connectionsBlocked     UserConnection[]          @relation("ConnectionBlocker")
+  cmsArticlesCreated     CmsArticle[]              @relation("CmsArticleAuthor")
+  cmsArticlesUpdated     CmsArticle[]              @relation("CmsArticleUpdater")
+  cmsArticlesPublished   CmsArticle[]              @relation("CmsArticlePublisher")
+  cmsMediaUploaded       CmsMedia[]                @relation("CmsMediaUploader")
+  cmsRevisionsCreated    CmsArticleRevision[]      @relation("CmsRevisionAuthor")
+  cmsStatusChanges       CmsArticleStatusHistory[] @relation("CmsStatusChanger")
 
   @@map("users")
 }
 
 model HealthProfile {
-  id                      String    @id @default(uuid())
-  userId                  String    @unique
-  birthDate               DateTime?
-  gender                  Gender    @default(PREFER_NOT_TO_SAY)
-  heightCm                Float?
-  weightKg                Float?
-  targetWeightKg          Float?
-  activityLevel           String? // Baseline tingkat aktivitas
-  healthGoals             String? // Tujuan kesehatan
-  preferredActivities     String[]  @default([])
-  dietaryPreferences      String[]  @default([])
-  allergies               String[]  @default([])
-  favoriteFoods           String[]  @default([])
-  favoriteWorkoutTime     String?
-  onboardingCompleted     Boolean   @default(false)
-  dailyStepTarget         Int       @default(8000)
-  dailyCalorieTarget      Int       @default(2000)
-  dailyProteinTargetGrams Int       @default(80)
-  dailyCarbTargetGrams    Int       @default(220)
-  dailyFiberTargetGrams   Int       @default(25)
-  dailyWaterTargetMl      Int       @default(2000)
-  dailySleepTargetHours   Float     @default(8)
-  dailyActiveTargetMinutes Int      @default(30)
-  createdAt               DateTime  @default(now())
-  updatedAt               DateTime  @updatedAt
+  id                       String    @id @default(uuid())
+  userId                   String    @unique
+  birthDate                DateTime?
+  gender                   Gender    @default(PREFER_NOT_TO_SAY)
+  heightCm                 Float?
+  weightKg                 Float?
+  targetWeightKg           Float?
+  activityLevel            String? // Baseline tingkat aktivitas
+  healthGoals              String? // Tujuan kesehatan
+  preferredActivities      String[]  @default([])
+  dietaryPreferences       String[]  @default([])
+  allergies                String[]  @default([])
+  favoriteFoods            String[]  @default([])
+  favoriteWorkoutTime      String?
+  onboardingCompleted      Boolean   @default(false)
+  dailyStepTarget          Int       @default(8000)
+  dailyCalorieTarget       Int       @default(2000)
+  dailyProteinTargetGrams  Int       @default(80)
+  dailyCarbTargetGrams     Int       @default(220)
+  dailyFiberTargetGrams    Int       @default(25)
+  dailyWaterTargetMl       Int       @default(2000)
+  dailySleepTargetHours    Float     @default(8)
+  dailyActiveTargetMinutes Int       @default(30)
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -968,24 +983,153 @@ model HealthMetric {
 // ==========================================
 
 model Event {
-  id          String   @id @default(uuid())
-  title       String
-  description String
-  bannerUrl   String
-  startDate   DateTime
-  endDate     DateTime
-  location    String?
-  capacity    Int      @default(0)
-  bonusXp     Int      @default(0)
-  bonusHp     Int      @default(0)
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id              String               @id @default(uuid())
+  title           String
+  description     String
+  bannerUrl       String
+  startDate       DateTime
+  endDate         DateTime
+  location        String?
+  capacity        Int                  @default(0)
+  bonusXp         Int                  @default(0)
+  bonusHp         Int                  @default(0)
+  isActive        Boolean              @default(true)
+  status          CmsPublicationStatus @default(PUBLISHED)
+  slug            String?              @unique
+  publishedAt     DateTime?
+  createdByUserId String?
+  updatedByUserId String?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
 
   registrations EventRegistration[]
 
   @@index([isActive, startDate])
   @@map("events")
+}
+
+model CmsCategory {
+  id          String       @id @default(uuid())
+  name        String
+  slug        String       @unique
+  description String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  articles    CmsArticle[]
+
+  @@map("cms_categories")
+}
+
+model CmsArticle {
+  id                String               @id @default(uuid())
+  title             String
+  slug              String               @unique
+  excerpt           String?
+  content           String
+  coverImageUrl     String?
+  status            CmsPublicationStatus @default(DRAFT)
+  isFeatured        Boolean              @default(false)
+  publishedAt       DateTime?
+  scheduledAt       DateTime?
+  categoryId        String?
+  authorUserId      String
+  updatedByUserId   String?
+  publishedByUserId String?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+  rejectionReason   String?
+  autosavedAt       DateTime?
+
+  category      CmsCategory?              @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  tags          CmsArticleTag[]
+  author        User                      @relation("CmsArticleAuthor", fields: [authorUserId], references: [id], onDelete: Restrict)
+  updatedBy     User?                     @relation("CmsArticleUpdater", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  publishedBy   User?                     @relation("CmsArticlePublisher", fields: [publishedByUserId], references: [id], onDelete: SetNull)
+  media         CmsMedia[]
+  revisions     CmsArticleRevision[]
+  statusHistory CmsArticleStatusHistory[]
+
+  @@index([status, publishedAt])
+  @@index([categoryId, status])
+  @@map("cms_articles")
+}
+
+model CmsArticleRevision {
+  id            String               @id @default(uuid())
+  articleId     String
+  version       Int
+  title         String
+  slug          String
+  excerpt       String?
+  content       String
+  coverImageUrl String?
+  status        CmsPublicationStatus
+  savedByUserId String
+  createdAt     DateTime             @default(now())
+
+  article CmsArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  savedBy User       @relation("CmsRevisionAuthor", fields: [savedByUserId], references: [id], onDelete: Restrict)
+
+  @@unique([articleId, version])
+  @@index([articleId, createdAt])
+  @@map("cms_article_revisions")
+}
+
+model CmsArticleStatusHistory {
+  id              String                @id @default(uuid())
+  articleId       String
+  fromStatus      CmsPublicationStatus?
+  toStatus        CmsPublicationStatus
+  reason          String?
+  changedByUserId String
+  createdAt       DateTime              @default(now())
+
+  article   CmsArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  changedBy User       @relation("CmsStatusChanger", fields: [changedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([articleId, createdAt])
+  @@map("cms_article_status_history")
+}
+
+model CmsMedia {
+  id           String   @id @default(uuid())
+  url          String
+  storagePath  String   @unique
+  fileName     String
+  contentType  String
+  sizeBytes    Int
+  altText      String?
+  articleId    String?
+  uploadedById String
+  createdAt    DateTime @default(now())
+
+  article    CmsArticle? @relation(fields: [articleId], references: [id], onDelete: SetNull)
+  uploadedBy User        @relation("CmsMediaUploader", fields: [uploadedById], references: [id], onDelete: Restrict)
+
+  @@index([articleId, createdAt])
+  @@map("cms_media")
+}
+
+model CmsTag {
+  id        String          @id @default(uuid())
+  name      String
+  slug      String          @unique
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  articles  CmsArticleTag[]
+
+  @@map("cms_tags")
+}
+
+model CmsArticleTag {
+  articleId String
+  tagId     String
+  article   CmsArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  tag       CmsTag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([articleId, tagId])
+  @@index([tagId])
+  @@map("cms_article_tags")
 }
 
 model EventRegistration {
@@ -1076,7 +1220,7 @@ model Post {
   activitySession ActivitySession? @relation(fields: [activitySessionId], references: [id], onDelete: SetNull)
   comments        PostComment[]
   reactions       PostReaction[]
-  reports   ContentReport[]
+  reports         ContentReport[]
 
   @@index([createdAt])
   @@index([userId, createdAt])

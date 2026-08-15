@@ -1,4 +1,4 @@
-import { EventRegistrationStatus } from "@prisma/client";
+import { CmsPublicationStatus, EventRegistrationStatus } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { apiErrorResponse } from "@/lib/api";
 import { requireCurrentUser } from "@/lib/auth";
@@ -12,6 +12,7 @@ export async function GET(request: Request) {
     const events = await prisma.event.findMany({
       where: {
         isActive: true,
+        status: CmsPublicationStatus.PUBLISHED,
         ...(includePast ? {} : { endDate: { gte: new Date() } }),
       },
       include: {

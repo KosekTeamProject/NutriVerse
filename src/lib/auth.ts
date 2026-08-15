@@ -133,6 +133,14 @@ export async function requireSystemAdmin() {
   return user;
 }
 
+export async function requireCmsEditor() {
+  const user = await requireCurrentUser();
+  if (!["ADMIN", "MODERATOR", "EDITOR", "AUTHOR"].includes(user.role)) {
+    throw new ApiAuthError("Akun ini tidak memiliki akses CMS.", 403);
+  }
+  return user;
+}
+
 export function authErrorResponse(error: unknown) {
   if (error instanceof ApiAuthError) {
     return NextResponse.json(
