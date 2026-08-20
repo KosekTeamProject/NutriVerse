@@ -4,13 +4,14 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import NextImage from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { Activity, Bell, CalendarCheck, Flame, Gift, Heart, Home, LayoutDashboard, LogIn, LogOut, Menu, Moon, ScanLine, Settings, Sparkles, Sun, Trophy, UserRound, UsersRound, X } from "lucide-react";
+import { Activity, ArrowLeft, Bell, CalendarCheck, Flame, Gift, Heart, Home, LayoutDashboard, LogIn, LogOut, Menu, Moon, ScanLine, Settings, Sparkles, Sun, Trophy, UserRound, UsersRound, X } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuthSession } from "@/hooks/useAuthSession";
 import { clearAuthSession, readAuthSession, saveAuthSession } from "@/features/auth/session";
 import { WellbeingReminder } from "@/components/app/WellbeingReminder";
 import { GlobalSearch } from "@/components/app/GlobalSearch";
 import { BrandLogo } from "@/components/brand/BrandLogo";
+import { ThemeCursor } from "@/components/public/ThemeCursor";
 import { Footer } from "@/components/app/Footer";
 import { useProgressData } from "@/providers/ProgressDataProvider";
 
@@ -110,7 +111,9 @@ export function AppShell({ children }: { readonly children: React.ReactNode }) {
   const [notifications, setNotifications] = useState<HeaderNotification[]>([]);
   const { dark, toggleTheme } = useTheme();
 
-  const isPublicPage = pathname === "/onboarding" || pathname.startsWith("/bantuan");
+  const isHelpPage = pathname.startsWith("/bantuan");
+  const isPublicPage = pathname === "/onboarding" || isHelpPage;
+  const isPublicHelp = isHelpPage && !session;
 
   useEffect(() => {
     let cancelled = false;
@@ -254,7 +257,8 @@ export function AppShell({ children }: { readonly children: React.ReactNode }) {
   const unreadNotifications = notifications.filter((item) => !item.isRead);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className={`min-h-screen bg-background ${isPublicHelp ? "public-landing" : ""} ${isHelpPage ? "help-cursor-host" : ""}`}>
+      {isHelpPage && <ThemeCursor hostSelector=".help-cursor-host" />}
       {session && <WellbeingReminder />}
       <aside className={`fixed inset-y-0 left-0 z-40 hidden w-64 border-r border-line bg-sidebar lg:block ${!session ? "lg:hidden" : ""}`}><SidebarContent pathname={pathname} companionName={companionName} onLogout={logout} /></aside>
 
@@ -269,30 +273,51 @@ export function AppShell({ children }: { readonly children: React.ReactNode }) {
       )}
 
       <div className={`min-w-0 ${session ? "lg:pl-64" : ""}`}>
-        <header className="fixed inset-x-0 top-0 z-40 border-b border-line bg-background/90 shadow-sm backdrop-blur-xl lg:inset-x-auto lg:left-[17rem] lg:right-4 lg:top-3 lg:rounded-2xl lg:border lg:border-line/80 lg:shadow-soft" style={!session ? { left: '1rem' } : undefined}>
-          <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2 gap-y-2 overflow-visible px-3 py-2 sm:flex sm:h-16 sm:gap-3 sm:px-6 sm:py-0 lg:px-5">
+        <header
+          className={isPublicHelp
+            ? "public-floating-header fixed inset-x-0 top-2 z-40 mx-auto w-[calc(100%-1rem)] max-w-[86rem] overflow-hidden rounded-[1.75rem] border sm:top-3 sm:w-[calc(100%-1.5rem)] sm:rounded-[2rem]"
+            : "fixed inset-x-0 top-0 z-40 border-b border-line bg-background/90 shadow-sm backdrop-blur-xl lg:inset-x-auto lg:left-[17rem] lg:right-4 lg:top-3 lg:rounded-2xl lg:border lg:border-line/80 lg:shadow-soft"}
+          style={!session && !isPublicHelp ? { left: "1rem" } : undefined}
+        >
+          <div className={isPublicHelp
+            ? "container-app relative flex h-[4.75rem] min-w-0 items-center justify-between gap-2 sm:gap-3"
+            : "grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2 gap-y-2 overflow-visible px-3 py-2 sm:flex sm:h-16 sm:gap-3 sm:px-6 sm:py-0 lg:px-5"}>
             {session && (
               <button onClick={() => { setMobileOpen(true); setNotificationsOpen(false); setProfileOpen(false); }} className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-secondary lg:hidden" aria-label="Buka menu"><Menu className="h-5 w-5" /></button>
             )}
-            <Link href={session ? "/dashboard" : "/"} className="flex min-w-0 items-center gap-1.5 overflow-hidden sm:hidden" aria-label="NutriVerse">
-              <BrandLogo compact className="hidden !h-7 !w-7 shrink-0 min-[360px]:inline-flex" />
-              <span className="truncate font-display text-base font-extrabold tracking-tight text-foreground">Nutri<span className="text-brand">Verse</span></span>
-            </Link>
-            <div className="col-span-3 row-start-2 min-w-0 sm:flex-1">
-              <GlobalSearch companionName={companionName} />
-            </div>
-            <div className="col-start-3 row-start-1 ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
+            {isPublicHelp ? (
+              <Link href="/" className="flex min-w-0 items-center transition duration-200 hover:opacity-90 active:scale-95" aria-label="Kembali ke beranda NutriVerse">
+                <span className="public-logo-full"><BrandLogo /></span>
+                <span className="public-logo-compact min-w-0 items-center gap-2">
+                  <BrandLogo compact className="h-9 w-9" />
+                  <span className="hidden truncate font-display text-base font-extrabold tracking-[-0.055em] text-foreground min-[350px]:inline">Nutri<span className="text-brand">Verse</span></span>
+                </span>
+              </Link>
+            ) : (
+              <Link href={session ? "/dashboard" : "/"} className="flex min-w-0 items-center gap-1.5 overflow-hidden sm:hidden" aria-label="NutriVerse">
+                <BrandLogo compact className="hidden !h-7 !w-7 shrink-0 min-[360px]:inline-flex" />
+                <span className="truncate font-display text-base font-extrabold tracking-tight text-foreground">Nutri<span className="text-brand">Verse</span></span>
+              </Link>
+            )}
+            {!isPublicHelp && (
+              <div className="col-span-3 row-start-2 min-w-0 sm:flex-1">
+                <GlobalSearch companionName={companionName} />
+              </div>
+            )}
+            <div className={isPublicHelp ? "ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2" : "col-start-3 row-start-1 ml-auto flex shrink-0 items-center gap-1 sm:gap-2"}>
               {session ? (
                 <>
                   <span className="pill hidden bg-amber/15 text-amber xl:inline-flex" aria-label={`Saldo ${displayedEconomy.totalXp} XP`}><Flame className="h-3.5 w-3.5" /> {displayedEconomy.totalXp.toLocaleString("id-ID")} XP</span>
                   <span className="pill hidden bg-brand-soft text-brand xl:inline-flex" aria-label={`Saldo ${displayedEconomy.currentHp} HP`}>{displayedEconomy.currentHp.toLocaleString("id-ID")} HP</span>
                 </>
               ) : (
-                <div className="hidden lg:flex items-center gap-8 mr-6 text-sm font-medium text-muted-foreground">
-                  <Link href="/#cara-kerja" className="transition hover:text-brand">Cara kerja</Link>
-                  <Link href="/#tier" className="transition hover:text-brand">Tier &amp; liga</Link>
-                  <Link href="/#reward" className="transition hover:text-brand">Reward</Link>
-                  <Link href="/bantuan" className="transition hover:text-brand">Bantuan</Link>
+                <div className="public-nav-shell hidden items-center gap-0.5 rounded-full border p-1 text-sm font-semibold text-muted-foreground lg:absolute lg:left-1/2 lg:top-1/2 lg:flex lg:-translate-x-1/2 lg:-translate-y-1/2">
+                  <Link href="/#cara-kerja" className="public-nav-link">Cara kerja</Link>
+                  <Link href="/#fitur" className="public-nav-link">Fitur</Link>
+                  <Link href="/#chps" className="public-nav-link">CHPS</Link>
+                  <Link href="/#keamanan" className="public-nav-link">Privasi</Link>
+                  <Link href="/#faq" className="public-nav-link">FAQ</Link>
+                  <Link href="/bantuan" className="public-nav-link text-brand" aria-current="page">Bantuan</Link>
                 </div>
               )}
               <button onClick={toggleTheme} className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-secondary sm:h-9 sm:w-9" aria-label="Ganti tema">{dark ? <Sun className="h-[18px] w-[18px]" /> : <Moon className="h-[18px] w-[18px]" />}</button>
@@ -348,7 +373,7 @@ export function AppShell({ children }: { readonly children: React.ReactNode }) {
                 </>
               ) : (
                 <div className="flex shrink-0 items-center gap-2">
-                  <Link href="/" className="btn btn-primary btn-sm font-bold shadow-soft"><UserRound className="h-4 w-4" /> Masuk</Link>
+                  <Link href="/" className="btn btn-ghost btn-sm font-bold shadow-sm" aria-label="Kembali ke halaman utama NutriVerse"><ArrowLeft className="h-4 w-4" /> <span className="hidden min-[390px]:inline">Beranda</span></Link>
                 </div>
               )}
             </div>

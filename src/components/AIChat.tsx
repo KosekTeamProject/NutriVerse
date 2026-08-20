@@ -25,6 +25,12 @@ export function AIChat() {
     setSessionId(storedSessionId);
   }, []);
 
+  useEffect(() => {
+    if (pathname.startsWith("/bantuan")) setIsOpen(false);
+  }, [pathname]);
+
+  if (pathname.startsWith("/bantuan")) return null;
+
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim()) return;

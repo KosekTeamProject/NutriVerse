@@ -1,11 +1,19 @@
 import Image from "next/image";
 
-export function BrandLogo({ compact = false, className = "" }: { readonly compact?: boolean; readonly className?: string }) {
+export function BrandLogo({
+  compact = false,
+  className = "",
+  src = "/brand/nutriverse-app-icon-200.png",
+}: {
+  readonly compact?: boolean;
+  readonly className?: string;
+  readonly src?: string;
+}) {
   if (compact) {
     return (
       <span className={`inline-flex h-10 w-10 shrink-0 overflow-hidden rounded-[28%] ${className}`}>
         <Image
-          src="/brand/nutriverse-app-icon-200.png"
+          src={src}
           alt="NutriVerse"
           width={200}
           height={200}
@@ -19,7 +27,7 @@ export function BrandLogo({ compact = false, className = "" }: { readonly compac
   return (
     <span className={`inline-flex h-10 shrink-0 items-center gap-2.5 ${className}`} aria-label="NutriVerse">
       <Image
-        src="/brand/nutriverse-app-icon-200.png"
+        src={src}
         alt=""
         width={200}
         height={200}

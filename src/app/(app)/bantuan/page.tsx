@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Search, Sparkles, BookOpen, Compass, Info, Play, MessageCircle } from "lucide-react";
+import { Search, Sparkles, BookOpen, Compass, Play, MessageCircle, Check, ArrowRight } from "lucide-react";
 import { HELP_CATEGORIES, HELP_FAQS } from "@/features/help/data";
 import { HelpAccordion } from "@/components/help/HelpAccordion";
 import { useGuidedTour } from "@/providers/GuidedTourProvider";
@@ -13,8 +13,10 @@ export default function HelpCenterPage() {
 
   const query = searchQuery.toLowerCase();
 
-  const filteredCategories = HELP_CATEGORIES.filter(c => 
-    c.title.toLowerCase().includes(query) || c.description.toLowerCase().includes(query)
+  const filteredCategories = HELP_CATEGORIES.filter(c =>
+    c.title.toLowerCase().includes(query) ||
+    c.description.toLowerCase().includes(query) ||
+    c.topics.some(topic => topic.toLowerCase().includes(query))
   );
 
   const filteredFaqs = HELP_FAQS.filter(f => 
@@ -61,16 +63,32 @@ export default function HelpCenterPage() {
                 <Link 
                   key={category.id} 
                   href={`/bantuan/${category.id}`}
-                  className="group relative flex flex-col rounded-2xl border border-line bg-card p-6 shadow-sm transition-all hover:-translate-y-1 hover:border-brand/50 hover:shadow-md"
+                  className="group relative flex min-h-[19rem] flex-col overflow-hidden rounded-2xl border border-line bg-card p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-brand/50 hover:shadow-md"
                 >
+                  <span aria-hidden className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-brand/5 transition-transform duration-500 group-hover:scale-125" />
                   <div className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-secondary text-muted-foreground group-hover:bg-brand-soft group-hover:text-brand transition-colors">
                     <Icon className="h-5 w-5" />
                   </div>
-                  <h3 className="font-bold text-foreground group-hover:text-brand transition-colors">{category.title}</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground flex-grow">{category.description}</p>
-                  <p className="mt-4 text-xs font-semibold text-brand opacity-0 group-hover:opacity-100 transition-opacity">
-                    Pelajari lebih lanjut &rarr;
-                  </p>
+                  <h3 className="relative font-bold text-foreground transition-colors group-hover:text-brand">{category.title}</h3>
+                  <p className="relative mt-2 text-sm leading-relaxed text-muted-foreground">{category.description}</p>
+
+                  <ul className="relative mt-4 space-y-2 border-t border-line/60 pt-4">
+                    {category.topics.map((topic) => (
+                      <li key={topic} className="flex items-start gap-2 text-xs leading-relaxed text-foreground/80">
+                        <span className="mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-full bg-brand-soft text-brand">
+                          <Check className="h-2.5 w-2.5" strokeWidth={3} />
+                        </span>
+                        {topic}
+                      </li>
+                    ))}
+                  </ul>
+
+                  <div className="relative mt-auto flex items-center justify-between gap-3 pt-5 text-xs font-semibold">
+                    <span className="text-muted-foreground">{category.articleCount} bahasan</span>
+                    <span className="inline-flex items-center gap-1.5 text-brand transition-transform duration-300 group-hover:translate-x-0.5">
+                      Buka panduan <ArrowRight className="h-3.5 w-3.5" />
+                    </span>
+                  </div>
                 </Link>
               );
             })}
@@ -100,7 +118,7 @@ export default function HelpCenterPage() {
                 <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand/10 font-bold text-brand">2</span>
                 <span className="font-medium text-sm">Membaca Dashboard</span>
               </Link>
-              <Link href="/bantuan/aktivitas" className="flex items-center gap-3 rounded-xl bg-card p-4 shadow-sm border border-line hover:border-brand transition">
+              <Link href="/bantuan/gps" className="flex items-center gap-3 rounded-xl bg-card p-4 shadow-sm border border-line hover:border-brand transition">
                 <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand/10 font-bold text-brand">3</span>
                 <span className="font-medium text-sm">Merekam Aktivitas & GPS</span>
               </Link>

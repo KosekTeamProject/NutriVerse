@@ -6,8 +6,23 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "sw
 const jakarta = Plus_Jakarta_Sans({ subsets: ["latin"], variable: "--font-jakarta", display: "swap" });
 
 export const metadata: Metadata = {
-  title: "NutriVerse",
-  description: "Platform kesehatan & nutrisi gamified dengan sistem peringkat kompetitif CHPS.",
+  title: "NutriVerse | Perjalanan Sehat dengan Progres yang Terasa Nyata",
+  description: "Progressive Web App kesehatan berbasis gamifikasi untuk aktivitas, nutrisi, challenge, komunitas, dan progres CHPS yang transparan.",
+  keywords: ["NutriVerse", "kesehatan digital", "gamifikasi kesehatan", "PWA", "activity tracker", "CHPS"],
+  applicationName: "NutriVerse",
+  authors: [{ name: "Tim KOSEK - Universitas AMIKOM Yogyakarta" }],
+  openGraph: {
+    title: "NutriVerse | Perjalanan Sehat yang Lebih Menarik",
+    description: "Bangun kebiasaan sehat melalui aktivitas tervalidasi, progres CHPS, nutrisi, challenge, dan komunitas.",
+    type: "website",
+    locale: "id_ID",
+    siteName: "NutriVerse",
+  },
+  twitter: {
+    card: "summary",
+    title: "NutriVerse | Perjalanan Sehat yang Lebih Menarik",
+    description: "Aktivitas, nutrisi, challenge, dan progres kesehatan dalam satu PWA yang transparan.",
+  },
 };
 
 export const viewport: Viewport = {

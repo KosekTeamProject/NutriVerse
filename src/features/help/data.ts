@@ -21,6 +21,7 @@ export type HelpCategory = {
   description: string;
   icon: LucideIcon;
   articleCount: number;
+  topics: readonly string[];
 };
 
 export type HelpFAQ = {
@@ -41,18 +42,18 @@ export type FeatureGuide = {
 };
 
 export const HELP_CATEGORIES: HelpCategory[] = [
-  { id: "workflow-dasar", title: "Pemula? Mulai Dari Sini", description: "Pahami cara kerja NutriVerse dalam 3 langkah mudah.", icon: Heart, articleCount: 1 },
-  { id: "dashboard", title: "Mulai & Dashboard", description: "Pusat aktivitas dan target harianmu.", icon: LayoutDashboard, articleCount: 4 },
-  { id: "health-pulse", title: "Health Pulse", description: "Pahami kompas kesehatan harianmu.", icon: Heart, articleCount: 3 },
-  { id: "nora-ai", title: "Nora AI Companion", description: "Teman personal yang selalu siap membantu.", icon: Sparkles, articleCount: 2 },
-  { id: "scan", title: "Scan Makanan", description: "Ketahui nutrisi dari apa yang kamu makan.", icon: ScanLine, articleCount: 2 },
-  { id: "gps", title: "Aktivitas GPS", description: "Pelacak jalan santai, lari, dan sepeda.", icon: Activity, articleCount: 4 },
-  { id: "challenge", title: "Challenge", description: "Tantangan sehat untuk mengumpulkan poin.", icon: Trophy, articleCount: 3 },
-  { id: "komunitas", title: "Komunitas & Leaderboard", description: "Berkembang bersama teman lain.", icon: UsersRound, articleCount: 2 },
-  { id: "reward", title: "Reward & Health Points", description: "Tukar poinmu dengan hadiah nyata.", icon: Gift, articleCount: 3 },
-  { id: "xp-tier", title: "XP & Tier", description: "Sistem leveling dari setiap langkah kecilmu.", icon: ShieldCheck, articleCount: 3 },
-  { id: "pengaturan", title: "Pengaturan Akun & Privasi", description: "Kelola profil dan keamanan datamu.", icon: Settings, articleCount: 3 },
-  { id: "notifikasi", title: "Notifikasi & Reminder", description: "Cara kami membantumu tetap ingat.", icon: Bell, articleCount: 2 },
+  { id: "workflow-dasar", title: "Pemula? Mulai dari Sini", description: "Kenali alur harian NutriVerse dari memahami kondisi, mencatat kebiasaan, hingga melihat progres.", icon: Heart, articleCount: 4, topics: ["Alur penggunaan harian", "Langkah pertama yang disarankan"] },
+  { id: "dashboard", title: "Mulai & Dashboard", description: "Baca ringkasan aktivitas, target, Health Pulse, dan rekomendasi harian dari satu tempat.", icon: LayoutDashboard, articleCount: 4, topics: ["Ringkasan kondisi hari ini", "Target dan progres harian"] },
+  { id: "health-pulse", title: "Health Pulse", description: "Pahami indikator ringkas yang membantu membaca arah pola kesehatan tanpa memberi diagnosis.", icon: Heart, articleCount: 3, topics: ["Arti nilai Health Pulse", "Faktor pembentuk dan batas nonmedis"] },
+  { id: "nora-ai", title: "Nora AI Companion", description: "Gunakan pendamping AI untuk memperoleh penjelasan, refleksi, dan motivasi kesehatan nonmedis.", icon: Sparkles, articleCount: 3, topics: ["Cara memulai percakapan", "Batas saran dan keamanan"] },
+  { id: "scan", title: "Scan Makanan", description: "Kenali perkiraan makanan dan nutrisinya melalui foto, lalu simpan hasil yang sudah kamu periksa.", icon: ScanLine, articleCount: 3, topics: ["Foto agar mudah dikenali", "Periksa estimasi sebelum menyimpan"] },
+  { id: "gps", title: "Aktivitas GPS", description: "Rekam jalan, lari, atau bersepeda dan kirim aktivitas untuk divalidasi sebelum memperoleh XP.", icon: Activity, articleCount: 4, topics: ["Izin lokasi dan perekaman", "Validasi aktivitas dan XP"] },
+  { id: "challenge", title: "Challenge", description: "Ikuti tantangan yang tersedia, pantau progres, lalu klaim manfaat setelah syarat terpenuhi.", icon: Trophy, articleCount: 3, topics: ["Bergabung dan menyelesaikan", "Progres serta klaim"] },
+  { id: "komunitas", title: "Komunitas & Leaderboard", description: "Bagikan progres yang aman, berinteraksi dengan komunitas, dan lihat peringkat secara sportif.", icon: UsersRound, articleCount: 4, topics: ["Posting, komentar, dan reaksi", "Leaderboard dan privasi"] },
+  { id: "reward", title: "Reward & Health Points", description: "Pahami saldo Health Points, katalog reward, serta status penukaran tanpa mengurangi XP tier.", icon: Gift, articleCount: 4, topics: ["Perbedaan HP dan XP", "Penukaran serta riwayat reward"] },
+  { id: "xp-tier", title: "XP & Tier", description: "Pelajari CHPS, perolehan XP dari aktivitas tervalidasi, dan perjalanan dari Sprout hingga Legend.", icon: ShieldCheck, articleCount: 4, topics: ["Cara XP dihitung", "Tier, season, dan leaderboard"] },
+  { id: "pengaturan", title: "Pengaturan Akun & Privasi", description: "Kelola profil, preferensi, izin lokasi, ekspor data, dan keamanan akunmu.", icon: Settings, articleCount: 5, topics: ["Profil dan preferensi", "Lokasi, ekspor, dan kontrol data"] },
+  { id: "notifikasi", title: "Notifikasi & Reminder", description: "Atur pengingat agar tetap relevan, tidak berlebihan, dan sesuai dengan preferensimu.", icon: Bell, articleCount: 3, topics: ["Pusat notifikasi", "Preferensi dan perangkat"] },
 ];
 
 export const HELP_FAQS: HelpFAQ[] = [
@@ -144,7 +145,7 @@ export const FEATURE_GUIDES: FeatureGuide[] = [
     troubleshooting: []
   },
   {
-    id: "aktivitas",
+    id: "gps",
     title: "Aktivitas Fisik & GPS",
     fungsi: "Merekam jarak, waktu, dan rute untuk diubah menjadi XP.",
     tujuan: "Menghargai usaha fisikmu secara adil berdasarkan pergerakan nyata.",
@@ -186,6 +187,174 @@ export const FEATURE_GUIDES: FeatureGuide[] = [
         issue: "Scan gagal mengenali makanan",
         cause: "Foto blur, terlalu gelap, atau makanan dibungkus rapat.",
         fix: "Coba foto lagi di tempat terang. Jika makanan terlalu rumit, gunakan Input Manual."
+      }
+    ]
+  },
+  {
+    id: "health-pulse",
+    title: "Memahami Health Pulse",
+    fungsi: "Merangkum sinyal kebiasaan harian menjadi indikator yang mudah dibaca untuk membantu refleksi, bukan untuk menilai atau mendiagnosis kondisi medis.",
+    tujuan: "Membantu kamu melihat arah pola aktivitas, nutrisi, hidrasi, dan catatan kesehatan secara lebih sederhana dari waktu ke waktu.",
+    caraPenggunaan: [
+      "Buka menu Health Pulse untuk melihat nilai terbaru dan waktu pembaruannya.",
+      "Baca faktor pendukung yang tersedia agar kamu memahami data apa saja yang memengaruhi ringkasan tersebut.",
+      "Gunakan perubahan nilainya sebagai bahan refleksi kebiasaan, lalu pilih satu tindakan ringan yang realistis untuk dilakukan.",
+      "Jika ada keluhan kesehatan atau hasil yang mengkhawatirkan, konsultasikan dengan tenaga kesehatan; Health Pulse bukan alat diagnosis."
+    ],
+    tips: "Perhatikan kecenderungan beberapa hari, bukan satu angka dalam satu waktu. Data yang lebih konsisten memberikan konteks yang lebih berguna.",
+    bestPractice: "Gunakan Health Pulse sebagai kompas kebiasaan dan selalu baca penjelasan di balik nilainya sebelum mengambil keputusan.",
+    troubleshooting: [
+      {
+        issue: "Health Pulse belum tampil atau belum berubah",
+        cause: "Data aktivitas atau catatan harian yang tersedia belum cukup, atau pembaruan masih diproses.",
+        fix: "Lengkapi catatan yang relevan, pastikan aktivitas sudah tersimpan, lalu muat ulang halaman setelah proses selesai."
+      }
+    ]
+  },
+  {
+    id: "nora-ai",
+    title: "Nora AI Companion",
+    fungsi: "Memberikan penjelasan, refleksi, motivasi, dan saran kebiasaan sehat berdasarkan konteks yang kamu bagikan dalam batas informasi nonmedis.",
+    tujuan: "Membuat informasi kesehatan lebih mudah dipahami sekaligus menemani pengguna membangun langkah kecil yang realistis.",
+    caraPenggunaan: [
+      "Buka Nora dari menu Companion atau tombol percakapan yang tersedia.",
+      "Sampaikan kebutuhanmu dengan jelas, misalnya meminta penjelasan progres, ide aktivitas ringan, atau cara membaca ringkasan harian.",
+      "Baca jawaban Nora sebagai informasi pendamping dan pilih saran yang sesuai dengan kondisi serta kemampuanmu.",
+      "Hindari memasukkan informasi pribadi yang tidak diperlukan dan jangan gunakan Nora untuk keadaan darurat atau diagnosis medis."
+    ],
+    tips: "Pertanyaan yang spesifik seperti 'tolong jelaskan progres aktivitas minggu ini dengan bahasa sederhana' biasanya menghasilkan jawaban yang lebih relevan.",
+    bestPractice: "Gunakan Nora untuk memahami data dan menyusun kebiasaan ringan. Untuk keluhan, obat, diagnosis, atau kondisi darurat, hubungi tenaga kesehatan.",
+    troubleshooting: [
+      {
+        issue: "Nora belum memberikan jawaban",
+        cause: "Koneksi internet terputus, permintaan masih diproses, atau layanan pendamping sedang tidak tersedia.",
+        fix: "Periksa koneksi, tunggu beberapa saat, lalu kirim ulang pertanyaan tanpa memuat data pribadi yang sensitif."
+      }
+    ]
+  },
+  {
+    id: "challenge",
+    title: "Mengikuti Challenge",
+    fungsi: "Menyediakan tantangan aktivitas atau kebiasaan dengan target, periode, dan manfaat yang dijelaskan sebelum pengguna bergabung.",
+    tujuan: "Membantu kamu menjaga konsistensi melalui sasaran yang terukur tanpa menjadikan tantangan sebagai kewajiban.",
+    caraPenggunaan: [
+      "Buka menu Challenge dan pilih kartu tantangan yang sesuai dengan kemampuanmu.",
+      "Baca target, periode, aturan validasi, serta manfaatnya sebelum menekan tombol bergabung.",
+      "Lakukan aktivitas yang diminta dan pantau progres pada halaman detail tantangan.",
+      "Setelah syarat terpenuhi dan statusnya selesai, gunakan tombol klaim jika manfaat perlu diklaim secara manual."
+    ],
+    tips: "Mulai dari satu challenge dengan target realistis agar progres mudah dipantau dan tidak terasa membebani.",
+    bestPractice: "Pilih tantangan berdasarkan kesiapan diri, bukan hanya besar manfaatnya. Keselamatan dan konsistensi tetap menjadi prioritas.",
+    troubleshooting: [
+      {
+        issue: "Progres challenge belum bertambah",
+        cause: "Aktivitas pendukung belum selesai divalidasi atau tidak sesuai dengan jenis dan periode challenge.",
+        fix: "Periksa detail aturan, status aktivitas, dan tanggal challenge. Tunggu proses validasi sebelum mencoba kembali."
+      }
+    ]
+  },
+  {
+    id: "komunitas",
+    title: "Komunitas & Leaderboard",
+    fungsi: "Menyediakan ruang berbagi progres, komentar, reaksi, serta peringkat berbasis aktivitas yang telah memenuhi ketentuan.",
+    tujuan: "Membangun dukungan sosial dan kompetisi yang sehat tanpa membuka data kesehatan atau koordinat pribadi secara publik.",
+    caraPenggunaan: [
+      "Buka Komunitas untuk melihat unggahan, momen, atau pembaruan yang dibagikan pengguna lain.",
+      "Bagikan progres yang memang ingin kamu tampilkan, lalu periksa kembali isinya sebelum mengirim.",
+      "Gunakan komentar dan reaksi secara suportif, serta laporkan konten yang melanggar aturan komunitas.",
+      "Buka Leaderboard untuk melihat posisi berdasarkan cakupan dan season yang sedang aktif."
+    ],
+    tips: "Bagikan pencapaian tanpa menyertakan alamat, koordinat rute mentah, informasi medis, atau data pribadi lain.",
+    bestPractice: "Jadikan leaderboard sebagai pemicu semangat, bukan ukuran nilai diri. Bandingkan progres terutama dengan kebiasaanmu sendiri.",
+    troubleshooting: [
+      {
+        issue: "Posisi leaderboard belum berubah",
+        cause: "Aktivitas masih diproses, belum tervalidasi, atau leaderboard menggunakan season dan cakupan berbeda.",
+        fix: "Periksa status aktivitas serta filter season pada leaderboard, kemudian tunggu sinkronisasi selesai."
+      }
+    ]
+  },
+  {
+    id: "reward",
+    title: "Reward & Health Points",
+    fungsi: "Menampilkan saldo Health Points (HP), katalog reward, persyaratan penukaran, dan riwayat status penukaran.",
+    tujuan: "Memberikan apresiasi atas kebiasaan sehat tanpa mengurangi XP yang digunakan untuk progres tier dan peringkat.",
+    caraPenggunaan: [
+      "Buka menu Reward untuk melihat saldo HP dan reward yang sedang tersedia.",
+      "Pilih reward lalu baca jumlah HP, stok, masa berlaku, dan ketentuan sebelum menukar.",
+      "Konfirmasi penukaran hanya setelah semua informasi benar.",
+      "Pantau statusnya pada riwayat penukaran; pembatalan hanya tersedia jika status dan ketentuannya memungkinkan."
+    ],
+    tips: "Bedakan HP dan XP: HP dapat digunakan untuk penukaran, sedangkan XP mencatat progres kompetitif dan tidak dibelanjakan.",
+    bestPractice: "Periksa stok serta ketentuan reward terlebih dahulu dan simpan bukti atau kode penukaran sampai proses selesai.",
+    troubleshooting: [
+      {
+        issue: "Reward tidak dapat ditukar",
+        cause: "Saldo HP tidak mencukupi, stok habis, reward tidak aktif, atau permintaan sebelumnya masih diproses.",
+        fix: "Periksa saldo, ketersediaan, dan riwayat penukaran. Coba kembali setelah seluruh persyaratan terpenuhi."
+      }
+    ]
+  },
+  {
+    id: "xp-tier",
+    title: "XP, Tier & CHPS",
+    fungsi: "Mengelola progres kompetitif melalui Competitive Health Progression System (CHPS), dari XP aktivitas tervalidasi hingga tier dan leaderboard.",
+    tujuan: "Menghargai aktivitas fisik secara adil sekaligus memisahkan progres jangka panjang dari Health Points yang dapat ditukar.",
+    caraPenggunaan: [
+      "Rekam aktivitas jalan, lari, atau bersepeda melalui menu Aktivitas GPS.",
+      "Selesaikan sesi dan tunggu pemeriksaan data seperti lokasi, waktu, jarak, kesinambungan rute, pace, serta anomali kecepatan.",
+      "Jika aktivitas lolos validasi, XP ditambahkan ke progresmu dan dihitung menuju ambang tier berikutnya.",
+      "Lihat posisi pada leaderboard season aktif dan baca aturan season yang ditampilkan sebelum membandingkan peringkat."
+    ],
+    tips: "XP berasal dari aktivitas fisik yang tervalidasi. Scan makanan dan penukaran reward tidak menambah atau mengurangi XP tier.",
+    bestPractice: "Pilih mode aktivitas yang benar dan rekam pergerakan nyata secara konsisten. CHPS dirancang untuk menghargai proses, bukan manipulasi data.",
+    troubleshooting: [
+      {
+        issue: "XP belum masuk setelah aktivitas selesai",
+        cause: "Aktivitas masih dalam proses validasi, memerlukan peninjauan, atau tidak memenuhi aturan kewajaran.",
+        fix: "Buka detail aktivitas untuk melihat status dan alasannya. Gunakan pengajuan banding bila opsi tersebut tersedia dan datamu memang benar."
+      }
+    ]
+  },
+  {
+    id: "pengaturan",
+    title: "Pengaturan Akun & Privasi",
+    fungsi: "Mengelola profil, preferensi aplikasi, keamanan akun, izin lokasi, riwayat lokasi, dan kontrol atas data pribadi.",
+    tujuan: "Memberi pengguna kendali yang jelas atas pengalaman NutriVerse dan data yang digunakan oleh setiap fitur.",
+    caraPenggunaan: [
+      "Buka Pengaturan, lalu pilih bagian profil, preferensi, notifikasi, atau privasi yang ingin diubah.",
+      "Perbarui informasi seperlunya dan simpan perubahan sebelum berpindah halaman.",
+      "Tinjau izin lokasi pada perangkat; lokasi dibutuhkan ketika sesi aktivitas GPS sedang berlangsung.",
+      "Gunakan fasilitas ekspor atau pengelolaan akun pada bagian privasi jika ingin memperoleh salinan atau mengatur data akunmu."
+    ],
+    tips: "Berikan izin hanya ketika dibutuhkan dan jangan membagikan kata sandi, kode masuk, maupun tautan pemulihan kepada siapa pun.",
+    bestPractice: "Tinjau pengaturan privasi secara berkala, terutama setelah mengganti perangkat atau browser.",
+    troubleshooting: [
+      {
+        issue: "Perubahan profil atau preferensi tidak tersimpan",
+        cause: "Sesi telah berakhir, koneksi terputus, atau terdapat kolom yang belum memenuhi format.",
+        fix: "Masuk kembali bila diperlukan, periksa penanda kesalahan pada formulir, lalu simpan ulang dengan koneksi yang stabil."
+      }
+    ]
+  },
+  {
+    id: "notifikasi",
+    title: "Notifikasi & Reminder",
+    fungsi: "Menampilkan pembaruan penting dan pengingat yang dapat dibaca atau dikelola berdasarkan preferensi pengguna.",
+    tujuan: "Membantu kamu mengetahui progres, challenge, reward, dan pembaruan akun tanpa membuat pengalaman terasa mengganggu.",
+    caraPenggunaan: [
+      "Buka pusat Notifikasi untuk melihat pembaruan terbaru dan status sudah atau belum dibaca.",
+      "Pilih sebuah notifikasi untuk membuka konteks atau halaman terkait jika tautan tersedia.",
+      "Buka Pengaturan untuk menyesuaikan preferensi pengingat sesuai kebutuhanmu.",
+      "Jika menggunakan notifikasi perangkat, pastikan izin browser atau perangkat telah diberikan."
+    ],
+    tips: "Aktifkan hanya pengingat yang benar-benar membantu rutinitasmu agar notifikasi tetap relevan.",
+    bestPractice: "Gunakan pengingat sebagai dukungan, bukan tekanan. Ubah atau nonaktifkan preferensi yang tidak lagi sesuai.",
+    troubleshooting: [
+      {
+        issue: "Notifikasi perangkat tidak muncul",
+        cause: "Izin notifikasi ditolak, perangkat belum terdaftar, atau pengaturan sistem sedang membatasi notifikasi.",
+        fix: "Periksa izin situs pada browser, pengaturan notifikasi perangkat, dan preferensi NutriVerse, lalu muat ulang aplikasi."
       }
     ]
   }

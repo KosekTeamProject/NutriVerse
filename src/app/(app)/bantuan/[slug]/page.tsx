@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, CheckCircle2, AlertTriangle, Lightbulb, Compass } from "lucide-react";
+import { ArrowLeft, CheckCircle2, AlertTriangle, Lightbulb, Compass, BookOpen } from "lucide-react";
 import { FEATURE_GUIDES } from "@/features/help/data";
 
 export default async function FeatureGuidePage({ params }: { readonly params: Promise<{ slug: string }> }) {
@@ -15,8 +15,12 @@ export default async function FeatureGuidePage({ params }: { readonly params: Pr
   return (
     <div className="mx-auto max-w-3xl pb-12 pt-4">
       {/* Back navigation */}
-      <Link href="/bantuan" className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors mb-8">
-        <ArrowLeft className="h-4 w-4" /> Kembali ke Pusat Bantuan
+      <Link
+        href="/bantuan"
+        className="group mb-8 inline-flex min-h-10 items-center gap-2 rounded-xl border border-line/70 bg-card/45 px-3.5 py-2 text-sm font-semibold text-muted-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.65),0_8px_24px_-20px_rgba(15,46,32,0.35)] backdrop-blur-xl transition-all duration-300 hover:border-brand/25 hover:bg-card/75 hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 focus-visible:ring-offset-2"
+      >
+        <ArrowLeft className="h-4 w-4 shrink-0 transition-transform duration-300 group-hover:-translate-x-0.5" />
+        Kembali ke Pusat Bantuan
       </Link>
 
       {/* Header */}
@@ -108,11 +112,25 @@ export default async function FeatureGuidePage({ params }: { readonly params: Pr
       </div>
       
       {/* Footer Nav */}
-      <div className="mt-16 pt-8 border-t border-line/50 text-center">
-        <p className="text-muted-foreground mb-6">Informasi ini membantu?</p>
-        <Link href="/bantuan" className="btn btn-secondary">
-          Kembali ke Pusat Bantuan
-        </Link>
+      <div className="mt-16 rounded-2xl border border-line/75 bg-card/55 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.7),0_18px_50px_-38px_rgba(15,46,32,0.4)] backdrop-blur-2xl sm:p-5">
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-start gap-3.5 sm:items-center">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-brand/15 bg-brand-soft/70 text-brand shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]">
+              <BookOpen className="h-5 w-5" />
+            </span>
+            <div className="min-w-0 text-left">
+              <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-brand">Panduan lainnya</p>
+              <p className="mt-1 font-display text-base font-bold text-foreground">Lanjut jelajahi Pusat Bantuan</p>
+              <p className="mt-1 text-sm leading-relaxed text-muted-foreground">Temukan penjelasan untuk fitur NutriVerse yang lain.</p>
+            </div>
+          </div>
+          <Link
+            href="/bantuan"
+            className="inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-xl border border-brand/20 bg-brand px-4 py-2.5 text-sm font-bold text-white shadow-[0_12px_28px_-20px_rgba(5,150,105,0.8)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-brand/90 hover:shadow-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 focus-visible:ring-offset-2 sm:w-auto"
+          >
+            <ArrowLeft className="h-4 w-4" /> Kembali ke Pusat Bantuan
+          </Link>
+        </div>
       </div>
     </div>
   );

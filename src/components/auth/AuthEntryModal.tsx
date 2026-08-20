@@ -9,7 +9,17 @@ import { BrandLogo } from "@/components/brand/BrandLogo";
 
 type View = "choice" | "login";
 
-export function AuthEntryModal({ open, onClose, initialView = "choice" }: { readonly open: boolean; readonly onClose: () => void; readonly initialView?: View }) {
+export function AuthEntryModal({
+  open,
+  onClose,
+  initialView = "choice",
+  brandLogoSrc,
+}: {
+  readonly open: boolean;
+  readonly onClose: () => void;
+  readonly initialView?: View;
+  readonly brandLogoSrc?: string;
+}) {
   const router = useRouter();
   const [view, setView] = useState<View>(initialView);
   const [email, setEmail] = useState("");
@@ -106,7 +116,7 @@ export function AuthEntryModal({ open, onClose, initialView = "choice" }: { read
       <section className="relative z-10 max-h-[calc(100dvh-1.5rem)] w-full max-w-lg overflow-y-auto overscroll-contain rounded-[1.5rem] border border-line bg-card shadow-2xl sm:max-h-[calc(100dvh-2rem)] sm:rounded-[2rem]">
         <div className="bg-gradient-to-br from-brand/15 via-card to-lime/10 p-4 sm:p-8">
           <div className="flex items-start justify-between gap-4">
-            <BrandLogo />
+            <BrandLogo src={brandLogoSrc} />
             <button onClick={onClose} className="grid h-8 w-8 shrink-0 place-items-center rounded-xl text-muted-foreground hover:bg-secondary sm:h-9 sm:w-9" aria-label="Tutup"><X className="h-5 w-5" /></button>
           </div>
 

@@ -1,6 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { getSupabasePublicConfig } from "@/lib/env";
+import { getOptionalSupabasePublicConfig } from "@/lib/env";
 import { isProtectedAppPath } from "@/server/auth/route-access";
 
 function copyResponseCookies(source: NextResponse, target: NextResponse) {
@@ -16,7 +16,27 @@ function copyResponseCookies(source: NextResponse, target: NextResponse) {
  */
 export async function updateSupabaseSession(request: NextRequest) {
   let response = NextResponse.next({ request });
-  const { url, publishableKey } = getSupabasePublicConfig();
+  const config = getOptionalSupabasePublicConfig();
+
+  // The marketing/public pages should remain available when a developer has
+  // not configured Supabase yet. Authentication and protected product routes
+  // still require the real project credentials.
+  if (!config) {
+    if (!isProtectedAppPath(request.nextUrl.pathname)) return response;
+
+    const loginUrl = request.nextUrl.clone();
+    loginUrl.pathname = "/";
+    loginUrl.search = "";
+    loginUrl.searchParams.set("auth_error", "supabase_not_configured");
+    loginUrl.searchParams.set(
+      "next",
+      `${request.nextUrl.pathname}${request.nextUrl.search}`,
+    );
+
+    return NextResponse.redirect(loginUrl);
+  }
+
+  const { url, publishableKey } = config;
 
   const supabase = createServerClient(url, publishableKey, {
     cookies: {
