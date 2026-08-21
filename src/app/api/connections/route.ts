@@ -26,10 +26,18 @@ export async function GET(request: Request) {
       250,
     );
     const cursor = searchParams.get("cursor") || undefined;
+    const incomingOnly = searchParams.get("incoming") === "true";
+    const list = searchParams.get("list");
+    const where = incomingOnly
+      ? { addresseeId: user.id, status: ConnectionStatus.PENDING }
+      : list === "friends"
+        ? {
+            status: ConnectionStatus.ACCEPTED,
+            OR: [{ requesterId: user.id }, { addresseeId: user.id }],
+          }
+          : { OR: [{ requesterId: user.id }, { addresseeId: user.id }] };
     const connections = await prisma.userConnection.findMany({
-      where: {
-        OR: [{ requesterId: user.id }, { addresseeId: user.id }],
-      },
+      where,
       include: {
         requester: {
           select: {
@@ -54,9 +62,17 @@ export async function GET(request: Request) {
     });
     const hasMore = connections.length > limit;
     const page = hasMore ? connections.slice(0, limit) : connections;
+    const responseConnections = list === "friends"
+      ? page.map((connection) => ({
+          ...connection,
+          friend: connection.requesterId === user.id
+            ? connection.addressee
+            : connection.requester,
+        }))
+      : page;
     return NextResponse.json({
       success: true,
-      connections: page,
+      connections: responseConnections,
       nextCursor: hasMore ? page.at(-1)?.id : null,
     });
   } catch (error) {

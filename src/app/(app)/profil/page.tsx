@@ -28,6 +28,10 @@ import {
 } from "lucide-react";
 import { RankCrest } from "@/components/brand/RankCrest";
 import { ProfileCollection } from "@/components/app/ProfileCollection";
+import { ProfileConnections } from "@/components/app/ProfileConnections";
+import { ProfileCommunities } from "@/components/app/ProfileCommunities";
+import { ProfileMomentsGallery } from "@/components/app/ProfileMomentsGallery";
+import { OwnerProfileMomentShowcase } from "@/components/app/ProfileMomentShowcase";
 import { TIER_EMBLEM_NAMES, tierBySlug } from "@/lib/tiers";
 import { useAuthSession } from "@/hooks/useAuthSession";
 import { useCompanionName } from "@/hooks/useCompanionName";
@@ -199,11 +203,13 @@ export default function ProfilPage() {
   const companionName = useCompanionName();
   const tier = tierBySlug(overview?.economy.currentTier.toLowerCase() ?? "sprout");
   const [storyIndex, setStoryIndex] = useState(0);
+  const [activeProfileSection, setActiveProfileSection] = useState<"summary" | "moments">("summary");
   const [companionDraft, setCompanionDraft] = useState<string | null>(null);
   const [companionSaved, setCompanionSaved] = useState(false);
   const [imageFeedback, setImageFeedback] = useState("");
   const [imageEditor, setImageEditor] = useState<ProfileImageEditor | null>(null);
   const [imageSaving, setImageSaving] = useState(false);
+  const [avatarImageFailed, setAvatarImageFailed] = useState(false);
   const [privacySummary, setPrivacySummary] =
     useState<ProfilePrivacySummary | null>(null);
   const profileName = session?.name ?? "Fathan Mubarak";
@@ -217,6 +223,12 @@ export default function ProfilPage() {
     }, 5000);
     return () => clearInterval(interval);
   }, []);
+
+  function selectProfileSection(section: "summary" | "moments") {
+    setActiveProfileSection(section);
+    const hash = section === "moments" ? "#momen-saya" : "#ringkasan";
+    window.history.replaceState(null, "", `${window.location.pathname}${hash}`);
+  }
 
   useEffect(() => {
     if (!session?.email) return;
@@ -297,6 +309,7 @@ export default function ProfilPage() {
           body: JSON.stringify({ avatarUrl: uploadResult.publicUrl }),
         });
         if (!profileResponse.ok) throw new Error("Profil belum dapat diperbarui.");
+        setAvatarImageFailed(false);
         updateAuthSession({ avatarUrl: uploadResult.publicUrl });
       } else {
         updateAuthSession({ coverUrl: imageUrl });
@@ -323,7 +336,7 @@ export default function ProfilPage() {
       {/* profile header */}
       <div className="card overflow-hidden border-line relative">
         {/* Animated cover background */}
-        <div className="absolute inset-x-0 top-0 aspect-[6/1] min-h-16 overflow-hidden bg-gradient-to-br from-brand via-brand-bright to-lime">
+        <div className="absolute inset-x-0 top-0 h-28 overflow-hidden bg-gradient-to-br from-brand via-brand-bright to-lime sm:h-32">
           {session?.coverUrl && <NextImage src={session.coverUrl} alt="Latar profil" fill unoptimized className="object-cover" />}
           <div className="absolute inset-0 bg-gradient-to-r from-black/20 via-transparent to-black/20" />
           <div className="absolute inset-0 grid-dots opacity-20" />
@@ -334,23 +347,24 @@ export default function ProfilPage() {
           <input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" onChange={(event) => startProfileImageEdit(event, "coverUrl")} />
         </label>
 
-        <div className="card-pad relative mt-4 pt-0 sm:mt-20 lg:mt-24">
+        <div className="card-pad relative mt-28 pt-0 sm:mt-32">
           <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div className="flex items-end gap-4">
               {/* Floating Avatar with rotating status ring */}
               <div className="relative group shrink-0">
                 <div className="absolute -inset-0.5 rounded-3xl bg-gradient-to-tr from-brand to-lime opacity-75 blur-sm animate-pulse duration-3000" />
                 <div className="relative grid h-24 w-24 overflow-hidden rounded-3xl border-4 border-card bg-gradient-to-br from-brand to-lime font-display text-3xl font-extrabold text-white shadow-soft transition duration-300 group-hover:scale-105">
-                  {session?.avatarUrl ? <NextImage src={session.avatarUrl} alt={`Foto profil ${profileName}`} fill unoptimized className="object-cover" /> : initials}
+                  {session?.avatarUrl && !avatarImageFailed ? <NextImage src={session.avatarUrl} alt="" fill unoptimized className="object-cover" onError={() => setAvatarImageFailed(true)} /> : initials}
                 </div>
                 <label className="absolute -bottom-1 -right-1 z-10 grid h-9 w-9 cursor-pointer place-items-center rounded-xl border-2 border-card bg-foreground text-background shadow-soft transition hover:scale-105" title="Ubah foto profil dengan rasio 1:1">
                   <Camera className="h-4 w-4" />
                   <input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" onChange={(event) => startProfileImageEdit(event, "avatarUrl")} />
                 </label>
               </div>
-              <div className="pb-1">
-                <h1 className="font-display text-2xl font-extrabold tracking-tight text-foreground">{profileName}</h1>
-                <p className="text-sm text-muted-foreground">@{profileUsername} &middot; Pengguna Aktif</p>
+              <div className="min-w-0 pb-1">
+                <h1 className="break-words font-display text-2xl font-extrabold tracking-tight text-foreground">{profileName}</h1>
+                <p className="truncate text-sm text-muted-foreground">@{profileUsername} &middot; Pengguna Aktif</p>
+                <ProfileConnections />
               </div>
             </div>
             <Link href="/pengaturan" className="btn btn-outline btn-sm font-bold"><Pencil className="h-4 w-4" /> Edit Profil</Link>
@@ -403,13 +417,23 @@ export default function ProfilPage() {
         </div>
       )}
 
+      <nav className="grid grid-cols-2 rounded-2xl bg-secondary p-1" aria-label="Navigasi profil">
+        <button type="button" onClick={() => selectProfileSection("summary")} aria-current={activeProfileSection === "summary" ? "page" : undefined} className={`rounded-xl px-3 py-2.5 text-center text-xs font-bold transition ${activeProfileSection === "summary" ? "bg-card text-brand shadow-sm" : "text-muted-foreground hover:text-brand"}`}>Ringkasan</button>
+        <button type="button" onClick={() => selectProfileSection("moments")} aria-current={activeProfileSection === "moments" ? "page" : undefined} className={`rounded-xl px-3 py-2.5 text-center text-xs font-bold transition ${activeProfileSection === "moments" ? "bg-card text-brand shadow-sm" : "text-muted-foreground hover:text-brand"}`}>Momen Saya</button>
+      </nav>
+
+      {activeProfileSection === "summary" ? <>
       {/* stats */}
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+      <div id="ringkasan" className="grid scroll-mt-24 grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <StatCard icon={Zap} label="Progress XP" value={(overview?.economy.totalXp ?? 0).toLocaleString("id-ID")} accent="amber" />
         <StatCard icon={MapPin} label="Jarak total" value={`${overview?.profile.totalDistanceKm ?? 0} km`} accent="brand" />
         <StatCard icon={Activity} label="Aktivitas" value={`${overview?.profile.verifiedActivityCount ?? 0}`} accent="sky" />
         <StatCard icon={Flame} label="Streak" value={`${overview?.economy.streakDays ?? 0} hari`} accent="lime" />
       </div>
+
+      <OwnerProfileMomentShowcase />
+
+      <ProfileCommunities />
 
       <div className="space-y-4">
         {/* Tier 1 - Always Visible Primary Preference */}
@@ -499,7 +523,7 @@ export default function ProfilPage() {
         </details>
 
         {/* Koleksi Expandable */}
-        <details className="group card border-line bg-card [&_summary::-webkit-details-marker]:hidden">
+        <details id="badge" className="group card scroll-mt-24 border-line bg-card [&_summary::-webkit-details-marker]:hidden">
           <summary className="flex cursor-pointer items-center justify-between p-4 sm:p-5 font-display font-bold text-foreground">
             <div className="flex items-center gap-2.5">
                <span className="grid h-8 w-8 place-items-center rounded-lg bg-sky/15 text-sky"><Sparkles className="h-4 w-4" /></span>
@@ -566,6 +590,7 @@ export default function ProfilPage() {
           </div>
         </details>
       </div>
+      </> : <ProfileMomentsGallery />}
     </div>
   );
 }

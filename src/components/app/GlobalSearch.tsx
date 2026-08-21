@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Activity, CalendarCheck, Gift, Heart, LayoutDashboard, Search, ScanLine, Sparkles, Trophy, UsersRound, X, type LucideIcon } from "lucide-react";
+import { Activity, CalendarCheck, Gift, Heart, Images, LayoutDashboard, Search, ScanLine, Sparkles, Trophy, UsersRound, X, type LucideIcon } from "lucide-react";
 
 type SearchItem = {
   readonly label: string;
@@ -19,8 +19,9 @@ const SEARCH_ITEMS: readonly SearchItem[] = [
   { label: "Hari aktif 4 dari 7", description: "Lihat target dan kebiasaan hari ini", href: "/todays-journey", kind: "Progres", keywords: "hari ini target journey kebiasaan", icon: CalendarCheck },
   { label: "Aktivitas GPS 1,4 km", description: "Mulai atau lihat aktivitas terverifikasi", href: "/aktivitas", kind: "Progres", keywords: "jalan lari sepeda gps xp pace", icon: Activity },
   { label: "Pindai Makanan", description: "Estimasi gizi informatif tanpa XP", href: "/scan", kind: "Fitur", keywords: "scan kamera kalori protein nutrisi makanan", icon: ScanLine },
+  { label: "Momen", description: "Foto teman dan galeri pribadi", href: "/momen", kind: "Fitur", keywords: "foto teman privat kamera galeri", icon: Images },
   { label: "Tantangan 64%", description: "1 Juta Langkah Bersama AMIKOM", href: "/challenge", kind: "Progres", keywords: "challenge langkah hadiah kompetisi", icon: Trophy },
-  { label: "Komunitas & Peringkat", description: "Event, feed, circle, dan leaderboard", href: "/komunitas", kind: "Fitur", keywords: "teman event leaderboard ranking circle", icon: UsersRound },
+  { label: "Komunitas & Event", description: "Ruang diskusi dan kegiatan terverifikasi", href: "/komunitas", kind: "Fitur", keywords: "komunitas event anggota diskusi leaderboard ranking", icon: UsersRound },
   { label: "Hadiah · 3.280 HP", description: "Tukar Health Points di Reward Store", href: "/reward", kind: "Progres", keywords: "reward store hp poin tukar", icon: Gift },
   { label: "AI Companion", description: "Tanyakan aktivitas, nutrisi, atau pemulihan", href: "/companion", kind: "Fitur", keywords: "nora ai chat saran reminder", icon: Sparkles },
 ];

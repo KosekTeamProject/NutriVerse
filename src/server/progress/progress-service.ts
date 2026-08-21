@@ -5,6 +5,7 @@ import {
   VerificationStatus,
 } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { COMMUNITY_APPROVAL, COMMUNITY_MEMBER } from "@/server/community/community-constants";
 import type {
   BehaviorGoal,
   HealthyDayHistoryPoint,
@@ -937,7 +938,8 @@ export async function buildCommunityOverview(
       take: 20,
     }),
     prisma.guild.findMany({
-      include: { _count: { select: { members: true } } },
+      where: { approvalStatus: COMMUNITY_APPROVAL.APPROVED, isActive: true },
+      include: { _count: { select: { members: { where: { status: COMMUNITY_MEMBER.ACTIVE } } } } },
       orderBy: { members: { _count: "desc" } },
       take: 8,
     }),

@@ -1,19 +1,9 @@
-import { CommunityHub } from "@/components/app/CommunityFeed";
-import { NutriVerseMoments } from "@/components/app/NutriVerseMoments";
+import { CommunityHub } from "@/components/app/CommunityHub";
 
 export default function KomunitasPage() {
   return (
-    <div className="mx-auto w-full min-w-0 max-w-[1440px] space-y-6">
-      
-      {/* Hero Section: NutriVerse Moments */}
-      <div className="animate-fade-up-premium">
-        <NutriVerseMoments />
-      </div>
-
-      <div data-tour="community-leaderboard" className="animate-fade-up" style={{ animationDelay: '100ms' }}>
-        <CommunityHub />
-      </div>
-      
+    <div className="mx-auto w-full min-w-0 max-w-[1440px] animate-fade-up-premium">
+      <CommunityHub />
     </div>
   );
 }

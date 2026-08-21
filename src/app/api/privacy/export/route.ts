@@ -34,6 +34,7 @@ export async function GET(request: NextRequest) {
       postReactions,
       momentReactions,
       connections,
+      communities,
       eventRegistrations,
       notifications,
       deviceTokens,
@@ -95,6 +96,7 @@ export async function GET(request: NextRequest) {
           OR: [{ requesterId: userId }, { addresseeId: userId }],
         },
       }),
+      prisma.guildMember.findMany({ where: { userId }, include: { guild: true } }),
       prisma.eventRegistration.findMany({
         where: { userId },
         include: { event: true },
@@ -126,6 +128,7 @@ export async function GET(request: NextRequest) {
         postReactions,
         momentReactions,
         connections,
+        communities,
         eventRegistrations,
       },
       notifications: { notifications, deviceTokens },

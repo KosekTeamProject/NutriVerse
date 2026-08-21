@@ -44,6 +44,16 @@ export async function PATCH(request: NextRequest) {
         "INVALID_USERNAME",
       );
     }
+    let usernameChanged = false;
+    if (username !== undefined && username !== user.username) {
+      const duplicate = await prisma.user.findFirst({ where: { id: { not: user.id }, username: { equals: username, mode: "insensitive" } }, select: { id: true } });
+      if (duplicate) throw new ApiRequestError("Username tersebut sudah digunakan pengguna lain.", 409, "USERNAME_TAKEN");
+      const current = await prisma.user.findUniqueOrThrow({ where: { id: user.id }, select: { usernameUpdatedAt: true } });
+      if (current.usernameUpdatedAt && current.usernameUpdatedAt.getTime() + 30 * 24 * 60 * 60_000 > Date.now()) {
+        throw new ApiRequestError("Username hanya dapat diganti satu kali setiap 30 hari.", 429, "USERNAME_CHANGE_COOLDOWN");
+      }
+      usernameChanged = true;
+    }
     const avatarUrl =
       body.avatarUrl === undefined || body.avatarUrl === ""
         ? body.avatarUrl
@@ -62,7 +72,7 @@ export async function PATCH(request: NextRequest) {
         where: { id: user.id },
         data: {
         ...(body.name !== undefined ? { name: stringValue(body.name, "Nama", { min: 2, max: 100 }) } : {}),
-        ...(username !== undefined ? { username } : {}),
+        ...(username !== undefined ? { username, ...(usernameChanged ? { usernameUpdatedAt: new Date() } : {}) } : {}),
         ...(body.bio !== undefined
           ? { bio: body.bio === "" ? null : stringValue(body.bio, "Bio", { max: 300 }) }
           : {}),

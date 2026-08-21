@@ -283,7 +283,7 @@ export function DashboardCommunityHighlight() {
         <div className="flex-1 min-w-0 w-full">
           <div className="flex flex-wrap items-center gap-2 mb-2">
             <span className="pill bg-brand text-[9px] font-bold text-white uppercase flex items-center gap-1">
-              <Megaphone className="h-3 w-3" /> Event Komunitas
+              <Megaphone className="h-3 w-3" /> Komunitas &amp; Event
             </span>
             <span className="text-[10px] text-muted-foreground font-semibold flex items-center gap-1">
               <Users2 className="h-3 w-3" /> {participants} bergabung

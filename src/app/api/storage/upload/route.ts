@@ -35,8 +35,20 @@ const BUCKETS = {
     maxDimension: 4_096,
     mimeTypes: ["image/jpeg", "image/png", "image/webp"],
   },
+  moments: {
+    max: 10 * 1024 * 1024,
+    public: false,
+    maxDimension: 4_096,
+    mimeTypes: ["image/jpeg", "image/png", "image/webp"],
+  },
   "cms-media": {
     max: 10 * 1024 * 1024,
+    public: true,
+    maxDimension: 4_096,
+    mimeTypes: ["image/jpeg", "image/png", "image/webp"],
+  },
+  "share-templates": {
+    max: 15 * 1024 * 1024,
     public: true,
     maxDimension: 4_096,
     mimeTypes: ["image/jpeg", "image/png", "image/webp"],
@@ -47,12 +59,15 @@ export async function POST(request: NextRequest) {
   try {
     assertSameOrigin(request);
     await enforceRateLimit(request, "storage:upload", 30, 60 * 60_000);
-    await requireCurrentUser();
+    const currentUser = await requireCurrentUser();
     const form = await request.formData();
     const bucket = form.get("bucket");
     const file = form.get("file");
     if (typeof bucket !== "string" || !(bucket in BUCKETS) || !(file instanceof File)) {
       return NextResponse.json({ success: false, error: "Bucket atau file tidak valid." }, { status: 400 });
+    }
+    if (bucket === "share-templates" && currentUser.role !== "ADMIN" && currentUser.role !== "MODERATOR") {
+      return NextResponse.json({ success: false, error: "Hanya admin yang dapat mengunggah aset template." }, { status: 403 });
     }
     const config = BUCKETS[bucket as keyof typeof BUCKETS];
     if (

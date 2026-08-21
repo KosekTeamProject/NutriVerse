@@ -51,6 +51,16 @@ export async function DELETE(
     assertSameOrigin(request);
     const user = await requireCurrentUser();
     const { momentId } = await context.params;
+    const moment = await prisma.moment.findFirst({
+      where: visibleMomentWhere(user.id, momentId),
+      select: { id: true },
+    });
+    if (!moment) {
+      return NextResponse.json(
+        { success: false, error: "Momen tidak ditemukan." },
+        { status: 404 },
+      );
+    }
     await prisma.momentReaction.deleteMany({
       where: { momentId, userId: user.id },
     });

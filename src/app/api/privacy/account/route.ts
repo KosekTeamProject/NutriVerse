@@ -12,6 +12,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 const USER_STORAGE_BUCKETS = [
   "avatars",
   "post-images",
+  "moments",
   "activity-shares",
   "journal-attachments",
 ] as const;

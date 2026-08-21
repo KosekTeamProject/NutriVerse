@@ -113,7 +113,21 @@ enum RedemptionStatus {
 enum PrivacyLevel {
   PRIVATE
   CIRCLE
+  COMMUNITY
   PUBLIC
+}
+
+enum ShareTemplateStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum ShareTemplateAspectRatio {
+  SQUARE
+  PORTRAIT
+  STORY
+  LANDSCAPE
 }
 
 enum AppealStatus {
@@ -170,6 +184,47 @@ enum EventRegistrationStatus {
   ATTENDED
 }
 
+enum EventApprovalStatus {
+  PENDING_REVIEW
+  NEEDS_REVISION
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum ExternalLinkStatus {
+  NONE
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+  DISABLED
+}
+
+enum EventCommentStatus {
+  VISIBLE
+  HIDDEN
+}
+
+enum CommunityApprovalStatus {
+  PENDING_REVIEW
+  NEEDS_REVISION
+  APPROVED
+  REJECTED
+  ARCHIVED
+}
+
+enum CommunityJoinPolicy {
+  OPEN
+  APPROVAL
+}
+
+enum CommunityMemberStatus {
+  PENDING
+  ACTIVE
+  REJECTED
+  BANNED
+}
+
 enum ConnectionStatus {
   PENDING
   ACCEPTED
@@ -194,66 +249,75 @@ enum CmsPublicationStatus {
 // ==========================================
 
 model User {
-  id               String    @id @default(uuid())
-  authUserId       String?   @unique // ID from Supabase Auth; nullable while legacy/demo rows are migrated.
-  email            String    @unique
-  username         String?   @unique
-  name             String
-  bio              String?
-  avatarUrl        String?
-  role             UserRole  @default(USER)
-  isSuspended      Boolean   @default(false)
-  suspendedAt      DateTime?
-  suspensionReason String?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  id                String    @id @default(uuid())
+  authUserId        String?   @unique // ID from Supabase Auth; nullable while legacy/demo rows are migrated.
+  email             String    @unique
+  username          String?   @unique
+  usernameUpdatedAt DateTime?
+  name              String
+  bio               String?
+  avatarUrl         String?
+  role              UserRole  @default(USER)
+  isSuspended       Boolean   @default(false)
+  suspendedAt       DateTime?
+  suspensionReason  String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   // Relationships
-  healthProfile          HealthProfile?
-  companionPreference    CompanionPreference?
-  settings               UserSettings?
-  economy                UserEconomy?
-  activitySessions       ActivitySession[]
-  appeals                Appeal[]
-  xpGrants               XPGrant[]
-  hpLedgerEntries        HPLedgerEntry[]
-  challengeProgresses    ChallengeProgress[]
-  challengeContributions ChallengeContribution[]
-  badges                 UserBadge[]
-  rankings               Ranking[]
-  redemptions            Redemption[]
-  journeyEntries         JourneyEntry[]
-  journalEntries         JournalEntry[]
-  nutritionEntries       NutritionEntry[]
-  waterLogs              WaterLog[]
-  customFoodItems        CustomFoodItem[]
-  healthPulses           HealthPulse[]
-  healthMetrics          HealthMetric[]
-  moments                Moment[]
-  reportsSubmitted       ContentReport[]           @relation("ReportedBy")
-  auditLogs              AuditLog[]                @relation("ActorUser")
-  notifications          UserNotification[]
-  deviceTokens           UserDeviceToken[]
-  companionConversations CompanionConversation[]
-  companionMemories      CompanionMemory[]
-  weeklyLetters          WeeklyLetterArchive[]
-  journalReactions       JournalReaction[]
-  guildsLed              Guild[]                   @relation("GuildLeader")
-  guildMemberships       GuildMember[]
-  posts                  Post[]
-  postComments           PostComment[]
-  postReactions          PostReaction[]
-  momentReactions        MomentReaction[]
-  eventRegistrations     EventRegistration[]
-  connectionsSent        UserConnection[]          @relation("ConnectionRequester")
-  connectionsReceived    UserConnection[]          @relation("ConnectionAddressee")
-  connectionsBlocked     UserConnection[]          @relation("ConnectionBlocker")
-  cmsArticlesCreated     CmsArticle[]              @relation("CmsArticleAuthor")
-  cmsArticlesUpdated     CmsArticle[]              @relation("CmsArticleUpdater")
-  cmsArticlesPublished   CmsArticle[]              @relation("CmsArticlePublisher")
-  cmsMediaUploaded       CmsMedia[]                @relation("CmsMediaUploader")
-  cmsRevisionsCreated    CmsArticleRevision[]      @relation("CmsRevisionAuthor")
-  cmsStatusChanges       CmsArticleStatusHistory[] @relation("CmsStatusChanger")
+  healthProfile           HealthProfile?
+  companionPreference     CompanionPreference?
+  settings                UserSettings?
+  economy                 UserEconomy?
+  activitySessions        ActivitySession[]
+  appeals                 Appeal[]
+  xpGrants                XPGrant[]
+  hpLedgerEntries         HPLedgerEntry[]
+  challengeProgresses     ChallengeProgress[]
+  challengeContributions  ChallengeContribution[]
+  badges                  UserBadge[]
+  rankings                Ranking[]
+  redemptions             Redemption[]
+  journeyEntries          JourneyEntry[]
+  journalEntries          JournalEntry[]
+  nutritionEntries        NutritionEntry[]
+  waterLogs               WaterLog[]
+  customFoodItems         CustomFoodItem[]
+  healthPulses            HealthPulse[]
+  healthMetrics           HealthMetric[]
+  moments                 Moment[]
+  reportsSubmitted        ContentReport[]           @relation("ReportedBy")
+  auditLogs               AuditLog[]                @relation("ActorUser")
+  notifications           UserNotification[]
+  deviceTokens            UserDeviceToken[]
+  companionConversations  CompanionConversation[]
+  companionMemories       CompanionMemory[]
+  weeklyLetters           WeeklyLetterArchive[]
+  journalReactions        JournalReaction[]
+  guildsLed               Guild[]                   @relation("GuildLeader")
+  guildsReviewed          Guild[]                   @relation("GuildReviewer")
+  guildMemberships        GuildMember[]
+  posts                   Post[]
+  postComments            PostComment[]
+  postReactions           PostReaction[]
+  momentReactions         MomentReaction[]
+  momentComments          MomentComment[]
+  shareTemplatesCreated   ShareTemplate[]           @relation("ShareTemplateCreator")
+  shareTemplatesPublished ShareTemplate[]           @relation("ShareTemplatePublisher")
+  eventRegistrations      EventRegistration[]
+  eventsCreated           Event[]                   @relation("EventCreator")
+  eventsReviewed          Event[]                   @relation("EventReviewer")
+  eventComments           EventComment[]            @relation("EventCommentAuthor")
+  eventCommentsModerated  EventComment[]            @relation("EventCommentModerator")
+  connectionsSent         UserConnection[]          @relation("ConnectionRequester")
+  connectionsReceived     UserConnection[]          @relation("ConnectionAddressee")
+  connectionsBlocked      UserConnection[]          @relation("ConnectionBlocker")
+  cmsArticlesCreated      CmsArticle[]              @relation("CmsArticleAuthor")
+  cmsArticlesUpdated      CmsArticle[]              @relation("CmsArticleUpdater")
+  cmsArticlesPublished    CmsArticle[]              @relation("CmsArticlePublisher")
+  cmsMediaUploaded        CmsMedia[]                @relation("CmsMediaUploader")
+  cmsRevisionsCreated     CmsArticleRevision[]      @relation("CmsRevisionAuthor")
+  cmsStatusChanges        CmsArticleStatusHistory[] @relation("CmsStatusChanger")
 
   @@map("users")
 }
@@ -983,29 +1047,65 @@ model HealthMetric {
 // ==========================================
 
 model Event {
-  id              String               @id @default(uuid())
-  title           String
-  description     String
-  bannerUrl       String
-  startDate       DateTime
-  endDate         DateTime
-  location        String?
-  capacity        Int                  @default(0)
-  bonusXp         Int                  @default(0)
-  bonusHp         Int                  @default(0)
-  isActive        Boolean              @default(true)
-  status          CmsPublicationStatus @default(PUBLISHED)
-  slug            String?              @unique
-  publishedAt     DateTime?
-  createdByUserId String?
-  updatedByUserId String?
-  createdAt       DateTime             @default(now())
-  updatedAt       DateTime             @updatedAt
+  id                 String               @id @default(uuid())
+  title              String
+  description        String
+  bannerUrl          String
+  startDate          DateTime
+  endDate            DateTime
+  location           String?
+  capacity           Int                  @default(0)
+  bonusXp            Int                  @default(0)
+  bonusHp            Int                  @default(0)
+  isActive           Boolean              @default(true)
+  status             CmsPublicationStatus @default(PUBLISHED)
+  slug               String?              @unique
+  publishedAt        DateTime?
+  createdByUserId    String?
+  updatedByUserId    String?
+  approvalStatus     EventApprovalStatus  @default(APPROVED)
+  reviewNote         String?
+  reviewedByUserId   String?
+  reviewedAt         DateTime?
+  whatsappInviteUrl  String?
+  whatsappLinkStatus ExternalLinkStatus   @default(NONE)
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
 
   registrations EventRegistration[]
+  comments      EventComment[]
+  createdBy     User?               @relation("EventCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  reviewedBy    User?               @relation("EventReviewer", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
 
   @@index([isActive, startDate])
+  @@index([approvalStatus, createdAt])
+  @@index([createdByUserId, approvalStatus])
   @@map("events")
+}
+
+model EventComment {
+  id            String             @id @default(uuid())
+  eventId       String
+  authorId      String
+  parentId      String?
+  content       String
+  status        EventCommentStatus @default(VISIBLE)
+  isPinned      Boolean            @default(false)
+  moderatedById String?
+  moderatedAt   DateTime?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  event       Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  author      User           @relation("EventCommentAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  parent      EventComment?  @relation("EventCommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies     EventComment[] @relation("EventCommentReplies")
+  moderatedBy User?          @relation("EventCommentModerator", fields: [moderatedById], references: [id], onDelete: SetNull)
+
+  @@index([eventId, isPinned, createdAt])
+  @@index([authorId, createdAt])
+  @@index([parentId])
+  @@map("event_comments")
 }
 
 model CmsCategory {
@@ -1171,34 +1271,52 @@ model UserConnection {
 }
 
 model Guild {
-  id          String   @id @default(uuid())
-  name        String   @unique
-  description String?
-  emblemUrl   String?
-  leaderId    String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id               String                  @id @default(uuid())
+  name             String                  @unique
+  description      String?
+  emblemUrl        String?
+  category         String                  @default("Gaya Hidup Sehat")
+  rules            String[]                @default([])
+  joinPolicy       CommunityJoinPolicy     @default(OPEN)
+  approvalStatus   CommunityApprovalStatus @default(APPROVED)
+  reviewNote       String?
+  reviewedByUserId String?
+  reviewedAt       DateTime?
+  approvedAt       DateTime?
+  isActive         Boolean                 @default(true)
+  leaderId         String?
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
 
-  leader  User?         @relation("GuildLeader", fields: [leaderId], references: [id], onDelete: SetNull)
-  members GuildMember[]
-  posts   Post[]
+  leader     User?         @relation("GuildLeader", fields: [leaderId], references: [id], onDelete: SetNull)
+  reviewedBy User?         @relation("GuildReviewer", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  members    GuildMember[]
+  posts      Post[]
+  moments    Moment[]
 
   @@index([leaderId])
+  @@index([approvalStatus, isActive, createdAt])
+  @@index([reviewedByUserId])
   @@map("guilds")
 }
 
 model GuildMember {
-  id       String    @id @default(uuid())
-  guildId  String
-  userId   String
-  role     GuildRole @default(MEMBER)
-  joinedAt DateTime  @default(now())
+  id               String                @id @default(uuid())
+  guildId          String
+  userId           String
+  role             GuildRole             @default(MEMBER)
+  status           CommunityMemberStatus @default(ACTIVE)
+  visibleOnProfile Boolean               @default(false)
+  joinedAt         DateTime              @default(now())
+  approvedAt       DateTime?
+  updatedAt        DateTime              @updatedAt
 
   guild Guild @relation(fields: [guildId], references: [id], onDelete: Cascade)
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([guildId, userId])
-  @@index([userId])
+  @@index([userId, status])
+  @@index([guildId, status])
   @@map("guild_members")
 }
 
@@ -1212,6 +1330,7 @@ model Post {
   privacyLevel      PrivacyLevel @default(CIRCLE)
   kind              PostKind     @default(REFLECTION)
   isHidden          Boolean      @default(false)
+  isPinned          Boolean      @default(false)
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
 
@@ -1263,25 +1382,37 @@ model PostReaction {
 }
 
 model Moment {
-  id                String       @id @default(uuid())
-  userId            String
-  activitySessionId String?
-  imageUrl          String // Foto kamera langsung
-  caption           String?
-  duringActivity    Boolean      @default(false)
-  privacyLevel      PrivacyLevel @default(PUBLIC)
-  reportCount       Int          @default(0)
-  isHidden          Boolean      @default(false)
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
+  id                   String       @id @default(uuid())
+  userId               String
+  activitySessionId    String?
+  communityId          String?
+  shareTemplateId      String?
+  shareTemplateVersion Int?
+  metricsSnapshot      Json?
+  imageUrl             String // Foto kamera langsung
+  caption              String?
+  duringActivity       Boolean      @default(false)
+  privacyLevel         PrivacyLevel @default(PRIVATE)
+  visibleOnProfile     Boolean      @default(false)
+  profileDisplayOrder  Int?
+  reportCount          Int          @default(0)
+  isHidden             Boolean      @default(false)
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
 
   user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   activitySession ActivitySession? @relation(fields: [activitySessionId], references: [id], onDelete: SetNull)
+  community       Guild?           @relation(fields: [communityId], references: [id], onDelete: SetNull)
+  shareTemplate   ShareTemplate?   @relation(fields: [shareTemplateId], references: [id], onDelete: SetNull)
   reports         ContentReport[]
   reactions       MomentReaction[]
+  comments        MomentComment[]
 
   @@index([privacyLevel, createdAt])
   @@index([userId, createdAt])
+  @@index([userId, visibleOnProfile, profileDisplayOrder])
+  @@index([communityId, createdAt])
+  @@index([shareTemplateId])
   @@map("moments")
 }
 
@@ -1299,6 +1430,53 @@ model MomentReaction {
   @@unique([momentId, userId])
   @@index([userId, createdAt])
   @@map("moment_reactions")
+}
+
+model MomentComment {
+  id        String   @id @default(uuid())
+  momentId  String
+  userId    String
+  content   String
+  isHidden  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  moment Moment @relation(fields: [momentId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([momentId, createdAt])
+  @@index([userId, createdAt])
+  @@map("moment_comments")
+}
+
+model ShareTemplate {
+  id                String                   @id @default(uuid())
+  name              String
+  description       String?
+  category          String                   @default("Aktivitas")
+  aspectRatio       ShareTemplateAspectRatio @default(SQUARE)
+  width             Int                      @default(1080)
+  height            Int                      @default(1080)
+  backgroundUrl     String?
+  thumbnailUrl      String?
+  layoutConfig      Json
+  allowedDataKeys   String[]                 @default([])
+  status            ShareTemplateStatus      @default(DRAFT)
+  version           Int                      @default(1)
+  createdByUserId   String
+  publishedByUserId String?
+  publishedAt       DateTime?
+  createdAt         DateTime                 @default(now())
+  updatedAt         DateTime                 @updatedAt
+
+  createdBy   User     @relation("ShareTemplateCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  publishedBy User?    @relation("ShareTemplatePublisher", fields: [publishedByUserId], references: [id], onDelete: SetNull)
+  moments     Moment[]
+
+  @@index([status, category, createdAt])
+  @@index([createdByUserId])
+  @@index([publishedByUserId])
+  @@map("share_templates")
 }
 
 model ContentReport {

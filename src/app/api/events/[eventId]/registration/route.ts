@@ -1,4 +1,6 @@
 import {
+  CmsPublicationStatus,
+  EventApprovalStatus,
   EventRegistrationStatus,
   NotificationType,
   Prisma,
@@ -27,7 +29,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         const event = await transaction.event.findUnique({
           where: { id: eventId },
         });
-        if (!event || !event.isActive || event.endDate <= new Date()) {
+        if (!event || !event.isActive || event.status !== CmsPublicationStatus.PUBLISHED || event.approvalStatus !== EventApprovalStatus.APPROVED || event.endDate <= new Date()) {
           throw new ApiRequestError(
             "Event tidak tersedia.",
             404,

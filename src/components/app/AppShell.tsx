@@ -4,12 +4,12 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import NextImage from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { Activity, Bell, CalendarCheck, Flame, Gift, Heart, Home, LayoutDashboard, LogIn, LogOut, Menu, Moon, ScanLine, Settings, Sparkles, Sun, Trophy, UserRound, UsersRound, X } from "lucide-react";
+import { Activity, Bell, CalendarCheck, Flame, Gift, Heart, Home, Images, LayoutDashboard, LogIn, LogOut, Menu, Moon, ScanLine, Settings, Sparkles, Sun, Trophy, UserRound, UsersRound, X } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuthSession } from "@/hooks/useAuthSession";
 import { clearAuthSession, readAuthSession, saveAuthSession } from "@/features/auth/session";
 import { WellbeingReminder } from "@/components/app/WellbeingReminder";
-import { GlobalSearch } from "@/components/app/GlobalSearch";
+import { UserProfileSearch } from "@/components/app/UserProfileSearch";
 import { BrandLogo } from "@/components/brand/BrandLogo";
 import { Footer } from "@/components/app/Footer";
 import { useProgressData } from "@/providers/ProgressDataProvider";
@@ -24,10 +24,11 @@ const NAV_GROUPS = [
   { label: "Aktivitas", items: [
     { href: "/scan", label: "Pindai Makanan", icon: ScanLine },
     { href: "/aktivitas", label: "Aktivitas GPS", icon: Activity },
+    { href: "/momen", label: "Momen", icon: Images },
   ] },
   { label: "Komunitas", items: [
     { href: "/challenge", label: "Tantangan", icon: Trophy },
-    { href: "/komunitas", label: "Komunitas & Peringkat", icon: UsersRound },
+    { href: "/komunitas", label: "Komunitas & Event", icon: UsersRound },
     { href: "/reward", label: "Hadiah", icon: Gift },
   ] },
 ];
@@ -52,7 +53,8 @@ type HeaderNotification = {
 function notificationHref(type: string) {
   if (type === "CHALLENGE") return "/challenge";
   if (type === "REWARD") return "/reward";
-  if (type === "EVENT" || type === "SOCIAL") return "/komunitas";
+  if (type === "EVENT") return "/komunitas";
+  if (type === "SOCIAL") return "/profil";
   if (type === "ACTIVITY" || type === "CHEAT_ALERT") return "/aktivitas";
   return "/todays-journey";
 }
@@ -182,7 +184,7 @@ export function AppShell({ children }: { readonly children: React.ReactNode }) {
         if (!cancelled && response.ok && result?.success) {
           setNotifications(result.notifications ?? []);
         }
-      } catch (e) {
+      } catch {
         // Notifikasi tidak menggagalkan shell saat koneksi terputus.
       }
     };
@@ -278,9 +280,11 @@ export function AppShell({ children }: { readonly children: React.ReactNode }) {
               <BrandLogo compact className="hidden !h-7 !w-7 shrink-0 min-[360px]:inline-flex" />
               <span className="truncate font-display text-base font-extrabold tracking-tight text-foreground">Nutri<span className="text-brand">Verse</span></span>
             </Link>
-            <div className="col-span-3 row-start-2 min-w-0 sm:flex-1">
-              <GlobalSearch companionName={companionName} />
-            </div>
+            {pathname === "/momen" && (
+              <div className="col-span-3 row-start-2 min-w-0 sm:flex-1">
+                <UserProfileSearch />
+              </div>
+            )}
             <div className="col-start-3 row-start-1 ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
               {session ? (
                 <>
@@ -356,7 +360,7 @@ export function AppShell({ children }: { readonly children: React.ReactNode }) {
         </header>
 
 
-        <main className={`min-w-0 px-4 pb-12 pt-[7.5rem] sm:px-6 sm:pb-12 sm:pt-24 lg:px-8 lg:pb-12 lg:pt-24 ${!session ? "max-w-7xl mx-auto" : ""}`}>{children}</main>
+        <main className={`min-w-0 px-4 pb-12 ${pathname === "/momen" ? "pt-[7.5rem]" : "pt-20"} sm:px-6 sm:pb-12 sm:pt-24 lg:px-8 lg:pb-12 lg:pt-24 ${!session ? "max-w-7xl mx-auto" : ""}`}>{children}</main>
         <Footer />
       </div>
 

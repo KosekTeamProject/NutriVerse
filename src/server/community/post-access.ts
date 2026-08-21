@@ -3,6 +3,7 @@ import {
   Prisma,
   PrivacyLevel,
 } from "@prisma/client";
+import { COMMUNITY_APPROVAL, COMMUNITY_MEMBER } from "@/server/community/community-constants";
 
 export function visiblePostWhere(
   userId: string,
@@ -43,7 +44,9 @@ export function visiblePostWhere(
         privacyLevel: { not: PrivacyLevel.PRIVATE },
         guild: {
           is: {
-            members: { some: { userId } },
+            approvalStatus: COMMUNITY_APPROVAL.APPROVED,
+            isActive: true,
+            members: { some: { userId, status: COMMUNITY_MEMBER.ACTIVE } },
           },
         },
       },

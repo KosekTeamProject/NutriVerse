@@ -1,807 +1,972 @@
 "use client";
 
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import { createPortal } from "react-dom";
 import NextImage from "next/image";
-import { Camera, Check, ChevronLeft, ChevronRight, Download, Lock, Maximize2, RefreshCw, ShieldCheck, Trash2, Users, X } from "lucide-react";
-import { BrandLogo } from "@/components/brand/BrandLogo";
+import Link from "next/link";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { Camera, Check, ChevronDown, ChevronUp, Heart, ImagePlus, LoaderCircle, Lock, MessageCircle, Send, ShieldCheck, Sparkles, Trash2, UserPlus, UsersRound, X } from "lucide-react";
 
-type Privacy = "public" | "friends" | "private";
+type FeedScope = "public" | "community" | "friends";
+type Audience = "PUBLIC" | "COMMUNITY" | "CIRCLE" | "PRIVATE";
+
 type Moment = {
-  readonly id: string;
-  readonly name: string;
-  readonly caption: string;
-  readonly image: string;
-  readonly privacy: Privacy;
-  readonly duringActivity: boolean;
-  readonly time: string;
-  readonly isOwner: boolean;
-  readonly reactionCount: number;
+  id: string;
+  userId: string;
+  imageUrl: string;
+  caption: string | null;
+  duringActivity: boolean;
+  privacyLevel: string;
+  createdAt: string;
+  isOwner: boolean;
+  likedByMe: boolean;
+  user: { id: string; name: string; username: string | null; avatarUrl: string | null };
+  activitySession: { id: string; activityType: string; startTime: string; distanceMeters: number; durationSeconds: number; verificationStatus: string } | null;
+  community: { id: string; name: string; emblemUrl: string | null } | null;
+  shareTemplate: { id: string; name: string; version: number } | null;
+  _count: { reactions: number; comments: number };
+  connection: { id: string | null; state: "SELF" | "NONE" | "PENDING_SENT" | "PENDING_RECEIVED" | "FRIEND" };
 };
 
-const PRIVACY_OPTIONS: readonly { value: Privacy; label: string; icon: typeof Users }[] = [
-  { value: "public", label: "Komunitas", icon: Users },
-  { value: "friends", label: "Teman", icon: ShieldCheck },
-  { value: "private", label: "Privat", icon: Lock },
+type MomentComment = {
+  id: string;
+  userId: string;
+  content: string;
+  createdAt: string;
+  canDelete: boolean;
+  user: { id: string; name: string; username: string | null; avatarUrl: string | null };
+};
+
+type Community = { id: string; name: string };
+type Activity = { id: string; activityType: string; startTime: string; distanceMeters: number; durationSeconds: number; caloriesBurned: number; verificationStatus: string };
+type TemplateElement = { id: string; kind: "text" | "image"; dataKey?: string; staticText?: string; x: number; y: number; width: number; height: number; fontSize?: number; color?: string; align?: CanvasTextAlign; required?: boolean; userCanHide?: boolean };
+type ShareTemplate = { id: string; name: string; category: string; description: string | null; aspectRatio: string; width: number; height: number; backgroundUrl: string | null; thumbnailUrl: string | null; layoutConfig: { elements?: TemplateElement[]; photoAsBackground?: boolean }; allowedDataKeys: string[]; version: number };
+type StudioContext = { user: { name: string; username: string | null; avatarUrl: string | null }; progress: { totalXp: number; currentTier: string; streakDays: number } | null; healthPulse: { current: number | null; previous: number | null; delta: number | null; trend: string }; activities: Activity[] };
+
+const AUDIENCES: Array<{ value: Audience; label: string; description: string; icon: typeof Lock }> = [
+  { value: "PUBLIC", label: "Publik", description: "Semua user NutriVerse", icon: Sparkles },
+  { value: "COMMUNITY", label: "Komunitas", description: "Anggota komunitas terpilih", icon: UsersRound },
+  { value: "CIRCLE", label: "Teman", description: "Teman yang sudah diterima", icon: ShieldCheck },
+  { value: "PRIVATE", label: "Hanya Saya", description: "Tampil di galeri profilmu", icon: Lock },
 ];
 
-function loadMomentImage(source: string) {
+function relativeTime(value: string) {
+  const minutes = Math.max(0, Math.floor((Date.now() - new Date(value).getTime()) / 60_000));
+  if (minutes < 1) return "Baru saja";
+  if (minutes < 60) return `${minutes} menit lalu`;
+  if (minutes < 1_440) return `${Math.floor(minutes / 60)} jam lalu`;
+  if (minutes < 10_080) return `${Math.floor(minutes / 1_440)} hari lalu`;
+  return new Date(value).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
+}
+
+function activityName(type?: string) {
+  if (type === "RUN") return "Berlari";
+  if (type === "CYCLED") return "Bersepeda";
+  if (type === "WALK") return "Berjalan";
+  return "Momen Harian";
+}
+
+function momentStatus(moment: Moment) {
+  if (moment.shareTemplate) return `Studio Berbagi · ${moment.shareTemplate.name}`;
+  if (moment.activitySession) return `${moment.duringActivity ? "Saat" : "Setelah"} ${activityName(moment.activitySession.activityType)}`;
+  return "Momen Harian";
+}
+
+function initials(name: string) {
+  return name.split(" ").filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
+}
+
+function loadImage(source: string) {
   return new Promise<HTMLImageElement>((resolve, reject) => {
-    const image = new Image();
+    const image = new window.Image();
+    if (!source.startsWith("data:")) image.crossOrigin = "anonymous";
     image.onload = () => resolve(image);
     image.onerror = reject;
     image.src = source;
   });
 }
 
-function relativeTime(value: string) {
-  const minutes = Math.max(
-    0,
-    Math.floor((Date.now() - new Date(value).getTime()) / 60_000),
-  );
-  if (minutes < 1) return "Baru saja";
-  if (minutes < 60) return `${minutes} mnt lalu`;
-  if (minutes < 1_440) return `${Math.floor(minutes / 60)} jam lalu`;
-  return `${Math.floor(minutes / 1_440)} hari lalu`;
-}
-
-function privacyFromDatabase(value: string): Privacy {
-  if (value === "PUBLIC") return "public";
-  if (value === "PRIVATE") return "private";
-  return "friends";
-}
-
-function privacyForDatabase(value: Privacy) {
-  if (value === "public") return "PUBLIC";
-  if (value === "private") return "PRIVATE";
-  return "CIRCLE";
-}
-
-function loadMomentBrandMark() {
-  return loadMomentImage("/brand/nutriverse-app-icon-200.png");
-}
-
-function drawFullPhoto(context: CanvasRenderingContext2D, image: HTMLImageElement, width: number, height: number) {
-  context.drawImage(image, 0, 0, width, height);
-}
-
-function drawPhotoWithBackdrop(context: CanvasRenderingContext2D, image: HTMLImageElement, width: number, height: number) {
-  const coverScale = Math.max(width / image.naturalWidth, height / image.naturalHeight);
-  const coverWidth = image.naturalWidth * coverScale;
-  const coverHeight = image.naturalHeight * coverScale;
-  context.fillStyle = "#101314";
-  context.fillRect(0, 0, width, height);
-  context.save();
-  context.filter = "blur(28px) grayscale(1) brightness(.38)";
-  context.drawImage(image, (width - coverWidth) / 2, (height - coverHeight) / 2, coverWidth, coverHeight);
-  context.restore();
-  context.fillStyle = "rgba(0, 0, 0, .28)";
-  context.fillRect(0, 0, width, height);
-  const scale = Math.min(width / image.naturalWidth, height / image.naturalHeight);
+function drawCover(context: CanvasRenderingContext2D, image: HTMLImageElement, x: number, y: number, width: number, height: number) {
+  const scale = Math.max(width / image.naturalWidth, height / image.naturalHeight);
   const drawWidth = image.naturalWidth * scale;
   const drawHeight = image.naturalHeight * scale;
-  context.drawImage(image, (width - drawWidth) / 2, (height - drawHeight) / 2, drawWidth, drawHeight);
-}
-
-function getWrappedLines(context: CanvasRenderingContext2D, text: string, maxWidth: number, maxLines: number) {
-  const words = text.trim().split(/\s+/).filter(Boolean);
-  const lines: string[] = [];
-  let currentLine = "";
-  for (const word of words) {
-    const nextLine = currentLine ? `${currentLine} ${word}` : word;
-    if (context.measureText(nextLine).width <= maxWidth || !currentLine) {
-      currentLine = nextLine;
-      continue;
-    }
-    lines.push(currentLine);
-    currentLine = word;
-  }
-  if (currentLine) lines.push(currentLine);
-  if (lines.length <= maxLines) return lines;
-  const visibleLines = lines.slice(0, maxLines);
-  visibleLines[maxLines - 1] = `${visibleLines[maxLines - 1].replace(/[,.!?;:]?$/, "")}…`;
-  return visibleLines;
-}
-
-function drawMomentTypography(context: CanvasRenderingContext2D, text: string, width: number, height: number) {
-  const overlay = context.createLinearGradient(0, height * 0.4, 0, height);
-  overlay.addColorStop(0, "rgba(7, 9, 10, 0)");
-  overlay.addColorStop(0.48, "rgba(7, 9, 10, .2)");
-  overlay.addColorStop(1, "rgba(7, 9, 10, .96)");
-  context.fillStyle = overlay;
-  context.fillRect(0, 0, width, height);
-
-  context.save();
-  context.textAlign = "center";
-  context.fillStyle = "#ffffff";
-  context.shadowColor = "rgba(0, 0, 0, .46)";
-  context.shadowBlur = 14;
-  context.font = "800 58px Arial";
-  const lines = getWrappedLines(context, text.trim() || "Satu momen sehat hari ini.", width - 176, 3);
-  const lineHeight = 68;
-  const startY = height - 214 - (lines.length - 1) * lineHeight;
-  lines.forEach((line, index) => context.fillText(line, width / 2, startY + index * lineHeight));
-  context.shadowBlur = 0;
-  context.fillStyle = "rgba(255, 255, 255, .2)";
-  context.fillRect(112, height - 120, width - 224, 1);
-  context.fillStyle = "rgba(255, 255, 255, .76)";
-  context.font = "700 18px Arial";
-  context.fillText("NUTRIVERSE • MOMENT SEHAT", width / 2, height - 58);
-  context.restore();
-}
-
-async function normalizePhoto(source: string) {
-  const image = await loadMomentImage(source);
-  const canvas = document.createElement("canvas");
-  canvas.width = image.naturalWidth;
-  canvas.height = image.naturalHeight;
-  const context = canvas.getContext("2d");
-  if (!context) return source;
-  drawFullPhoto(context, image, canvas.width, canvas.height);
-  return canvas.toDataURL("image/jpeg", 0.9);
+  context.save(); context.beginPath(); context.rect(x, y, width, height); context.clip();
+  context.drawImage(image, x + (width - drawWidth) / 2, y + (height - drawHeight) / 2, drawWidth, drawHeight); context.restore();
 }
 
 export function NutriVerseMoments() {
+  const [scope, setScope] = useState<FeedScope>("public");
+  const [communityFilter, setCommunityFilter] = useState("");
+  const [moments, setMoments] = useState<Moment[]>([]);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError] = useState("");
+  const [selected, setSelected] = useState<Moment | null>(null);
+  const [comments, setComments] = useState<MomentComment[]>([]);
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [commentDraft, setCommentDraft] = useState("");
+  const [commentBusy, setCommentBusy] = useState(false);
+  const [composerOpen, setComposerOpen] = useState(false);
+  const [composerMode, setComposerMode] = useState<"capture" | "studio">("capture");
+  const [sourcePhoto, setSourcePhoto] = useState<string | null>(null);
+  const [outputPhoto, setOutputPhoto] = useState<string | null>(null);
+  const [caption, setCaption] = useState("");
+  const [audience, setAudience] = useState<Audience>("CIRCLE");
+  const [targetCommunity, setTargetCommunity] = useState("");
+  const [activityId, setActivityId] = useState("");
+  const [templateId, setTemplateId] = useState("");
+  const [communities, setCommunities] = useState<Community[]>([]);
+  const [templates, setTemplates] = useState<ShareTemplate[]>([]);
+  const [studioContext, setStudioContext] = useState<StudioContext | null>(null);
+  const [publishing, setPublishing] = useState(false);
+  const [composerMessage, setComposerMessage] = useState("");
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const railRef = useRef<HTMLDivElement>(null);
-  const railDragRef = useRef<{ startX: number; scrollLeft: number } | null>(null);
-  const [composerOpen, setComposerOpen] = useState(false);
+  const detailScrollRef = useRef<HTMLDivElement>(null);
+  const touchStartYRef = useRef<number | null>(null);
+  const wheelDeltaRef = useRef(0);
+  const momentNavigationLockedRef = useRef(false);
+  const commentRequestRef = useRef(0);
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState("");
-  const [photo, setPhoto] = useState<string | null>(null);
-  const [caption, setCaption] = useState("");
-  const [privacy, setPrivacy] = useState<Privacy>("friends");
-  const [duringActivity, setDuringActivity] = useState(true);
-  const [downloaded, setDownloaded] = useState(false);
-  const [railDragging, setRailDragging] = useState(false);
-  const [publishing, setPublishing] = useState(false);
-  const [viewerMoment, setViewerMoment] = useState<Moment | null>(null);
-  const [moments, setMoments] = useState<Moment[]>([]);
-  const [isHovered, setIsHovered] = useState(false);
-  const progressBarRef = useRef<HTMLDivElement>(null);
-  
-  const [pullDistance, setPullDistance] = useState(0);
-  const [isDismissing, setIsDismissing] = useState(false);
-  const pullDistanceRef = useRef(0);
-  const mobileViewerRef = useRef<HTMLDivElement>(null);
 
-  // Sync ref with state so the touchEnd listener has access to the latest pullDistance
-  useEffect(() => {
-    pullDistanceRef.current = pullDistance;
-  }, [pullDistance]);
+  const selectedTemplate = useMemo(() => templates.find((template) => template.id === templateId) ?? null, [templateId, templates]);
+  const selectedActivity = studioContext?.activities.find((activity) => activity.id === activityId) ?? studioContext?.activities[0] ?? null;
+  const selectedTemplateUsesActivity = selectedTemplate?.allowedDataKeys.some((key) => key.startsWith("activity.")) ?? false;
+  const selectedTemplateUsesPhoto = selectedTemplate?.allowedDataKeys.includes("moment.photo") ?? false;
+  const selectedIndex = selected ? moments.findIndex((moment) => moment.id === selected.id) : -1;
 
-  // Auto scroll to clicked moment on mobile open
-  useEffect(() => {
-    if (viewerMoment) {
-      const timer = setTimeout(() => {
-        const el = document.getElementById(`mobile-moment-${viewerMoment.id}`);
-        if (el) {
-          el.scrollIntoView({ behavior: "auto", block: "start" });
-        }
-      }, 60);
-      return () => clearTimeout(timer);
+  async function loadOptions() {
+    const [communityResponse, templateResponse, contextResponse] = await Promise.all([
+      fetch("/api/communities?scope=mine", { cache: "no-store" }),
+      fetch("/api/share-templates", { cache: "no-store" }),
+      fetch("/api/share-templates/context", { cache: "no-store" }),
+    ]);
+    const communityResult = await communityResponse.json().catch(() => null) as { communities?: Community[] } | null;
+    const templateResult = await templateResponse.json().catch(() => null) as { templates?: ShareTemplate[] } | null;
+    const contextResult = await contextResponse.json().catch(() => null) as { context?: StudioContext } | null;
+    if (communityResponse.ok) setCommunities(communityResult?.communities ?? []);
+    if (templateResponse.ok) {
+      const publishedTemplates = templateResult?.templates ?? [];
+      setTemplates(publishedTemplates);
+      setTemplateId((current) => publishedTemplates.some((template) => template.id === current) ? current : publishedTemplates[0]?.id ?? "");
     }
-  }, [viewerMoment]);
-
-  // Body scroll lock on mobile modal open
-  useEffect(() => {
-    if (viewerMoment) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
+    if (contextResponse.ok && contextResult?.context) {
+      setStudioContext(contextResult.context);
+      setActivityId((current) => current || contextResult.context?.activities[0]?.id || "");
     }
+  }
+
+  async function loadFeed(cursor?: string): Promise<Moment[]> {
+    if (cursor) setLoadingMore(true);
+    else setLoading(true);
+    setError("");
+    try {
+      const params = new URLSearchParams({ scope, limit: "20" });
+      if (cursor) params.set("cursor", cursor);
+      if (scope === "community" && communityFilter) params.set("communityId", communityFilter);
+      const response = await fetch(`/api/moments?${params}`, { cache: "no-store" });
+      const result = await response.json().catch(() => null) as { success?: boolean; moments?: Moment[]; nextCursor?: string | null; error?: string } | null;
+      if (!response.ok || !result?.success) { setError(result?.error ?? "Feed momen belum dapat dimuat."); return []; }
+      const receivedMoments = result.moments ?? [];
+      setMoments((current) => cursor ? [...current, ...receivedMoments.filter((item) => !current.some((old) => old.id === item.id))] : receivedMoments);
+      setNextCursor(result.nextCursor ?? null);
+      return receivedMoments;
+    } catch {
+      setError("Feed momen belum dapat dimuat. Periksa koneksi lalu coba lagi.");
+      return [];
+    } finally { setLoading(false); setLoadingMore(false); }
+  }
+
+  useEffect(() => { const timer = window.setTimeout(() => void loadOptions(), 0); return () => window.clearTimeout(timer); }, []);
+  useEffect(() => () => { streamRef.current?.getTracks().forEach((track) => track.stop()); }, []);
+  useEffect(() => {
+    if (!cameraActive || !videoRef.current || !streamRef.current) return;
+    videoRef.current.srcObject = streamRef.current;
+    void videoRef.current.play();
+  }, [cameraActive]);
+  useEffect(() => {
+    if (!composerOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      streamRef.current?.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+      if (videoRef.current) videoRef.current.srcObject = null;
+      setCameraActive(false);
+      setComposerOpen(false);
+    }
+    window.addEventListener("keydown", handleEscape);
     return () => {
-      document.body.style.overflow = "";
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleEscape);
     };
-  }, [viewerMoment]);
-
-  // Setup DOM touch listeners with passive: false to bypass mobile overscroll constraints
+  }, [composerOpen]);
   useEffect(() => {
-    const el = mobileViewerRef.current;
-    if (!el) return;
-
-    let startY = 0;
-    let isAtBottom = false;
-
-    const onTouchStart = (e: TouchEvent) => {
-      startY = e.touches[0].clientY;
-      const maxScroll = el.scrollHeight - el.clientHeight;
-      isAtBottom = el.scrollTop >= maxScroll - 45;
-    };
-
-    const onTouchMove = (e: TouchEvent) => {
-      const currentY = e.touches[0].clientY;
-      const diff = startY - currentY; // positive = swiping up
-      
-      const maxScroll = el.scrollHeight - el.clientHeight;
-      const atBottom = el.scrollTop >= maxScroll - 45;
-      
-      if (atBottom && diff > 0) {
-        if (e.cancelable) {
-          e.preventDefault();
-        }
-        const resistance = Math.min(150, diff * 0.6);
-        setPullDistance(resistance);
-
-        // Real-time dismiss when pull threshold is exceeded
-        if (resistance > 80) {
-          setIsDismissing(true);
-          el.removeEventListener("touchmove", onTouchMove);
-          setTimeout(() => {
-            setViewerMoment(null);
-            setPullDistance(0);
-            setIsDismissing(false);
-          }, 250);
-        }
-      } else {
-        setPullDistance(0);
+    if (!selected) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setSelected(null);
+        return;
       }
-    };
-
-    const onTouchEnd = () => {
-      const currentPull = pullDistanceRef.current;
-      if (currentPull > 75) {
-        setIsDismissing(true);
-        setTimeout(() => {
-          setViewerMoment(null);
-          setPullDistance(0);
-          setIsDismissing(false);
-        }, 250);
-      } else {
-        setPullDistance(0);
-      }
-      startY = 0;
-      isAtBottom = false;
-    };
-
-    el.addEventListener("touchstart", onTouchStart, { passive: true });
-    el.addEventListener("touchmove", onTouchMove, { passive: false });
-    el.addEventListener("touchend", onTouchEnd, { passive: true });
-
-    return () => {
-      el.removeEventListener("touchstart", onTouchStart);
-      el.removeEventListener("touchmove", onTouchMove);
-      el.removeEventListener("touchend", onTouchEnd);
-    };
-  }, [viewerMoment, moments]);
-
-  const MIN_ITEMS = 12;
-  const duplicateCount = moments.length > 0 ? Math.max(2, Math.ceil(MIN_ITEMS / moments.length)) : 0;
-
-  useEffect(() => () => {
-    streamRef.current?.getTracks().forEach((track) => track.stop());
-  }, []);
-
-  useEffect(() => {
-    if (moments.length === 0 || isHovered || railDragging || composerOpen || viewerMoment) return;
-    if (window.innerWidth < 640) return; // Stop auto-scroll on mobile
-    
-    let animationFrameId: number;
-    let lastTime = performance.now();
-    let fractionalScroll = 0;
-    let isPaused = false;
-    
-    const scrollStep = (time: number) => {
-      const rail = railRef.current;
-      if (!rail) return;
-      
-      const delta = time - lastTime;
-      lastTime = time;
-
-      const setWidth = rail.scrollWidth / duplicateCount;
-      if (progressBarRef.current) {
-        // Calculate progress based on the FIRST original set's width
-        const progress = Math.min(100, Math.max(0, (rail.scrollLeft / setWidth) * 100));
-        progressBarRef.current.style.width = `${progress}%`;
-      }
-      
-      if (!isPaused) {
-        fractionalScroll += (45 * delta) / 1000; // 45 pixels per second
-        
-        if (fractionalScroll >= 1) {
-          const pixelsToScroll = Math.floor(fractionalScroll);
-          fractionalScroll -= pixelsToScroll;
-          rail.scrollLeft += pixelsToScroll;
-          
-          if (rail.scrollLeft >= setWidth) {
-            rail.scrollLeft -= setWidth; // Reset seamlessly
-            isPaused = true;
-            setTimeout(() => {
-              isPaused = false;
-              lastTime = performance.now();
-            }, 4000);
-          }
-        }
-      }
-      
-      animationFrameId = requestAnimationFrame(scrollStep);
-    };
-    
-    animationFrameId = requestAnimationFrame(scrollStep);
-    
-    return () => cancelAnimationFrame(animationFrameId);
-  }, [moments.length, isHovered, railDragging, composerOpen, viewerMoment, duplicateCount]);
-
-  // Peek animation for mobile viewer
-  useEffect(() => {
-    if (viewerMoment && window.innerWidth < 640) {
-      const viewer = document.getElementById("mobile-moment-viewer");
-      const el = document.getElementById(`mobile-moment-${viewerMoment.id}`);
-      if (viewer && el) {
-        // Snap immediately to the selected photo
-        viewer.scrollTo({ top: el.offsetTop, behavior: "instant" });
-        
-        // Peek animation on first open in this session
-        if (!sessionStorage.getItem("moment_peek_played")) {
-          setTimeout(() => {
-            viewer.scrollBy({ top: 120, behavior: "smooth" });
-            setTimeout(() => {
-              viewer.scrollTo({ top: el.offsetTop, behavior: "smooth" });
-            }, 500);
-          }, 800);
-          sessionStorage.setItem("moment_peek_played", "true");
-        }
+      const target = event.target as HTMLElement | null;
+      if (target?.matches("input, textarea, select, [contenteditable='true']")) return;
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        void navigateMoment(1);
+      } else if (event.key === "ArrowUp") {
+        event.preventDefault();
+        void navigateMoment(-1);
       }
     }
-  }, [viewerMoment]);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/moments?limit=30", { cache: "no-store" })
-      .then(async (response) => {
-        const result = (await response.json().catch(() => null)) as
-          | {
-              success?: boolean;
-              moments?: Array<{
-                id: string;
-                userId: string;
-                imageUrl: string;
-                caption: string | null;
-                privacyLevel: string;
-                duringActivity: boolean;
-                createdAt: string;
-                user: { id: string; name: string };
-                isOwner: boolean;
-                _count?: { reactions: number };
-              }>;
-              error?: string;
-            }
-          | null;
-        if (!response.ok || !result?.success) {
-          throw new Error(result?.error ?? "Moment gagal dimuat.");
-        }
-        if (!cancelled) {
-          setMoments(
-            (result.moments ?? []).map((moment) => ({
-              id: moment.id,
-              name: moment.user.name,
-              caption: moment.caption ?? "Satu momen sehat hari ini.",
-              image: moment.imageUrl,
-              privacy: privacyFromDatabase(moment.privacyLevel),
-              duringActivity: moment.duringActivity,
-              time: relativeTime(moment.createdAt),
-              isOwner: moment.isOwner,
-              reactionCount: moment._count?.reactions ?? 0,
-            })),
-          );
-        }
-      })
-      .catch((loadError: unknown) => {
-        if (!cancelled) {
-          setCameraError(
-            loadError instanceof Error
-              ? loadError.message
-              : "Moment gagal dimuat.",
-          );
-        }
-      });
+    window.addEventListener("keydown", handleEscape);
     return () => {
-      cancelled = true;
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleEscape);
     };
-  }, []);
+  // Navigasi memakai snapshot feed pada saat momen aktif berubah.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected]);
+  useEffect(() => {
+    if (!composerOpen || composerMode !== "studio" || !selectedTemplate || cameraActive) return;
+    const timer = window.setTimeout(() => void renderStudio(selectedTemplate, sourcePhoto), 120);
+    return () => window.clearTimeout(timer);
+    // Rendering canvas mengikuti template admin dan data terbaru tanpa kontrol field dari user.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cameraActive, caption, composerMode, composerOpen, selectedActivity, selectedTemplate, sourcePhoto, studioContext]);
+  // Feed harus dimuat ulang hanya ketika filter audiens berubah.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { const timer = window.setTimeout(() => void loadFeed(), 0); return () => window.clearTimeout(timer); }, [scope, communityFilter]);
+
+  function chooseScope(nextScope: FeedScope) { setScope(nextScope); setCommunityFilter(""); setMoments([]); }
+
+  async function openMoment(moment: Moment) {
+    const requestId = commentRequestRef.current + 1;
+    commentRequestRef.current = requestId;
+    setSelected(moment); setComments([]); setCommentsLoading(true);
+    try {
+      const response = await fetch(`/api/moments/${moment.id}/comments`, { cache: "no-store" });
+      const result = await response.json().catch(() => null) as { comments?: MomentComment[] } | null;
+      if (requestId === commentRequestRef.current && response.ok) setComments(result?.comments ?? []);
+    } finally {
+      if (requestId === commentRequestRef.current) setCommentsLoading(false);
+    }
+  }
+
+  async function navigateMoment(direction: -1 | 1) {
+    if (!selected || momentNavigationLockedRef.current) return;
+    const currentIndex = moments.findIndex((moment) => moment.id === selected.id);
+    if (currentIndex < 0) return;
+
+    const target = moments[currentIndex + direction];
+    if (target) {
+      momentNavigationLockedRef.current = true;
+      void openMoment(target);
+      window.setTimeout(() => { momentNavigationLockedRef.current = false; }, 420);
+      return;
+    }
+
+    if (direction === 1 && nextCursor && !loadingMore) {
+      momentNavigationLockedRef.current = true;
+      const loadedMoments = await loadFeed(nextCursor);
+      const nextMoment = loadedMoments.find((moment) => moment.id !== selected.id);
+      if (nextMoment) void openMoment(nextMoment);
+      window.setTimeout(() => { momentNavigationLockedRef.current = false; }, 420);
+    }
+  }
+
+  function handleMomentWheel(event: React.WheelEvent) {
+    if (window.innerWidth < 1024) return;
+    event.preventDefault();
+    wheelDeltaRef.current += event.deltaY;
+    if (Math.abs(wheelDeltaRef.current) < 60) return;
+    const direction: -1 | 1 = wheelDeltaRef.current > 0 ? 1 : -1;
+    wheelDeltaRef.current = 0;
+    void navigateMoment(direction);
+  }
+
+  function handleMomentTouchEnd(event: React.TouchEvent) {
+    const startY = touchStartYRef.current;
+    touchStartYRef.current = null;
+    if (startY === null) return;
+    const endY = event.changedTouches[0]?.clientY ?? startY;
+    const distance = startY - endY;
+    if (Math.abs(distance) < 55) return;
+    void navigateMoment(distance > 0 ? 1 : -1);
+  }
+
+  function updateMoment(id: string, update: (moment: Moment) => Moment) {
+    setMoments((current) => current.map((moment) => moment.id === id ? update(moment) : moment));
+    setSelected((current) => current?.id === id ? update(current) : current);
+  }
+
+  async function toggleLike(moment: Moment) {
+    const response = await fetch(`/api/moments/${moment.id}/reaction`, { method: moment.likedByMe ? "DELETE" : "PUT", headers: { "Content-Type": "application/json" }, body: moment.likedByMe ? undefined : JSON.stringify({ type: "ENCOURAGE" }) });
+    if (!response.ok) return;
+    updateMoment(moment.id, (item) => ({ ...item, likedByMe: !item.likedByMe, _count: { ...item._count, reactions: Math.max(0, item._count.reactions + (item.likedByMe ? -1 : 1)) } }));
+  }
+
+  async function addComment(event: React.FormEvent) {
+    event.preventDefault();
+    if (!selected || !commentDraft.trim() || commentBusy) return;
+    setCommentBusy(true);
+    const response = await fetch(`/api/moments/${selected.id}/comments`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ content: commentDraft.trim() }) });
+    const result = await response.json().catch(() => null) as { comment?: MomentComment } | null;
+    setCommentBusy(false);
+    if (!response.ok || !result?.comment) return;
+    setComments((current) => [...current, result.comment as MomentComment]); setCommentDraft("");
+    updateMoment(selected.id, (item) => ({ ...item, _count: { ...item._count, comments: item._count.comments + 1 } }));
+  }
+
+  async function removeComment(comment: MomentComment) {
+    if (!selected) return;
+    const response = await fetch(`/api/moments/${selected.id}/comments/${comment.id}`, { method: "DELETE" });
+    if (!response.ok) return;
+    setComments((current) => current.filter((item) => item.id !== comment.id));
+    updateMoment(selected.id, (item) => ({ ...item, _count: { ...item._count, comments: Math.max(0, item._count.comments - 1) } }));
+  }
+
+  async function follow(moment: Moment) {
+    if (moment.connection.state !== "NONE" && moment.connection.state !== "PENDING_RECEIVED") return;
+    const response = await fetch("/api/connections", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ targetUserId: moment.userId }) });
+    if (!response.ok) return;
+    const nextState: Moment["connection"]["state"] = moment.connection.state === "PENDING_RECEIVED" ? "FRIEND" : "PENDING_SENT";
+    setMoments((current) => current.map((item) => item.userId === moment.userId ? { ...item, connection: { ...item.connection, state: nextState } } : item));
+    setSelected((current) => current?.userId === moment.userId ? { ...current, connection: { ...current.connection, state: nextState } } : current);
+  }
+
+  function readPhoto(file?: File) {
+    if (!file || !file.type.startsWith("image/") || file.size > 10 * 1024 * 1024) { setComposerMessage("Gunakan gambar maksimal 10 MB."); return; }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const value = typeof reader.result === "string" ? reader.result : null;
+      setSourcePhoto(value);
+      if (composerMode === "capture") setOutputPhoto(value);
+      else if (selectedTemplate) void renderStudio(selectedTemplate, value);
+    };
+    reader.readAsDataURL(file);
+  }
 
   function stopCamera() {
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
+    if (videoRef.current) videoRef.current.srcObject = null;
     setCameraActive(false);
+  }
+
+  async function startCamera() {
+    stopCamera();
+    setCameraError("");
+    setComposerMessage("");
+    try {
+      if (!navigator.mediaDevices?.getUserMedia) throw new Error("Kamera tidak didukung oleh browser ini.");
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: {
+          facingMode: { ideal: "user" },
+          width: { ideal: 1080 },
+          height: { ideal: 1350 },
+        },
+      });
+      streamRef.current = stream;
+      setCameraActive(true);
+    } catch (error) {
+      setCameraActive(false);
+      setCameraError(error instanceof Error && error.message.includes("didukung")
+        ? error.message
+        : "Kamera tidak dapat dibuka. Izinkan akses kamera pada browser, lalu coba lagi.");
+    }
+  }
+
+  function capturePhoto() {
+    const video = videoRef.current;
+    if (!video?.videoWidth || !video.videoHeight) {
+      setCameraError("Kamera belum siap. Tunggu sebentar lalu ambil foto kembali.");
+      return;
+    }
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const context = canvas.getContext("2d");
+    if (!context) return;
+    context.translate(canvas.width, 0);
+    context.scale(-1, 1);
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const photo = canvas.toDataURL("image/jpeg", 0.92);
+    setSourcePhoto(photo);
+    if (composerMode === "studio" && selectedTemplate) void renderStudio(selectedTemplate, photo);
+    else setOutputPhoto(photo);
+    stopCamera();
   }
 
   function closeComposer() {
     stopCamera();
     setComposerOpen(false);
-    setCameraError("");
   }
 
-  async function startCamera() {
-    setCameraError("");
-    if (!navigator.mediaDevices?.getUserMedia) {
-      setCameraError("Kamera tidak tersedia pada browser atau perangkat ini. NutriVerse Moments hanya menerima tangkapan langsung.");
-      return;
+  function templateValue(key: string) {
+    const context = studioContext;
+    const activity = selectedActivity;
+    const values: Record<string, string> = {
+      "user.name": context?.user.name ?? "NutriVerse User",
+      "user.username": `@${context?.user.username ?? "username"}`,
+      "moment.caption": caption || "Momen sehatku hari ini",
+      "activity.type": activityName(activity?.activityType),
+      "activity.date": activity ? new Date(activity.startTime).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }) : "Belum ada aktivitas",
+      "activity.distance": activity ? `${(activity.distanceMeters / 1_000).toFixed(2)} km` : "0,00 km",
+      "activity.duration": activity ? `${Math.round(activity.durationSeconds / 60)} menit` : "0 menit",
+      "activity.calories": activity ? `${Math.round(activity.caloriesBurned)} kkal` : "0 kkal",
+      "progress.streak": `${context?.progress?.streakDays ?? 0} hari streak`,
+      "progress.rank": context?.progress?.currentTier ?? "SPROUT",
+      "progress.xp": `${context?.progress?.totalXp ?? 0} XP`,
+      "healthPulse.current": context?.healthPulse.current === null || context?.healthPulse.current === undefined ? "Health Pulse belum tersedia" : `Health Pulse ${context.healthPulse.current.toFixed(0)}`,
+      "healthPulse.previous": context?.healthPulse.previous === null || context?.healthPulse.previous === undefined ? "Belum ada pembanding" : `Sebelumnya ${context.healthPulse.previous.toFixed(0)}`,
+      "healthPulse.delta": context?.healthPulse.delta === null || context?.healthPulse.delta === undefined ? "Tren Health Pulse belum tersedia" : `${context.healthPulse.delta >= 0 ? "↑" : "↓"} ${Math.abs(context.healthPulse.delta).toFixed(1)} poin Health Pulse`,
+      "healthPulse.trend": context?.healthPulse.trend === "UP" ? "Meningkat" : context?.healthPulse.trend === "DOWN" ? "Menurun" : "Stabil",
+    };
+    return values[key] ?? key;
+  }
+
+  async function renderStudio(template: ShareTemplate | null = selectedTemplate, photoSource: string | null = sourcePhoto) {
+    setComposerMessage("");
+    if (!template) { setOutputPhoto(null); setComposerMessage("Belum ada template yang dipublikasikan admin."); return null; }
+    const usesActivity = template.allowedDataKeys.some((key) => key.startsWith("activity."));
+    const requiresPhoto = template.layoutConfig.elements?.some((element) => element.dataKey === "moment.photo" && element.required) ?? false;
+    if (usesActivity && !selectedActivity) { setOutputPhoto(null); setComposerMessage("Template ini memerlukan aktivitas tervalidasi. Selesaikan aktivitas terlebih dahulu."); return null; }
+    if (requiresPhoto && !photoSource) { setOutputPhoto(null); setComposerMessage("Template ini memerlukan foto. Ambil atau unggah foto terlebih dahulu."); return null; }
+    const canvas = document.createElement("canvas"); canvas.width = template.width; canvas.height = template.height;
+    const context = canvas.getContext("2d"); if (!context) return null;
+    const gradient = context.createLinearGradient(0, 0, canvas.width, canvas.height); gradient.addColorStop(0, "#052f22"); gradient.addColorStop(0.55, "#00a874"); gradient.addColorStop(1, "#a3e635"); context.fillStyle = gradient; context.fillRect(0, 0, canvas.width, canvas.height);
+    if (template.layoutConfig.photoAsBackground && photoSource) {
+      try { drawCover(context, await loadImage(photoSource), 0, 0, canvas.width, canvas.height); }
+      catch { setComposerMessage("Foto background gagal dimuat. Pilih foto lain lalu coba kembali."); return null; }
     }
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: { ideal: 1080 }, height: { ideal: 1350 }, aspectRatio: { ideal: 4 / 5 } }, audio: false });
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
+    if (template.backgroundUrl) { try { drawCover(context, await loadImage(template.backgroundUrl), 0, 0, canvas.width, canvas.height); } catch { setComposerMessage("Background template gagal dimuat; preview memakai warna NutriVerse."); } }
+    for (const element of template.layoutConfig.elements ?? []) {
+      if (template.layoutConfig.photoAsBackground && element.dataKey === "moment.photo") continue;
+      const x = canvas.width * element.x / 100, y = canvas.height * element.y / 100, width = canvas.width * element.width / 100, height = canvas.height * element.height / 100;
+      if (element.kind === "image") {
+        const imageSource = element.dataKey === "moment.photo" ? photoSource : element.dataKey === "user.avatar" ? studioContext?.user.avatarUrl : null;
+        if (imageSource) { try { drawCover(context, await loadImage(imageSource), x, y, width, height); } catch { /* elemen gambar opsional */ } }
+        continue;
       }
-      setCameraActive(true);
-    } catch {
-      setCameraError("Izin kamera belum diberikan. Aktifkan izin kamera perangkat untuk membuat Moment secara real-time.");
+      context.save(); context.fillStyle = element.color ?? "#ffffff"; context.font = `800 ${element.fontSize ?? 32}px Arial`; context.textAlign = element.align ?? "left"; context.textBaseline = "top";
+      const textX = element.align === "center" ? x + width / 2 : element.align === "right" ? x + width : x;
+      context.fillText(element.staticText ?? templateValue(element.dataKey ?? ""), textX, y, width); context.restore();
     }
+    context.fillStyle = "rgba(0,0,0,.28)"; context.fillRect(0, canvas.height - 54, canvas.width, 54); context.fillStyle = "#ffffff"; context.font = "700 20px Arial"; context.textAlign = "center"; context.fillText("NUTRIVERSE • STUDIO BERBAGI", canvas.width / 2, canvas.height - 36);
+    const renderedPhoto = canvas.toDataURL("image/jpeg", 0.92);
+    setOutputPhoto(renderedPhoto);
+    return renderedPhoto;
   }
 
-  async function capturePhoto() {
-    const video = videoRef.current;
-    if (!video || !video.videoWidth) return;
-    
-    const targetAspect = 4 / 5;
-    const videoAspect = video.videoWidth / video.videoHeight;
-    
-    let cropWidth = video.videoWidth;
-    let cropHeight = video.videoHeight;
-    let offsetX = 0;
-    let offsetY = 0;
-    
-    if (videoAspect > targetAspect) {
-      cropWidth = video.videoHeight * targetAspect;
-      offsetX = (video.videoWidth - cropWidth) / 2;
-    } else {
-      cropHeight = video.videoWidth / targetAspect;
-      offsetY = (video.videoHeight - cropHeight) / 2;
-    }
-    
-    const canvas = document.createElement("canvas");
-    canvas.width = cropWidth;
-    canvas.height = cropHeight;
-    const context = canvas.getContext("2d");
-    if (!context) return;
-    context.translate(canvas.width, 0);
-    context.scale(-1, 1);
-    context.drawImage(video, offsetX, offsetY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
-    
-    setPhoto(await normalizePhoto(canvas.toDataURL("image/jpeg", 0.92)));
+  function selectStudioTemplate(template: ShareTemplate) {
+    setTemplateId(template.id);
+    setOutputPhoto(null);
+    void renderStudio(template, sourcePhoto);
+  }
+
+  async function publish() {
+    if (publishing) return;
+    if (audience === "COMMUNITY" && !targetCommunity) { setComposerMessage("Pilih komunitas tujuan."); return; }
+    setPublishing(true); setComposerMessage("");
+    try {
+      const photoToPublish = composerMode === "studio" ? await renderStudio(selectedTemplate, sourcePhoto) : outputPhoto;
+      if (!photoToPublish) { setComposerMessage("Pilih template yang tersedia dan lengkapi kebutuhannya."); return; }
+      const blob = await fetch(photoToPublish).then((response) => response.blob());
+      const form = new FormData(); form.set("bucket", "moments"); form.set("file", new File([blob], "moment.jpg", { type: blob.type || "image/jpeg" }));
+      const uploadResponse = await fetch("/api/storage/upload", { method: "POST", body: form });
+      const upload = await uploadResponse.json().catch(() => null) as { path?: string; error?: string } | null;
+      if (!uploadResponse.ok || !upload?.path) { setComposerMessage(`Upload foto gagal: ${upload?.error ?? "Storage tidak menerima foto."}`); return; }
+      const studioActivityId = composerMode === "studio" && selectedTemplateUsesActivity ? selectedActivity?.id ?? null : activityId || null;
+      const response = await fetch("/api/moments", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ imagePath: upload.path, caption, privacyLevel: audience, communityId: audience === "COMMUNITY" ? targetCommunity : null, activitySessionId: studioActivityId, duringActivity: Boolean(studioActivityId), shareTemplateId: composerMode === "studio" ? templateId || null : null }) });
+      const result = await response.json().catch(() => null) as { success?: boolean; error?: string } | null;
+      if (!response.ok || !result?.success) { setComposerMessage(`Penyimpanan Momen gagal: ${result?.error ?? "Record Momen tidak dapat dibuat."}`); return; }
+      closeComposer(); setSourcePhoto(null); setOutputPhoto(null); setCaption(""); setComposerMessage("");
+      if ((scope === "public" && audience === "PUBLIC") || (scope === "community" && audience === "COMMUNITY") || (scope === "friends" && audience === "CIRCLE")) await loadFeed();
+    } finally { setPublishing(false); }
+  }
+
+  function openComposer(mode: "capture" | "studio") {
     stopCamera();
-  }
-
-  async function downloadWatermarkedMoment(source = photo, text = caption) {
-    if (!source) return;
-    const canvas = document.createElement("canvas");
-    canvas.width = 1080;
-    canvas.height = 1350;
-    const context = canvas.getContext("2d");
-    if (!context) return;
-    const image = await loadMomentImage(source);
-    drawPhotoWithBackdrop(context, image, canvas.width, canvas.height);
-    drawMomentTypography(context, text, canvas.width, canvas.height);
-    const brandMark = await loadMomentBrandMark();
-    context.drawImage(brandMark, 62, 62, 96, 96);
-    context.save();
-    context.shadowColor = "rgba(0, 0, 0, .42)";
-    context.shadowBlur = 10;
-    context.textAlign = "left";
-    context.font = "800 30px Arial";
-    context.fillStyle = "#ffffff";
-    context.fillText("Nutri", 178, 105);
-    context.fillStyle = "#34d399";
-    context.fillText("Verse", 178 + context.measureText("Nutri").width, 105);
-    context.restore();
-    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png", 1));
-    if (!blob) return;
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = "nutriverse-moment-watermark.png";
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-    setDownloaded(true);
-    window.setTimeout(() => setDownloaded(false), 1800);
-  }
-
-  async function publishMoment() {
-    if (!photo) return;
-    setPublishing(true);
+    setComposerMode(mode);
+    setComposerOpen(true);
+    setComposerMessage("");
     setCameraError("");
-    try {
-      const imageBlob = await fetch(photo).then((response) => response.blob());
-      const form = new FormData();
-      form.set("bucket", "post-images");
-      form.set("file", new File([imageBlob], "moment.jpg", { type: "image/jpeg" }));
-      const uploadResponse = await fetch("/api/storage/upload", {
-        method: "POST",
-        body: form,
-      });
-      const upload = (await uploadResponse.json().catch(() => null)) as
-        | { success?: boolean; publicUrl?: string; error?: string }
-        | null;
-      if (!uploadResponse.ok || !upload?.success || !upload.publicUrl) {
-        throw new Error(upload?.error ?? "Foto Moment gagal diunggah.");
-      }
-      const response = await fetch("/api/moments", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          imageUrl: upload.publicUrl,
-          caption: caption.trim() || "Satu momen sehat hari ini.",
-          privacyLevel: privacyForDatabase(privacy),
-          duringActivity,
-        }),
-      });
-      const result = (await response.json().catch(() => null)) as
-        | {
-            success?: boolean;
-            moment?: {
-              id: string;
-              imageUrl: string;
-              caption: string | null;
-              privacyLevel: string;
-              duringActivity: boolean;
-              createdAt: string;
-              user: { name: string };
-            };
-            error?: string;
-          }
-        | null;
-      if (!response.ok || !result?.success || !result.moment) {
-        throw new Error(result?.error ?? "Moment gagal disimpan.");
-      }
-      const moment = result.moment;
-      setMoments((current) => [{
-        id: moment.id,
-        name: moment.user.name,
-        caption: moment.caption ?? "Satu momen sehat hari ini.",
-        image: moment.imageUrl,
-        privacy: privacyFromDatabase(moment.privacyLevel),
-        duringActivity: moment.duringActivity,
-        time: "Baru saja",
-        isOwner: true,
-        reactionCount: 0,
-      }, ...current]);
-    } catch (publishError) {
-      setCameraError(
-        publishError instanceof Error
-          ? publishError.message
-          : "Moment gagal disimpan.",
-      );
-      return;
-    } finally {
-      setPublishing(false);
-    }
-    setPhoto(null);
-    setCaption("");
-    setPrivacy("friends");
-    closeComposer();
+    setSourcePhoto(null);
+    setOutputPhoto(null);
+    if (mode === "capture") window.setTimeout(() => void startCamera(), 0);
+    else window.setTimeout(() => void renderStudio(selectedTemplate, null), 0);
   }
-
-  async function encourageMoment(momentId: string) {
-    const response = await fetch(`/api/moments/${momentId}/reaction`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: "ENCOURAGE" }),
-    });
-    if (!response.ok) return;
-    setMoments((current) =>
-      current.map((moment) =>
-        moment.id === momentId
-          ? { ...moment, reactionCount: moment.reactionCount + 1 }
-          : moment,
-      ),
-    );
-  }
-
-  async function deleteMoment(momentId: string) {
-    if (!window.confirm("Hapus Moment ini dari akun dan database?")) return;
-    const response = await fetch(`/api/moments/${momentId}`, {
-      method: "DELETE",
-    });
-    if (!response.ok) return;
-    setMoments((current) =>
-      current.filter((moment) => moment.id !== momentId),
-    );
-  }
-
-  function scrollMoments(direction: -1 | 1) {
-    const rail = railRef.current;
-    if (!rail) return;
-    rail.scrollBy({ left: direction * Math.max(210, rail.clientWidth * 0.72), behavior: "smooth" });
-  }
-
-  function startRailDrag(event: ReactPointerEvent<HTMLDivElement>) {
-    if (event.pointerType === "mouse" && event.button !== 0) return;
-    if ((event.target as HTMLElement).closest("button, a, input")) return;
-    const rail = railRef.current;
-    if (!rail) return;
-    railDragRef.current = { startX: event.clientX, scrollLeft: rail.scrollLeft };
-    setRailDragging(true);
-    event.currentTarget.setPointerCapture(event.pointerId);
-  }
-
-  function moveRail(event: ReactPointerEvent<HTMLDivElement>) {
-    const rail = railRef.current;
-    const drag = railDragRef.current;
-    if (!rail || !drag) return;
-    rail.scrollLeft = drag.scrollLeft - (event.clientX - drag.startX);
-  }
-
-  function stopRailDrag(event: ReactPointerEvent<HTMLDivElement>) {
-    railDragRef.current = null;
-    setRailDragging(false);
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
-  }
+  const followLabel = (moment: Moment) => moment.connection.state === "FRIEND" ? "Teman" : moment.connection.state === "PENDING_SENT" ? "Menunggu" : moment.connection.state === "PENDING_RECEIVED" ? "Terima" : "Ikuti";
 
   return (
-    <section className="card min-w-0 overflow-hidden border-brand/15 bg-card">
-      <div className="relative overflow-hidden bg-white/40 dark:bg-black/40 backdrop-blur-xl p-5 sm:p-6 border-b border-line shadow-[inset_0_1px_1px_rgba(255,255,255,0.4)] dark:shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]">
-        <div className="absolute -top-12 -right-10 opacity-[0.03] dark:opacity-5 pointer-events-none text-foreground">
-           <Camera className="h-64 w-64" />
-        </div>
-        <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0 space-y-2">
-            <h1 className="font-display text-3xl font-extrabold tracking-tight text-foreground mb-4">Komunitas</h1>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1 rounded-full bg-brand/10 dark:bg-brand/20 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-brand shadow-sm ring-1 ring-brand/20">
-                <Camera className="h-3 w-3" /> NutriVerse Moments
-              </span>
-              <span className="inline-flex items-center rounded-full bg-secondary/80 px-2 py-1 text-[9px] font-bold uppercase tracking-wider text-foreground backdrop-blur-sm">
-                Kamera Langsung
-              </span>
-            </div>
-            <h2 className="font-display text-xl sm:text-2xl font-extrabold leading-tight tracking-tight text-foreground">
-              Tangkap momen sehat, <br className="hidden sm:block" /> bukan sekadar angka
-            </h2>
-            <p className="max-w-xl text-xs sm:text-sm font-medium leading-relaxed text-muted-foreground">
-              Bagikan aktivitasmu hari ini. Sosial &middot; Tanpa XP &middot; 100% Kamera Langsung
-            </p>
-          </div>
-          <div className="flex w-full sm:w-auto items-center gap-3">
-            <div className="hidden sm:flex gap-2 mr-2">
-              <button onClick={() => scrollMoments(-1)} className="grid h-10 w-10 place-items-center rounded-xl bg-card text-foreground shadow-sm ring-1 ring-line backdrop-blur-sm transition hover:bg-brand hover:text-white" aria-label="Moment sebelumnya"><ChevronLeft className="h-5 w-5" /></button>
-              <button onClick={() => scrollMoments(1)} className="grid h-10 w-10 place-items-center rounded-xl bg-card text-foreground shadow-sm ring-1 ring-line backdrop-blur-sm transition hover:bg-brand hover:text-white" aria-label="Moment berikutnya"><ChevronRight className="h-5 w-5" /></button>
-            </div>
-            <button onClick={() => setComposerOpen(true)} className="btn btn-primary shadow-xl btn-lg hidden sm:flex w-full sm:w-auto font-extrabold text-sm sm:text-base px-6">
-              <Camera className="h-5 w-5 mr-1.5" /> Tangkap Sekarang
-            </button>
-          </div>
-        </div>
-      </div>
+    <div className="space-y-6">
+      <section className="overflow-hidden rounded-3xl border border-line bg-card shadow-soft"><div className="relative overflow-hidden bg-gradient-to-br from-[#063c2b] via-brand to-lime p-6 text-white sm:p-8"><div className="absolute -right-10 -top-12 h-52 w-52 rounded-full border-[34px] border-white/10" /><div className="relative flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-[9px] font-bold uppercase tracking-[0.18em] text-white/75">NutriVerse Moments</p><h1 className="mt-2 max-w-xl font-display text-3xl font-extrabold">Cerita sehat yang dekat, relevan, dan terkontrol.</h1><p className="mt-2 max-w-2xl text-sm text-white/80">Lihat momen publik, komunitas yang kamu ikuti, atau temanmu dalam feed yang terpisah.</p></div><div className="flex flex-wrap gap-2"><button onClick={() => openComposer("studio")} className="btn border-white/30 bg-white/10 text-white hover:bg-white/20"><Sparkles className="h-4 w-4" /> Studio Berbagi</button><button onClick={() => openComposer("capture")} className="btn bg-white text-[#06422f] hover:bg-white/90"><Camera className="h-4 w-4" /> Ambil Momen</button></div></div></div></section>
 
-      <div
-        ref={railRef}
-        className={`grid touch-pan-y auto-cols-[minmax(140px,42vw)] grid-flow-col gap-3 overflow-x-auto p-3.5 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:auto-cols-[160px] sm:px-4 ${railDragging ? "cursor-grabbing select-none" : "cursor-grab"}`}
-        onPointerDown={startRailDrag}
-        onPointerMove={moveRail}
-        onPointerUp={stopRailDrag}
-        onPointerCancel={stopRailDrag}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-        onTouchStart={() => setIsHovered(true)}
-        onTouchEnd={() => setIsHovered(false)}
-        aria-label="Carousel NutriVerse Moments"
-      >
-        {moments.length === 0 && (
-          <div className="col-span-full grid min-h-40 place-items-center rounded-3xl border border-dashed border-line px-6 text-center text-xs text-muted-foreground">
-            Belum ada Moment di database. Tangkap momen pertama melalui kamera.
+      <section className="mx-auto w-full space-y-5">
+        <nav className="grid grid-cols-3 gap-1 rounded-2xl border border-line bg-secondary p-1" aria-label="Filter momen">
+          {(["public", "community", "friends"] as FeedScope[]).map((item) => (
+            <button
+              key={item}
+              onClick={() => chooseScope(item)}
+              className={"rounded-xl px-2 py-3 text-xs font-bold transition " + (scope === item ? "bg-card text-brand shadow-sm" : "text-muted-foreground hover:text-foreground")}
+            >
+              {item === "public" ? "Momen Publik" : item === "community" ? "Momen Komunitas" : "Momen Teman"}
+            </button>
+          ))}
+        </nav>
+
+        {scope === "community" && communities.length > 0 && (
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            <button
+              onClick={() => setCommunityFilter("")}
+              className={"shrink-0 rounded-full px-3 py-2 text-[10px] font-bold " + (!communityFilter ? "bg-brand text-white" : "bg-secondary text-muted-foreground")}
+            >
+              Semua Komunitas
+            </button>
+            {communities.map((community) => (
+              <button
+                key={community.id}
+                onClick={() => setCommunityFilter(community.id)}
+                className={"shrink-0 rounded-full px-3 py-2 text-[10px] font-bold " + (communityFilter === community.id ? "bg-brand text-white" : "bg-secondary text-muted-foreground")}
+              >
+                {community.name}
+              </button>
+            ))}
           </div>
         )}
-        {Array.from({ length: duplicateCount }).flatMap(() => moments).map((moment, index) => (
-          <article key={`${moment.id}-${index}`} className="min-w-0 overflow-hidden rounded-[1.4rem] border border-line bg-secondary/25 shadow-sm">
-            <button type="button" onClick={() => moment.image && setViewerMoment(moment)} disabled={!moment.image} className={`group relative block aspect-square w-full overflow-hidden text-left ${moment.image ? "cursor-zoom-in bg-[#07150f]" : index % 2 ? "bg-gradient-to-br from-[#15334a] via-[#1d7f87] to-[#efb46c]" : "bg-gradient-to-br from-[#063d2b] via-[#0b8054] to-[#a3e635]"}`} aria-label={moment.image ? `Lihat foto ${moment.name} secara penuh` : undefined}>
-              {moment.image && <NextImage src={moment.image} alt={`Moment ${moment.name}`} fill unoptimized className="object-cover" />}
-              <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/55 via-black/15 to-transparent" />
-              {!moment.image && <div className="absolute inset-0 grid place-items-center"><span className="grid h-12 w-12 place-items-center rounded-2xl border border-white/15 bg-black/15 text-white/75 backdrop-blur-sm"><Camera className="h-6 w-6" /></span></div>}
-              <div className="absolute inset-x-3 top-3 flex items-center justify-between gap-2"><span className="flex items-center gap-1.5 rounded-full bg-black/45 px-2 py-1 text-[8px] font-bold text-white backdrop-blur"><BrandLogo compact className="h-4 w-4" />{moment.name}</span><span className="rounded-full bg-black/45 px-2 py-1 text-[7px] font-bold text-white backdrop-blur">{moment.privacy === "public" ? "KOMUNITAS" : moment.privacy === "friends" ? "TEMAN" : "PRIVAT"}</span></div>
-              {moment.image && <span className="absolute bottom-3 right-3 flex items-center gap-1 rounded-full bg-black/55 px-2 py-1 text-[7px] font-bold text-white opacity-100 backdrop-blur transition sm:opacity-0 sm:group-hover:opacity-100"><Maximize2 className="h-3 w-3" /> Lihat penuh</span>}
-            </button>
-            <div className="min-h-[58px] border-t border-line/70 bg-card px-3 py-2.5"><div className="flex items-start justify-between gap-2">{moment.duringActivity && <span className="shrink-0 rounded-full bg-brand-soft px-1.5 py-0.5 text-[7px] font-bold text-brand">SAAT AKTIVITAS</span>}<p className="ml-auto shrink-0 text-[8px] text-muted-foreground">{moment.time} · tanpa XP</p></div><p className="mt-1 line-clamp-2 text-[10px] font-bold leading-relaxed text-foreground">{moment.caption}</p></div>
-            <div className="flex items-center justify-between gap-2 px-3 py-2.5"><button onClick={() => encourageMoment(moment.id)} className="text-[9px] font-bold text-muted-foreground hover:text-brand">Beri Semangat{moment.reactionCount ? ` (${moment.reactionCount})` : ""}</button><div className="flex gap-1"><button onClick={() => downloadWatermarkedMoment(moment.image, moment.caption)} className="grid h-7 w-7 place-items-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-brand" aria-label="Download template Moment NutriVerse"><Download className="h-3.5 w-3.5" /></button>{moment.isOwner && <button onClick={() => deleteMoment(moment.id)} className="grid h-7 w-7 place-items-center rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive" aria-label="Hapus Moment"><Trash2 className="h-3.5 w-3.5" /></button>}</div></div>
-          </article>
-        ))}
-      </div>
-      
-      {moments.length > 4 && (
-        <div className="mx-4 mb-4 mt-1 hidden h-1.5 overflow-hidden rounded-full bg-secondary/60 shadow-inner sm:block">
-          <div ref={progressBarRef} className="h-full w-0 bg-brand rounded-full transition-none" />
-        </div>
-      )}
 
-      {typeof document !== 'undefined' && createPortal(
-        <>
-          {/* Desktop Viewer */}
-          {viewerMoment?.image && (
-            <div className="fixed inset-0 z-[90] hidden sm:grid place-items-center bg-black/85 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label={`Foto penuh dari ${viewerMoment.name}`} onClick={() => setViewerMoment(null)}>
-              <section className="relative flex max-h-[calc(100dvh-2rem)] w-full max-w-4xl flex-col overflow-hidden rounded-3xl border border-white/15 bg-[#07150f] shadow-2xl" onClick={(event) => event.stopPropagation()}>
-                <div className="flex items-center justify-between border-b border-white/10 px-4 py-3 text-white sm:px-5"><div className="min-w-0"><p className="truncate text-sm font-bold">Moment {viewerMoment.name}</p><p className="mt-0.5 text-[10px] text-white/60">{viewerMoment.privacy === "public" ? "Komunitas" : viewerMoment.privacy === "friends" ? "Teman" : "Privat"} · {viewerMoment.time}</p></div><button type="button" onClick={() => setViewerMoment(null)} className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-white/70 transition hover:bg-white/10 hover:text-white" aria-label="Tutup foto penuh"><X className="h-5 w-5" /></button></div>
-                <div className="relative min-h-[50vh] flex-1 bg-black w-full"><NextImage src={viewerMoment.image} alt={`Moment penuh ${viewerMoment.name}`} fill unoptimized className="object-contain" /></div>
-                <div className="border-t border-white/10 px-4 py-3 text-white sm:px-5"><p className="text-sm font-bold">{viewerMoment.caption}</p>{viewerMoment.duringActivity && <p className="mt-1 text-[10px] text-white/65">Diambil saat aktivitas · tidak menghasilkan XP</p>}</div>
-              </section>
+        {loading ? (
+          <div className="grid min-h-80 place-items-center rounded-3xl border border-line bg-card">
+            <div className="text-center">
+              <LoaderCircle className="mx-auto h-7 w-7 animate-spin text-brand" />
+              <p className="mt-3 text-xs text-muted-foreground">Memuat momen…</p>
             </div>
-          )}
+          </div>
+        ) : error && moments.length === 0 ? (
+          <div className="grid min-h-72 place-items-center rounded-3xl border border-line bg-card p-6 text-center">
+            <div>
+              <p className="text-sm font-bold">Feed belum dapat dimuat</p>
+              <p className="mt-2 text-xs text-muted-foreground">{error}</p>
+              <button onClick={() => void loadFeed()} className="btn btn-outline btn-sm mt-4">Coba Lagi</button>
+            </div>
+          </div>
+        ) : moments.length === 0 ? (
+          <div className="grid min-h-72 w-full place-items-center rounded-3xl border border-dashed border-line bg-card p-6 text-center">
+            <div>
+              <ImagePlus className="mx-auto h-9 w-9 text-muted-foreground" />
+              <p className="mt-4 text-sm font-bold">Belum ada momen di sini</p>
+              <p className="mt-2 text-xs text-muted-foreground">Momen akan muncul sesuai audiens yang dipilih pengunggah.</p>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-3 gap-0.5 overflow-hidden rounded-2xl sm:gap-2 lg:grid-cols-3 2xl:grid-cols-4">
+            {moments.map((moment) => (
+              <button
+                key={moment.id}
+                type="button"
+                onClick={() => void openMoment(moment)}
+                className="group relative aspect-square min-w-0 overflow-hidden bg-[#06110d] outline-none focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-brand sm:rounded-xl"
+                aria-label={`Buka momen ${moment.user.name}`}
+              >
+                <NextImage
+                  src={moment.imageUrl}
+                  alt={moment.caption ?? `Momen ${moment.user.name}`}
+                  fill
+                  unoptimized
+                  sizes="(max-width: 640px) 33vw, (max-width: 1536px) 33vw, 25vw"
+                  className="object-cover transition duration-300 group-hover:scale-[1.025]"
+                />
+                <span className="absolute inset-0 hidden items-center justify-center gap-5 bg-black/45 text-white opacity-0 transition group-hover:opacity-100 sm:flex">
+                  <span className="inline-flex items-center gap-1.5 text-sm font-extrabold">
+                    <Heart className="h-5 w-5 fill-current" /> {moment._count.reactions}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 text-sm font-extrabold">
+                    <MessageCircle className="h-5 w-5 fill-current" /> {moment._count.comments}
+                  </span>
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
 
-          {/* Mobile Snap Scroll Viewer */}
-          {viewerMoment && (
-            <>
-              <div 
-                ref={mobileViewerRef}
-                className="fixed inset-0 z-[100] flex flex-col bg-black overflow-y-auto snap-y snap-mandatory scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:hidden" 
-                id="mobile-moment-viewer"
-                style={{
-                  transform: `translateY(-${pullDistance}px)`,
-                  opacity: isDismissing ? 0 : Math.max(0, 1 - pullDistance / 250),
-                  transition: pullDistance === 0 || isDismissing ? "transform 0.25s ease-out, opacity 0.25s ease-out" : "none",
-                  overscrollBehaviorY: "contain"
-                }}
-              >
-                {moments.filter((m, index, self) => index === self.findIndex((t) => t.id === m.id)).map((moment) => (
-                  <section key={moment.id} id={`mobile-moment-${moment.id}`} className="relative h-[100dvh] w-full shrink-0 snap-start snap-always bg-black flex flex-col justify-between" onClick={(e) => e.stopPropagation()}>
-                    <div className="absolute inset-0 z-0">
-                      <NextImage src={moment.image} alt={`Moment penuh ${moment.name}`} fill unoptimized className="object-cover" />
-                    </div>
-                    <div className="relative z-10 flex items-center justify-between bg-gradient-to-b from-black/80 via-black/40 to-transparent p-4 pt-12 pb-24 text-white">
-                      <div className="min-w-0 drop-shadow-md">
-                        <p className="truncate text-sm font-extrabold">{moment.name}</p>
-                        <p className="mt-0.5 text-[10px] font-medium text-white/90">{moment.privacy === "public" ? "Komunitas" : moment.privacy === "friends" ? "Teman" : "Privat"} · {moment.time}</p>
-                      </div>
-                    </div>
-                    <div className="relative z-10 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-4 pb-12 pt-24 text-white">
-                      <p className="text-sm font-bold drop-shadow-md">{moment.caption}</p>
-                      {moment.duringActivity && <p className="mt-1.5 text-[10px] font-semibold text-brand drop-shadow-md">SAAT AKTIVITAS</p>}
-                    </div>
-                  </section>
-                ))}
+        {nextCursor && (
+          <div className="text-center">
+            <button disabled={loadingMore} onClick={() => void loadFeed(nextCursor)} className="btn btn-outline">
+              {loadingMore ? <><LoaderCircle className="h-4 w-4 animate-spin" /> Memuat…</> : "Muat Lebih Banyak"}
+            </button>
+          </div>
+        )}
+      </section>
+
+
+      {selected && typeof document !== "undefined" && createPortal((
+        <div
+          className="fixed inset-0 z-[9998] flex items-center justify-center bg-black/80 backdrop-blur-sm lg:p-6"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Detail momen"
+          onMouseDown={(event) => { if (event.target === event.currentTarget) setSelected(null); }}
+        >
+          <article
+            key={selected.id}
+            className="flex h-[100dvh] w-full flex-col overflow-y-auto bg-card shadow-2xl lg:grid lg:h-[min(88dvh,820px)] lg:max-w-6xl lg:grid-cols-[minmax(0,1fr)_400px] lg:overflow-hidden lg:rounded-3xl lg:border lg:border-line"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <header className="sticky top-0 z-20 flex shrink-0 items-center gap-3 border-b border-line bg-card/95 p-3 backdrop-blur lg:hidden">
+              <Link href={selected.isOwner ? "/profil" : `/profil/${selected.user.id}`} className="relative grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-full bg-brand text-xs font-bold text-white">
+                {selected.user.avatarUrl ? <NextImage src={selected.user.avatarUrl} alt="" fill unoptimized className="object-cover" /> : initials(selected.user.name)}
+              </Link>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-xs font-extrabold">{selected.user.name}</p>
+                <p className="truncate text-[9px] text-muted-foreground">@{selected.user.username ?? "pengguna"} · {relativeTime(selected.createdAt)}</p>
               </div>
-              
-              {/* Close Button - Placed outside scrollable parent to ensure it stays fixed at top right */}
-              <button 
-                type="button" 
-                onClick={() => setViewerMoment(null)} 
-                className="fixed right-4 top-12 z-[110] grid h-10 w-10 place-items-center rounded-full bg-black/50 text-white backdrop-blur-md transition active:scale-95 sm:hidden shadow-lg border border-white/20" 
-                aria-label="Tutup foto penuh"
-              >
+              {scope === "public" && !selected.isOwner && (
+                <button disabled={selected.connection.state === "PENDING_SENT" || selected.connection.state === "FRIEND"} onClick={() => void follow(selected)} className="btn btn-outline btn-sm px-3 text-[10px]">
+                  {followLabel(selected)}
+                </button>
+              )}
+              <button onClick={() => setSelected(null)} className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-muted-foreground hover:bg-secondary" aria-label="Tutup">
                 <X className="h-5 w-5" />
               </button>
-            </>
-          )}
-        </>,
-        document.body
-      )}
+            </header>
 
-      {composerOpen && typeof document !== 'undefined' && createPortal(
-        <div className="fixed inset-0 z-[80] flex items-center justify-center overflow-hidden bg-black/70 p-0 backdrop-blur-sm sm:p-4" role="dialog" aria-modal="true" aria-labelledby="moment-title">
-          <section className="flex h-full max-h-[100dvh] w-full max-w-3xl flex-col rounded-none border border-line bg-card shadow-2xl sm:h-auto sm:max-h-[calc(100dvh-2rem)] sm:rounded-[2rem]">
-            <header className="shrink-0 z-10 flex items-center justify-between border-b border-line bg-card px-5 py-4"><div><p className="text-[9px] font-bold uppercase tracking-[0.16em] text-brand">NutriVerse Moments</p><h2 id="moment-title" className="mt-1 font-display text-lg font-extrabold">Bagikan momen sehatmu</h2></div><button onClick={closeComposer} className="grid h-9 w-9 place-items-center rounded-xl text-muted-foreground hover:bg-secondary" aria-label="Tutup pembuat Moment"><X className="h-5 w-5" /></button></header>
-            <div className="flex-1 overflow-y-auto">
-              <div className="grid gap-5 p-5 sm:grid-cols-[minmax(0,1fr)_280px] sm:p-6">
-                <div className="relative aspect-[4/5] overflow-hidden rounded-3xl bg-[#101314]">
-                  {photo ? <><NextImage src={photo} alt="" fill unoptimized className="scale-110 object-cover opacity-45 grayscale blur-2xl" /><NextImage src={photo} alt="Preview Moment penuh" fill unoptimized className="object-contain" /><div aria-hidden className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#07090a]/95" /><div className="pointer-events-none absolute inset-x-4 top-4 flex items-center gap-2.5 text-white drop-shadow-lg"><BrandLogo compact className="!h-9 !w-9" /><span className="font-display text-base font-extrabold tracking-[-0.05em]">Nutri<span className="text-emerald-300">Verse</span></span></div><div className="pointer-events-none absolute inset-x-5 bottom-5 text-center text-white"><p className="line-clamp-3 font-display text-[clamp(1.15rem,6vw,2rem)] font-extrabold leading-[1.04] tracking-tight drop-shadow-lg">{caption.trim() || "Satu momen sehat hari ini."}</p><div className="mx-auto mt-4 h-px w-3/4 bg-white/20" /><p className="mt-3 text-[8px] font-bold tracking-[0.12em] text-white/75">NUTRIVERSE • MOMENT SEHAT</p></div></> : <video ref={videoRef} muted playsInline className={`h-full w-full scale-x-[-1] object-cover ${cameraActive ? "block" : "hidden"}`} />}
-                  {!photo && !cameraActive && <div className="absolute inset-0 grid place-items-center p-6 text-center"><div><span className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-white/10 text-white"><Camera className="h-8 w-8" /></span><p className="mt-4 text-sm font-bold text-white">Kamera belum aktif</p><p className="mt-1 text-xs text-white/60">Izin hanya diminta ketika tombol kamera ditekan.</p><button onClick={startCamera} className="btn mt-5 bg-white text-[#07150f]">Aktifkan Kamera</button></div></div>}
-                  {cameraActive && <button onClick={capturePhoto} className="absolute bottom-5 left-1/2 grid h-16 w-16 -translate-x-1/2 place-items-center rounded-full border-4 border-white bg-brand text-white shadow-xl" aria-label="Ambil foto"><Camera className="h-7 w-7" /></button>}
-                  {!photo && <div className="absolute left-4 top-4 rounded-full bg-black/50 px-2.5 py-1.5 text-[8px] font-bold text-white backdrop-blur">NUTRIVERSE • TANPA XP</div>}
+            <div
+              className="relative aspect-[4/5] w-full shrink-0 touch-none bg-black lg:aspect-auto lg:h-full lg:min-h-0"
+              onWheel={handleMomentWheel}
+              onTouchStart={(event) => { touchStartYRef.current = event.touches[0]?.clientY ?? null; }}
+              onTouchEnd={handleMomentTouchEnd}
+            >
+              <NextImage
+                src={selected.imageUrl}
+                alt={selected.caption ?? "Momen NutriVerse"}
+                fill
+                unoptimized
+                sizes="(max-width: 1023px) 100vw, 70vw"
+                className="object-contain"
+              />
+              <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center lg:hidden">
+                <span className="rounded-full bg-black/55 px-3 py-1.5 text-[9px] font-bold text-white backdrop-blur">Geser ↑↓ untuk momen lain</span>
+              </div>
+              <nav className="absolute right-4 top-1/2 hidden -translate-y-1/2 flex-col items-center gap-2 lg:flex" aria-label="Navigasi antar momen">
+                <button
+                  type="button"
+                  disabled={selectedIndex <= 0}
+                  onClick={() => void navigateMoment(-1)}
+                  className="grid h-11 w-11 place-items-center rounded-full border border-white/20 bg-black/60 text-white shadow-lg backdrop-blur transition hover:bg-black/80 disabled:cursor-not-allowed disabled:opacity-30"
+                  aria-label="Momen sebelumnya"
+                >
+                  <ChevronUp className="h-5 w-5" />
+                </button>
+                <button
+                  type="button"
+                  disabled={selectedIndex >= moments.length - 1 && !nextCursor}
+                  onClick={() => void navigateMoment(1)}
+                  className="grid h-11 w-11 place-items-center rounded-full border border-white/20 bg-black/60 text-white shadow-lg backdrop-blur transition hover:bg-black/80 disabled:cursor-not-allowed disabled:opacity-30"
+                  aria-label="Momen berikutnya"
+                >
+                  <ChevronDown className="h-5 w-5" />
+                </button>
+              </nav>
+            </div>
+
+            <aside className="flex min-h-0 flex-col bg-card lg:h-full">
+              <header className="hidden shrink-0 items-center gap-3 border-b border-line p-4 lg:flex">
+                <Link href={selected.isOwner ? "/profil" : `/profil/${selected.user.id}`} className="relative grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-full bg-brand text-xs font-bold text-white">
+                  {selected.user.avatarUrl ? <NextImage src={selected.user.avatarUrl} alt="" fill unoptimized className="object-cover" /> : initials(selected.user.name)}
+                </Link>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-extrabold">{selected.user.name}</p>
+                  <p className="mt-0.5 truncate text-[10px] text-muted-foreground">@{selected.user.username ?? "pengguna"} · {relativeTime(selected.createdAt)}</p>
+                  <p className="mt-1 truncate text-[9px] font-bold text-brand">{momentStatus(selected)}{selected.community ? ` · ${selected.community.name}` : ""}</p>
                 </div>
-                <div className="min-w-0 space-y-4">
-                  {cameraError && <div className="rounded-xl border border-amber/25 bg-amber/10 p-3 text-[10px] leading-relaxed text-amber">{cameraError}</div>}
-                  {photo && <button onClick={() => setPhoto(null)} className="btn btn-outline btn-sm w-full"><RefreshCw className="h-4 w-4" /> Ambil Ulang</button>}
-                  <div><label htmlFor="moment-caption" className="label">Caption untuk template</label><p id="moment-caption-help" className="mt-1 text-[10px] leading-relaxed text-muted-foreground">Teks ini bisa diedit dan akan tampil sebagai typography di bagian bawah preview serta PNG unduhan.</p><textarea id="moment-caption" value={caption} onChange={(event) => setCaption(event.target.value)} aria-describedby="moment-caption-help" maxLength={180} rows={4} className="input mt-2 min-h-24 resize-none" placeholder="Ceritakan momen sehatmu…" /><p className="mt-1 text-right text-[9px] text-muted-foreground">{caption.length}/180</p></div>
-                  <div><p className="label">Siapa yang dapat melihat?</p><div className="grid grid-cols-3 gap-1.5">{PRIVACY_OPTIONS.map((option) => { const Icon = option.icon; return <button key={option.value} onClick={() => setPrivacy(option.value)} className={`rounded-xl border p-2 text-[9px] font-bold ${privacy === option.value ? "border-brand bg-brand-soft text-brand" : "border-line text-muted-foreground"}`}><Icon className="mx-auto mb-1 h-4 w-4" />{option.label}</button>; })}</div></div>
-                  <label className="flex cursor-pointer items-start gap-2.5 rounded-xl bg-secondary/50 p-3"><input type="checkbox" checked={duringActivity} onChange={(event) => setDuringActivity(event.target.checked)} className="mt-0.5 accent-[var(--brand)]" /><span className="text-[10px] leading-relaxed text-muted-foreground"><span className="font-bold text-foreground">Diambil saat aktivitas berlangsung</span><br />Label konteks saja, bukan bukti anti-cheat atau sumber XP.</span></label>
-                  <div className="grid gap-2"><button onClick={() => downloadWatermarkedMoment()} disabled={!photo || publishing} className="btn btn-outline"><Download className="h-4 w-4" /> {downloaded ? "PNG Tersimpan" : "Simpan PNG Template"}</button><button onClick={publishMoment} disabled={!photo || publishing} className="btn btn-primary"><Check className="h-4 w-4" /> {publishing ? "Menyimpan..." : "Bagikan Moment"}</button></div>
-                  <p className="text-[9px] leading-relaxed text-muted-foreground">Moment hanya dapat dibuat melalui kamera langsung. Foto dinormalisasi ulang untuk membuang metadata EXIF/lokasi; PNG unduhan memadukan foto penuh, gradasi, identitas NutriVerse, dan caption.</p>
+                {scope === "public" && !selected.isOwner && (
+                  <button disabled={selected.connection.state === "PENDING_SENT" || selected.connection.state === "FRIEND"} onClick={() => void follow(selected)} className="btn btn-outline btn-sm px-3">
+                    <UserPlus className="h-4 w-4" /> {followLabel(selected)}
+                  </button>
+                )}
+                <button onClick={() => setSelected(null)} className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-muted-foreground hover:bg-secondary" aria-label="Tutup">
+                  <X className="h-5 w-5" />
+                </button>
+              </header>
+
+              <div ref={detailScrollRef} className="overscroll-contain p-4 [scrollbar-gutter:stable] lg:min-h-0 lg:flex-1 lg:overflow-y-scroll lg:p-5">
+                <p className="text-[9px] font-bold uppercase tracking-wider text-brand">
+                  {momentStatus(selected)}{selected.community ? ` · ${selected.community.name}` : ""}
+                </p>
+                <div className="mt-3 flex gap-2">
+                  <button onClick={() => void toggleLike(selected)} className={`inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-xs font-bold ${selected.likedByMe ? "bg-rose-500/10 text-rose-500" : "bg-secondary text-muted-foreground"}`}>
+                    <Heart className={`h-4 w-4 ${selected.likedByMe ? "fill-current" : ""}`} />
+                    {selected._count.reactions} Suka
+                  </button>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-3 py-2 text-xs font-bold text-muted-foreground">
+                    <MessageCircle className="h-4 w-4" />
+                    {selected._count.comments} Komentar
+                  </span>
                 </div>
+
+                {selected.caption && (
+                  <p className="mt-4 border-b border-line pb-4 text-sm leading-6">
+                    <span className="mr-2 font-extrabold">{selected.user.username ?? selected.user.name}</span>
+                    {selected.caption}
+                  </p>
+                )}
+
+                <section className="pt-5">
+                  <h3 className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">Komentar</h3>
+                  {commentsLoading ? (
+                    <p className="py-8 text-center text-xs text-muted-foreground">Memuat komentar…</p>
+                  ) : comments.length === 0 ? (
+                    <p className="py-8 text-center text-xs text-muted-foreground">Belum ada komentar. Jadilah yang pertama.</p>
+                  ) : (
+                    <div className="mt-4 space-y-4">
+                      {comments.map((comment) => (
+                        <div key={comment.id} className="flex gap-3">
+                          <span className="relative grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full bg-secondary text-[10px] font-bold">
+                            {comment.user.avatarUrl ? <NextImage src={comment.user.avatarUrl} alt="" fill unoptimized className="object-cover" /> : initials(comment.user.name)}
+                          </span>
+                          <div className="min-w-0 flex-1 rounded-2xl bg-secondary/60 px-3 py-2">
+                            <div className="flex items-center gap-2">
+                              <p className="truncate text-[10px] font-extrabold">{comment.user.name}</p>
+                              <span className="shrink-0 text-[8px] text-muted-foreground">{relativeTime(comment.createdAt)}</span>
+                              {comment.canDelete && (
+                                <button onClick={() => void removeComment(comment)} className="ml-auto text-rose-500" aria-label="Hapus komentar">
+                                  <Trash2 className="h-3 w-3" />
+                                </button>
+                              )}
+                            </div>
+                            <p className="mt-1 break-words text-xs leading-5">{comment.content}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </section>
+              </div>
+
+              <form onSubmit={addComment} className="flex shrink-0 gap-2 border-t border-line bg-card p-3 sm:p-4">
+                <input value={commentDraft} onChange={(event) => setCommentDraft(event.target.value)} maxLength={500} className="input min-w-0 flex-1" placeholder="Tulis komentar…" />
+                <button disabled={commentBusy || !commentDraft.trim()} className="btn btn-primary shrink-0 px-4" aria-label="Kirim komentar">
+                  <Send className="h-4 w-4" />
+                </button>
+              </form>
+            </aside>
+          </article>
+        </div>
+      ), document.body)}
+
+      {composerOpen && typeof document !== "undefined" && createPortal((
+        <div
+          className={"fixed inset-0 z-[9999] flex items-center justify-center overflow-hidden bg-black/65 p-3 transition sm:p-6 " + (cameraActive ? "backdrop-blur-md" : "backdrop-blur-sm")}
+          role="dialog"
+          aria-modal="true"
+          aria-label={composerMode === "studio" ? "Studio Berbagi" : "Buat momen"}
+          onMouseDown={(event) => { if (event.target === event.currentTarget) closeComposer(); }}
+        >
+          <section className="flex max-h-[calc(100dvh-1.5rem)] w-full max-w-4xl flex-col overflow-hidden rounded-3xl border border-line bg-card shadow-2xl" onMouseDown={(event) => event.stopPropagation()}>
+            <header className="z-20 flex shrink-0 items-center justify-between border-b border-line bg-card px-4 py-3 sm:px-5">
+              <div>
+                <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-brand">
+                  {composerMode === "studio" ? "Studio Berbagi NutriVerse" : "NutriVerse Moments"}
+                </p>
+                <h2 className="mt-1 font-display text-lg font-extrabold">
+                  {composerMode === "studio" ? "Pilih template untuk ceritamu" : "Bagikan momen sehatmu"}
+                </h2>
+              </div>
+              <button onClick={closeComposer} className="grid h-9 w-9 place-items-center rounded-xl text-muted-foreground hover:bg-secondary" aria-label="Tutup">
+                <X className="h-5 w-5" />
+              </button>
+            </header>
+
+            <div className="grid min-h-0 flex-1 gap-5 overflow-y-auto p-4 sm:grid-cols-[minmax(0,1fr)_300px] sm:p-5">
+              <div className="min-w-0">
+                <div className="relative aspect-[4/5] overflow-hidden rounded-3xl bg-[#07150f]">
+                  {cameraActive ? (
+                    <video ref={videoRef} autoPlay muted playsInline className="h-full w-full scale-x-[-1] object-contain" />
+                  ) : outputPhoto ? (
+                    <NextImage src={outputPhoto} alt="Preview momen" fill unoptimized className="object-contain" />
+                  ) : sourcePhoto ? (
+                    <NextImage src={sourcePhoto} alt="Foto sumber" fill unoptimized className="object-contain" />
+                  ) : (
+                    <div className="absolute inset-0 grid place-items-center p-6 text-center text-white">
+                      <div>
+                        <span className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-white/10">
+                          <Camera className="h-8 w-8" />
+                        </span>
+                        <p className="mt-4 text-sm font-bold">
+                          {composerMode === "capture" ? "Kamera belum aktif" : selectedTemplateUsesPhoto ? "Tambahkan foto ke template" : "Pilih template dari admin"}
+                        </p>
+                        <p className="mt-1 text-xs text-white/60">
+                          {composerMode === "capture" ? "Izinkan kamera untuk mengambil Momen secara langsung." : selectedTemplateUsesPhoto ? "Gunakan kamera atau unggah foto untuk melengkapi template." : "Preview otomatis dibuat setelah template dipilih."}
+                        </p>
+                        {(composerMode === "capture" || selectedTemplateUsesPhoto) && <button onClick={() => void startCamera()} className="btn mt-5 bg-white text-[#07150f]">Aktifkan Kamera</button>}
+                      </div>
+                    </div>
+                  )}
+
+                  {cameraActive && (
+                    <button
+                      onClick={capturePhoto}
+                      className="absolute bottom-5 left-1/2 grid h-16 w-16 -translate-x-1/2 place-items-center rounded-full border-4 border-white bg-brand text-white shadow-xl transition active:scale-95"
+                      aria-label="Ambil foto"
+                    >
+                      <Camera className="h-7 w-7" />
+                    </button>
+                  )}
+
+                  <div className="absolute left-4 top-4 rounded-full bg-black/50 px-2.5 py-1.5 text-[8px] font-bold text-white backdrop-blur">
+                    NUTRIVERSE · TANPA XP
+                  </div>
+                </div>
+
+                {cameraError && (
+                  <div className="mt-3 rounded-xl border border-amber/25 bg-amber/10 p-3 text-[10px] leading-relaxed text-amber">
+                    {cameraError}
+                  </div>
+                )}
+
+                <div className="mt-3 flex flex-wrap justify-center gap-2">
+                  {!cameraActive && composerMode === "capture" && outputPhoto && (
+                    <button onClick={() => void startCamera()} className="btn btn-outline btn-sm">
+                      <Camera className="h-4 w-4" /> Ambil Ulang
+                    </button>
+                  )}
+                  {composerMode === "studio" && selectedTemplateUsesPhoto && (
+                    <>
+                      <button onClick={() => void startCamera()} className="btn btn-outline btn-sm">
+                        <Camera className="h-4 w-4" /> Buka Kamera
+                      </button>
+                      <label className="btn btn-outline btn-sm cursor-pointer">
+                        <ImagePlus className="h-4 w-4" /> Upload Foto
+                        <input type="file" accept="image/*" className="sr-only" onChange={(event) => readPhoto(event.target.files?.[0])} />
+                      </label>
+                    </>
+                  )}
+                </div>
+
+                <p className="mt-2 text-center text-[9px] leading-relaxed text-muted-foreground">
+                  {composerMode === "studio" ? "Template dan data dikendalikan admin. Foto hanya diminta jika desain menggunakannya." : "Foto tampil utuh dan metadata lokasi tidak digunakan. Ambil Momen hanya menerima kamera langsung."}
+                </p>
+              </div>
+
+              <div className={composerMode === "capture" ? "min-w-0 space-y-3" : "min-w-0 space-y-4"}>
+                {composerMode === "studio" && (
+                  <>
+                    <div>
+                      <div className="flex items-end justify-between gap-3">
+                        <div><span className="label">Pilih Template</span><p className="mt-1 text-[9px] leading-relaxed text-muted-foreground">Isi data dan tata letak sudah ditentukan admin.</p></div>
+                        <span className="shrink-0 rounded-full bg-brand-soft px-2 py-1 text-[8px] font-bold text-brand">{templates.length} tersedia</span>
+                      </div>
+                      {templates.length ? (
+                        <div className="mt-3 grid grid-cols-2 gap-2">
+                          {templates.map((template) => {
+                            const active = template.id === templateId;
+                            const usesPhoto = template.allowedDataKeys.includes("moment.photo");
+                            const usesActivity = template.allowedDataKeys.some((key) => key.startsWith("activity."));
+                            const unavailable = usesActivity && !selectedActivity;
+                            return (
+                              <button
+                                key={template.id}
+                                type="button"
+                                disabled={unavailable}
+                                onClick={() => selectStudioTemplate(template)}
+                                className={`overflow-hidden rounded-2xl border text-left transition ${active ? "border-brand bg-brand-soft ring-1 ring-brand" : "border-line bg-secondary/25 hover:border-brand/40"} disabled:cursor-not-allowed disabled:opacity-45`}
+                              >
+                                <span className="relative block aspect-[4/3] overflow-hidden bg-gradient-to-br from-[#07553b] via-brand to-lime">
+                                  {(template.thumbnailUrl || template.backgroundUrl) && <NextImage src={template.thumbnailUrl || template.backgroundUrl || ""} alt="" fill unoptimized className="object-cover" />}
+                                  {active && <span className="absolute right-2 top-2 grid h-6 w-6 place-items-center rounded-full bg-brand text-white shadow"><Check className="h-3.5 w-3.5" /></span>}
+                                </span>
+                                <span className="block p-2.5">
+                                  <span className="block truncate text-[10px] font-extrabold">{template.name}</span>
+                                  <span className="mt-1 block truncate text-[8px] text-muted-foreground">{template.category} · v{template.version}</span>
+                                  <span className="mt-2 flex flex-wrap gap-1">
+                                    {usesPhoto && <span className="rounded-full bg-card px-1.5 py-1 text-[7px] font-bold text-muted-foreground">Foto</span>}
+                                    {usesActivity && <span className="rounded-full bg-card px-1.5 py-1 text-[7px] font-bold text-muted-foreground">Aktivitas terbaru</span>}
+                                  </span>
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="mt-3 rounded-2xl border border-dashed border-line p-5 text-center">
+                          <ImagePlus className="mx-auto h-6 w-6 text-muted-foreground" />
+                          <p className="mt-2 text-[10px] font-bold">Belum ada template tersedia</p>
+                          <p className="mt-1 text-[8px] text-muted-foreground">Template akan muncul setelah dipublikasikan admin.</p>
+                        </div>
+                      )}
+                    </div>
+                    {selectedTemplate && <div className="rounded-xl border border-brand/20 bg-brand-soft/60 p-3"><p className="text-[10px] font-extrabold text-brand">{selectedTemplate.name}</p><p className="mt-1 text-[9px] leading-relaxed text-muted-foreground">{selectedTemplate.description || `Data ${selectedTemplateUsesActivity ? "aktivitas terbaru dan " : ""}profil diisi otomatis sesuai rancangan admin.`}</p></div>}
+                  </>
+                )}
+
+                <label>
+                  <span className="label">Caption</span>
+                  <textarea value={caption} onChange={(event) => setCaption(event.target.value)} maxLength={280} rows={4} className="input mt-1 min-h-24 resize-none" placeholder="Ceritakan momen sehatmu…" />
+                  <span className="mt-1 block text-right text-[9px] text-muted-foreground">{caption.length}/280</span>
+                </label>
+
+                <div>
+                  <span className="label">Audiens</span>
+                  <div className="mt-2 grid grid-cols-2 gap-2">
+                    {AUDIENCES.map((option) => {
+                      const Icon = option.icon;
+                      return (
+                        <button
+                          key={option.value}
+                          onClick={() => setAudience(option.value)}
+                          className={"rounded-xl border p-2 text-center " + (audience === option.value ? "border-brand bg-brand-soft text-brand" : "border-line text-muted-foreground")}
+                        >
+                          <Icon className="mx-auto h-4 w-4" />
+                          <p className="mt-1 text-[9px] font-extrabold">{option.label}</p>
+                          {composerMode === "studio" && <p className="mt-1 text-[8px] text-muted-foreground">{option.description}</p>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {audience === "COMMUNITY" && (
+                  <label>
+                    <span className="label">Komunitas tujuan</span>
+                    <select value={targetCommunity} onChange={(event) => setTargetCommunity(event.target.value)} className="input mt-1">
+                      <option value="">Pilih komunitas</option>
+                      {communities.map((community) => <option key={community.id} value={community.id}>{community.name}</option>)}
+                    </select>
+                  </label>
+                )}
+
+                {composerMode === "capture" && (
+                  <label>
+                    <span className="label">Hubungkan aktivitas (opsional)</span>
+                    <select value={activityId} onChange={(event) => setActivityId(event.target.value)} className="input mt-1">
+                      <option value="">Momen harian</option>
+                      {studioContext?.activities.map((activity) => (
+                        <option key={activity.id} value={activity.id}>
+                          {activityName(activity.activityType)} · {(activity.distanceMeters / 1000).toFixed(2)} km
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+
+                {composerMessage && <p className="rounded-xl bg-secondary px-3 py-2 text-xs text-muted-foreground">{composerMessage}</p>}
+
+                <button onClick={() => void publish()} disabled={publishing || !outputPhoto || cameraActive} className="btn btn-primary w-full disabled:opacity-45">
+                  <Check className="h-4 w-4" />{publishing ? "Menyimpan…" : "Bagikan Momen"}
+                </button>
+                <p className="text-[9px] leading-relaxed text-muted-foreground">
+                  Foto user lain tidak dapat diunduh. Hasil Studio dan foto milikmu sendiri tetap tersedia melalui galeri profil.
+                </p>
               </div>
             </div>
           </section>
-        </div>,
-        document.body
-      )}
-      
-      {typeof document !== 'undefined' && createPortal(
-        <button onClick={() => setComposerOpen(true)} className="fixed bottom-28 right-4 z-[60] grid h-16 w-16 place-items-center rounded-full bg-brand text-white shadow-2xl transition-transform active:scale-95 sm:hidden" aria-label="Tangkap Momen">
-          <Camera className="h-8 w-8" />
-        </button>,
-        document.body
-      )}
-    </section>
+        </div>
+      ), document.body)}
+    </div>
   );
 }

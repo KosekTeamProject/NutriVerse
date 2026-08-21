@@ -20,6 +20,8 @@ export async function GET() {
     await requireAdminUser();
     const events = await prisma.event.findMany({
       include: {
+        createdBy: { select: { id: true, name: true, username: true } },
+        reviewedBy: { select: { id: true, name: true } },
         _count: { select: { registrations: true } },
       },
       orderBy: { startDate: "desc" },
@@ -89,6 +91,7 @@ export async function POST(request: NextRequest) {
         ),
         bonusXp: 0,
         bonusHp: 0,
+        createdByUserId: admin.id,
       },
     });
     await prisma.auditLog.create({

@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Activity, AlertTriangle, BarChart3, Bell, CalendarDays, Check, CircleDollarSign, FileWarning, Gift, LayoutDashboard, LogOut, Menu, Settings, ShieldCheck, Trophy, UserCog, Users, X, Newspaper } from "lucide-react";
+import { Activity, AlertTriangle, BarChart3, Bell, CalendarDays, Check, CircleDollarSign, FileWarning, Gift, Images, LayoutDashboard, LogOut, Menu, Settings, ShieldCheck, Trophy, UserCog, Users, X, Newspaper } from "lucide-react";
 import { BrandLogo } from "@/components/brand/BrandLogo";
+import { ShareTemplateAdmin } from "@/components/admin/ShareTemplateAdmin";
 import { clearAdminSession, type AdminRole, type AdminSession } from "@/features/admin/session";
 
-type AdminView = "overview" | "moderation" | "users" | "operations" | "admins" | "settings";
+type AdminView = "overview" | "moderation" | "users" | "operations" | "templates" | "admins" | "settings";
 type ReportStatus = "Menunggu" | "Dipertahankan" | "Diturunkan";
 
 const NAV_ITEMS = [
@@ -13,6 +14,7 @@ const NAV_ITEMS = [
   { id: "moderation" as const, label: "Moderasi", icon: FileWarning, badge: 12 },
   { id: "users" as const, label: "Pengguna", icon: Users },
   { id: "operations" as const, label: "Operasional", icon: Trophy },
+  { id: "templates" as const, label: "Template Berbagi", icon: Images },
   { id: "admins" as const, label: "Daftar Admin", icon: UserCog },
   { id: "settings" as const, label: "Pengaturan Sistem", icon: Settings },
 ];
@@ -384,13 +386,20 @@ function LegacyUsersView() {
   return <section className="overflow-hidden rounded-2xl border border-line bg-card shadow-soft"><div className="flex flex-wrap items-center justify-between gap-3 border-b border-line p-5"><div><h2 className="font-display text-lg font-extrabold">Pengguna NutriVerse</h2><p className="mt-1 text-xs text-muted-foreground">Status akun, tier, dan tingkat kepercayaan aktivitas.</p></div><button className="btn btn-outline btn-sm">Ekspor Ringkasan</button></div><div className="overflow-x-auto"><table className="w-full min-w-[680px] text-left"><thead className="bg-secondary/50 text-[9px] uppercase tracking-wider text-muted-foreground"><tr>{["Pengguna", "Tier", "Terakhir aktif", "Trust", "Status", "Aksi"].map((label) => <th key={label} className="px-5 py-3">{label}</th>)}</tr></thead><tbody className="divide-y divide-line/60">{USER_ROWS.map((user) => <tr key={user.name} className="text-xs"><td className="px-5 py-4 font-bold">{user.name}</td><td className="px-5 py-4">{user.tier}</td><td className="px-5 py-4 text-muted-foreground">{user.active}</td><td className="px-5 py-4 font-bold text-brand">{user.trust}</td><td className="px-5 py-4"><span className={`rounded-full px-2 py-1 text-[9px] font-bold ${user.status === "Aktif" ? "bg-brand-soft text-brand" : "bg-amber/10 text-amber"}`}>{user.status}</span></td><td className="px-5 py-4"><button className="font-bold text-brand">Tinjau</button></td></tr>)}</tbody></table></div></section>;
 }
 
-function Operations() {
+function Operations({ canManage }: { readonly canManage: boolean }) {
   type EventRow = {
     id: string;
     title: string;
     capacity: number;
     bonusXp: number;
     isActive: boolean;
+    description: string;
+    startDate: string;
+    location: string | null;
+    approvalStatus: string;
+    reviewNote: string | null;
+    whatsappLinkStatus: string;
+    createdBy: { name: string; username: string | null } | null;
     _count: { registrations: number };
   };
   type RewardRow = {
@@ -401,21 +410,39 @@ function Operations() {
     isActive: boolean;
     _count: { redemptions: number };
   };
+  type CommunityRow = {
+    id: string;
+    name: string;
+    description: string | null;
+    category: string;
+    rules: string[];
+    joinPolicy: string;
+    approvalStatus: string;
+    reviewNote: string | null;
+    isActive: boolean;
+    leader: { name: string; username: string | null; economy: { currentTier: string } | null } | null;
+    _count: { members: number; posts: number };
+  };
   const [events, setEvents] = useState<EventRow[]>([]);
+  const [communities, setCommunities] = useState<CommunityRow[]>([]);
   const [rewards, setRewards] = useState<RewardRow[]>([]);
   const [message, setMessage] = useState("Memuat operasional dari database...");
 
   useEffect(() => {
     void Promise.all([
       fetch("/api/admin/events", { cache: "no-store" }),
+      fetch("/api/admin/communities", { cache: "no-store" }),
       fetch("/api/admin/rewards?includeInactive=true", { cache: "no-store" }),
     ])
-      .then(async ([eventResponse, rewardResponse]) => {
+      .then(async ([eventResponse, communityResponse, rewardResponse]) => {
         const eventResult = (await eventResponse.json().catch(() => null)) as
           | { success?: boolean; events?: EventRow[]; error?: string }
           | null;
         const rewardResult = (await rewardResponse.json().catch(() => null)) as
           | { success?: boolean; rewards?: RewardRow[]; error?: string }
+          | null;
+        const communityResult = (await communityResponse.json().catch(() => null)) as
+          | { success?: boolean; communities?: CommunityRow[]; error?: string }
           | null;
         if (!eventResponse.ok || !eventResult?.success) {
           throw new Error(eventResult?.error ?? "Event gagal dimuat.");
@@ -423,7 +450,11 @@ function Operations() {
         if (!rewardResponse.ok || !rewardResult?.success) {
           throw new Error(rewardResult?.error ?? "Reward gagal dimuat.");
         }
+        if (!communityResponse.ok || !communityResult?.success) {
+          throw new Error(communityResult?.error ?? "Komunitas gagal dimuat.");
+        }
         setEvents(eventResult.events ?? []);
+        setCommunities(communityResult.communities ?? []);
         setRewards(rewardResult.rewards ?? []);
         setMessage("");
       })
@@ -449,6 +480,33 @@ function Operations() {
     );
   }
 
+  async function reviewEvent(event: EventRow, action: "approve" | "needs_revision" | "reject") {
+    const note = action === "approve" ? "Event dan link komunikasi telah diperiksa." : window.prompt(action === "reject" ? "Alasan penolakan:" : "Catatan revisi:");
+    if (action !== "approve" && !note?.trim()) return;
+    const response = await fetch(`/api/admin/events/${event.id}/review`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action, note }),
+    });
+    const result = await response.json().catch(() => null) as { success?: boolean; event?: EventRow; error?: string } | null;
+    if (!response.ok || !result?.success || !result.event) {
+      setMessage(result?.error ?? "Review event gagal disimpan.");
+      return;
+    }
+    setEvents((current) => current.map((item) => item.id === event.id ? { ...item, ...result.event } : item));
+    setMessage("Keputusan review tersimpan di database dan audit log.");
+  }
+
+  async function reviewCommunity(community: CommunityRow, action: "approve" | "needs_revision" | "reject") {
+    const note = action === "approve" ? "Komunitas telah diperiksa dan disetujui." : window.prompt(action === "reject" ? "Alasan penolakan:" : "Catatan revisi:");
+    if (action !== "approve" && !note?.trim()) return;
+    const response = await fetch(`/api/admin/communities/${community.id}/review`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action, note }) });
+    const result = await response.json().catch(() => null) as { success?: boolean; community?: CommunityRow; error?: string } | null;
+    if (!response.ok || !result?.success || !result.community) { setMessage(result?.error ?? "Review komunitas gagal disimpan."); return; }
+    setCommunities((current) => current.map((item) => item.id === community.id ? { ...item, ...result.community } : item));
+    setMessage("Keputusan komunitas tersimpan di database dan audit log.");
+  }
+
   async function toggleReward(reward: RewardRow) {
     const response = await fetch(`/api/admin/rewards/${reward.id}`, {
       method: "PATCH",
@@ -470,10 +528,21 @@ function Operations() {
   }
 
   const event = events[0];
+  const pendingEvents = events.filter((item) => item.approvalStatus === "PENDING_REVIEW");
+  const pendingCommunities = communities.filter((item) => item.approvalStatus === "PENDING_REVIEW");
   const reward = rewards[0];
   return (
     <div className="space-y-4">
       {message && <p className="rounded-xl bg-secondary p-3 text-xs text-muted-foreground">{message}</p>}
+      <section className="overflow-hidden rounded-2xl border border-line bg-card shadow-soft">
+        <div className="flex items-center justify-between border-b border-line p-5"><div><p className="text-[9px] font-bold uppercase tracking-wider text-brand">Persetujuan Super Admin</p><h2 className="mt-1 font-display text-lg font-extrabold">Pengajuan Komunitas</h2></div><span className="pill bg-amber/10 text-amber">{pendingCommunities.length} menunggu</span></div>
+        <div className="divide-y divide-line/60">{pendingCommunities.length === 0 ? <p className="p-5 text-xs text-muted-foreground">Tidak ada pengajuan komunitas yang menunggu review.</p> : pendingCommunities.map((item) => <article key={item.id} className="p-5"><div className="flex flex-wrap items-start justify-between gap-3"><div><h3 className="text-sm font-bold">{item.name}</h3><p className="mt-1 text-[10px] text-muted-foreground">{item.category} · Oleh {item.leader?.name ?? "Pengguna"} · Rank {item.leader?.economy?.currentTier ?? "SPROUT"}</p></div><span className="pill bg-secondary text-[9px] font-bold text-muted-foreground">{item.joinPolicy === "OPEN" ? "Terbuka" : "Persetujuan anggota"}</span></div><p className="mt-3 line-clamp-3 text-xs leading-relaxed text-muted-foreground">{item.description}</p><p className="mt-2 text-[10px] text-muted-foreground">{item.rules.length} peraturan disertakan.</p><div className="mt-4 flex flex-wrap gap-2"><button disabled={!canManage} onClick={() => void reviewCommunity(item, "approve")} className="btn btn-primary btn-sm"><Check className="h-4 w-4" /> Setujui</button><button disabled={!canManage} onClick={() => void reviewCommunity(item, "needs_revision")} className="btn btn-outline btn-sm">Minta Revisi</button><button disabled={!canManage} onClick={() => void reviewCommunity(item, "reject")} className="btn btn-outline btn-sm text-rose-500">Tolak</button></div></article>)}</div>
+      </section>
+      <section className="overflow-hidden rounded-2xl border border-line bg-card shadow-soft">
+        <div className="flex items-center justify-between border-b border-line p-5"><div><p className="text-[9px] font-bold uppercase tracking-wider text-brand">Persetujuan Super Admin</p><h2 className="mt-1 font-display text-lg font-extrabold">Pengajuan Event</h2></div><span className="pill bg-amber/10 text-amber">{pendingEvents.length} menunggu</span></div>
+        <div className="divide-y divide-line/60">{pendingEvents.length === 0 ? <p className="p-5 text-xs text-muted-foreground">Tidak ada pengajuan yang menunggu review.</p> : pendingEvents.map((item) => <article key={item.id} className="p-5"><div className="flex flex-wrap items-start justify-between gap-3"><div><h3 className="text-sm font-bold">{item.title}</h3><p className="mt-1 text-[10px] text-muted-foreground">Oleh {item.createdBy?.name ?? "Pengguna"} · {new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short" }).format(new Date(item.startDate))} · {item.location}</p></div><span className="pill bg-secondary text-[9px] font-bold text-muted-foreground">WhatsApp: {item.whatsappLinkStatus === "PENDING_REVIEW" ? "perlu dicek" : "tidak diajukan"}</span></div><p className="mt-3 line-clamp-3 text-xs leading-relaxed text-muted-foreground">{item.description}</p><div className="mt-4 flex flex-wrap gap-2"><button disabled={!canManage} onClick={() => void reviewEvent(item, "approve")} className="btn btn-primary btn-sm"><Check className="h-4 w-4" /> Setujui &amp; Publikasikan</button><button disabled={!canManage} onClick={() => void reviewEvent(item, "needs_revision")} className="btn btn-outline btn-sm">Minta Revisi</button><button disabled={!canManage} onClick={() => void reviewEvent(item, "reject")} className="btn btn-outline btn-sm text-rose-500">Tolak</button></div></article>)}</div>
+        {!canManage && <p className="border-t border-line bg-amber/10 px-5 py-3 text-[10px] font-bold text-amber">Moderator dapat memantau. Keputusan publikasi memerlukan Super Admin.</p>}
+      </section>
       <div className="grid gap-5 xl:grid-cols-2">
         <section className="rounded-2xl border border-line bg-card p-5 shadow-soft">
           <div className="flex items-center justify-between"><div><p className="text-[9px] font-bold uppercase tracking-wider text-brand">Event Database</p><h2 className="mt-1 font-display text-lg font-extrabold">{event?.title ?? "Belum ada event"}</h2></div><CalendarDays className="h-6 w-6 text-brand" /></div>
@@ -659,7 +728,7 @@ export function AdminPortal({ serverSession: session }: { readonly serverSession
     clearAdminSession();
     window.location.assign("/");
   }
-  const content = view === "overview" ? <Overview /> : view === "moderation" ? <Moderation /> : view === "users" ? <UsersView /> : view === "operations" ? <Operations /> : view === "admins" ? <AdminList canManage={canManage} /> : <SystemSettings canManage={canManage} />;
+  const content = view === "overview" ? <Overview /> : view === "moderation" ? <Moderation /> : view === "users" ? <UsersView /> : view === "operations" ? <Operations canManage={canManage} /> : view === "templates" ? <ShareTemplateAdmin canPublish={canManage} /> : view === "admins" ? <AdminList canManage={canManage} /> : <SystemSettings canManage={canManage} />;
   const selectView = (nextView: AdminView) => { setView(nextView); setMobileOpen(false); };
   return <div className="min-h-screen bg-background text-foreground"><aside className="fixed inset-y-0 left-0 z-40 hidden w-64 lg:block"><AdminSidebar view={view} session={session} onSelect={selectView} onLogout={logout} /></aside>{mobileOpen && <div className="fixed inset-0 z-50 lg:hidden"><button onClick={() => setMobileOpen(false)} className="absolute inset-0 bg-black/55" aria-label="Tutup menu admin" /><aside className="absolute inset-y-0 left-0 w-[84vw] max-w-72"><button onClick={() => setMobileOpen(false)} className="absolute right-3 top-3 z-10 grid h-8 w-8 place-items-center rounded-lg bg-white/10 text-white" aria-label="Tutup menu"><X className="h-4 w-4" /></button><AdminSidebar view={view} session={session} onSelect={selectView} onLogout={logout} /></aside></div>}<div className="lg:pl-64"><header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-line bg-background/90 px-4 backdrop-blur-xl sm:px-6"><button onClick={() => setMobileOpen(true)} className="grid h-9 w-9 place-items-center rounded-lg text-muted-foreground hover:bg-secondary lg:hidden" aria-label="Buka menu admin"><Menu className="h-5 w-5" /></button><div className="min-w-0 flex-1"><p className="text-[9px] font-bold uppercase tracking-[0.16em] text-brand">NutriVerse Control</p><h1 className="truncate font-display text-base font-extrabold">{pageTitle}</h1></div><button className="relative grid h-9 w-9 place-items-center rounded-xl text-muted-foreground hover:bg-secondary" aria-label="Notifikasi admin"><Bell className="h-4 w-4" /></button><span className="hidden rounded-full bg-brand-soft px-3 py-1.5 text-[9px] font-bold text-brand sm:inline">{session.role}</span></header><main className="mx-auto max-w-[1440px] p-4 sm:p-6 lg:p-8"><div className="mb-6 flex flex-wrap items-end justify-between gap-3"><div><h2 className="font-display text-2xl font-extrabold">{pageTitle}</h2><p className="mt-1 text-xs text-muted-foreground">Data operasional dimuat melalui API administrator dan database.</p></div><span className="flex items-center gap-1.5 rounded-full bg-brand-soft px-3 py-1.5 text-[9px] font-bold text-brand"><ShieldCheck className="h-3.5 w-3.5" /> Sesi Supabase berbasis role</span></div>{content}</main></div></div>;
 }
