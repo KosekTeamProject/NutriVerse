@@ -4,7 +4,7 @@ import NextImage from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Camera, ChevronDown, ChevronUp, Download, Eye, EyeOff, Heart, ImageIcon, LoaderCircle, Lock, MessageCircle, Send, Sparkles, Trash2, UsersRound, X } from "lucide-react";
+import { Archive, ArchiveRestore, Camera, Check, ChevronDown, ChevronUp, Download, Eye, EyeOff, Heart, ImageIcon, LoaderCircle, Lock, MessageCircle, Pencil, Send, Sparkles, Trash2, UsersRound, X } from "lucide-react";
 
 type ProfileMoment = {
   id: string;
@@ -15,6 +15,10 @@ type ProfileMoment = {
   duringActivity: boolean;
   visibleOnProfile: boolean;
   profileDisplayOrder: number | null;
+  isArchived: boolean;
+  showLikeCount: boolean;
+  likerListVisibility: "AUDIENCE" | "OWNER_ONLY";
+  commentsMode: "AUDIENCE" | "FRIENDS_ONLY" | "OFF";
   createdAt: string;
   isOwner: boolean;
   likedByMe: boolean;
@@ -83,6 +87,14 @@ export function ProfileMomentsGallery() {
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [commentDraft, setCommentDraft] = useState("");
   const [commentBusy, setCommentBusy] = useState(false);
+  const [commentsEnabled, setCommentsEnabled] = useState(true);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editCaption, setEditCaption] = useState("");
+  const [editShowLikeCount, setEditShowLikeCount] = useState(true);
+  const [editLikerList, setEditLikerList] = useState<"AUDIENCE" | "OWNER_ONLY">("AUDIENCE");
+  const [editCommentsMode, setEditCommentsMode] = useState<"AUDIENCE" | "FRIENDS_ONLY" | "OFF">("AUDIENCE");
+  const [actionBusy, setActionBusy] = useState(false);
+  const [actionMessage, setActionMessage] = useState("");
   const touchStartYRef = useRef<number | null>(null);
   const wheelDeltaRef = useRef(0);
   const commentRequestRef = useRef(0);
@@ -141,23 +153,8 @@ export function ProfileMomentsGallery() {
     return () => window.clearTimeout(timer);
   }, []);
 
-  useEffect(() => {
-    if (!selected) return;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") { setSelected(null); return; }
-      if (event.key === "ArrowDown") { event.preventDefault(); void navigateSelected(1); }
-      if (event.key === "ArrowUp") { event.preventDefault(); void navigateSelected(-1); }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => { document.body.style.overflow = previousOverflow; window.removeEventListener("keydown", handleKeyDown); };
-  // Navigasi memakai snapshot galeri pada saat momen aktif berubah.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected]);
-
   async function toggleShowcase(moment: ProfileMoment) {
-    if (showcaseSavingId) return;
+    if (showcaseSavingId || moment.isArchived) return;
     setShowcaseSavingId(moment.id);
     setError("");
     try {
@@ -180,6 +177,27 @@ export function ProfileMomentsGallery() {
     }
   }
 
+  async function restoreMoment(moment: ProfileMoment) {
+    if (showcaseSavingId) return;
+    setShowcaseSavingId(moment.id);
+    setError("");
+    try {
+      const response = await fetch(`/api/moments/${moment.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isArchived: false }),
+      });
+      const result = await response.json().catch(() => null) as { success?: boolean; moment?: ProfileMoment; error?: string } | null;
+      if (!response.ok || !result?.success || !result.moment) {
+        setError(result?.error ?? "Momen belum dapat dipulihkan.");
+        return;
+      }
+      updateMoment(moment.id, (item) => ({ ...item, isArchived: false }));
+    } finally {
+      setShowcaseSavingId(null);
+    }
+  }
+
   async function openMoment(moment: ProfileMoment) {
     const requestId = commentRequestRef.current + 1;
     commentRequestRef.current = requestId;
@@ -187,16 +205,59 @@ export function ProfileMomentsGallery() {
     setComments([]);
     setCommentsLoading(true);
     setCommentDraft("");
+    setCommentsEnabled(moment.commentsMode !== "OFF");
+    setEditOpen(false);
+    setActionMessage("");
     window.requestAnimationFrame(() => {
       if (detailScrollRef.current) detailScrollRef.current.scrollTop = 0;
     });
     try {
       const response = await fetch(`/api/moments/${moment.id}/comments`, { cache: "no-store" });
-      const result = await response.json().catch(() => null) as { comments?: MomentComment[] } | null;
-      if (requestId === commentRequestRef.current && response.ok) setComments(result?.comments ?? []);
+      const result = await response.json().catch(() => null) as { comments?: MomentComment[]; commentsEnabled?: boolean } | null;
+      if (requestId === commentRequestRef.current && response.ok) { setComments(result?.comments ?? []); setCommentsEnabled(result?.commentsEnabled !== false); }
     } finally {
       if (requestId === commentRequestRef.current) setCommentsLoading(false);
     }
+  }
+
+  function startEditing(moment: ProfileMoment) {
+    setEditCaption(moment.caption ?? "");
+    setEditShowLikeCount(moment.showLikeCount);
+    setEditLikerList(moment.likerListVisibility);
+    setEditCommentsMode(moment.commentsMode);
+    setEditOpen(true);
+  }
+
+  async function saveMoment() {
+    if (!selected || actionBusy) return;
+    setActionBusy(true); setActionMessage("");
+    const response = await fetch(`/api/moments/${selected.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ caption: editCaption, showLikeCount: editShowLikeCount, likerListVisibility: editLikerList, commentsMode: editCommentsMode }) });
+    const result = await response.json().catch(() => null) as { success?: boolean; moment?: ProfileMoment; error?: string } | null;
+    setActionBusy(false);
+    if (!response.ok || !result?.success || !result.moment) { setActionMessage(result?.error ?? "Momen belum dapat diperbarui."); return; }
+    updateMoment(selected.id, (item) => ({ ...item, caption: result.moment?.caption ?? null, showLikeCount: editShowLikeCount, likerListVisibility: editLikerList, commentsMode: editCommentsMode }));
+    setCommentsEnabled(editCommentsMode !== "OFF"); setEditOpen(false); setActionMessage("Perubahan Momen tersimpan.");
+  }
+
+  async function archiveSelected() {
+    if (!selected || actionBusy) return;
+    setActionBusy(true);
+    const response = await fetch(`/api/moments/${selected.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ isArchived: true }) });
+    setActionBusy(false);
+    if (!response.ok) { setActionMessage("Momen belum dapat diarsipkan."); return; }
+    if (selected.visibleOnProfile) setShowcaseCount((current) => Math.max(0, current - 1));
+    updateMoment(selected.id, (item) => ({ ...item, isArchived: true, visibleOnProfile: false, profileDisplayOrder: null }));
+    setActionMessage("Momen dipindahkan ke arsip dan tidak terlihat audiens.");
+  }
+
+  async function deleteSelected() {
+    if (!selected || actionBusy || !window.confirm("Hapus Momen ini secara permanen?")) return;
+    setActionBusy(true);
+    const response = await fetch(`/api/moments/${selected.id}`, { method: "DELETE" });
+    setActionBusy(false);
+    if (!response.ok) { setActionMessage("Momen belum dapat dihapus."); return; }
+    if (selected.visibleOnProfile) setShowcaseCount((current) => Math.max(0, current - 1));
+    setMoments((current) => current.filter((item) => item.id !== selected.id)); setSelected(null);
   }
 
   function updateMoment(id: string, update: (moment: ProfileMoment) => ProfileMoment) {
@@ -220,7 +281,7 @@ export function ProfileMomentsGallery() {
 
   async function addComment(event: React.FormEvent) {
     event.preventDefault();
-    if (!selected || !commentDraft.trim() || commentBusy) return;
+    if (!selected || !commentsEnabled || !commentDraft.trim() || commentBusy) return;
     setCommentBusy(true);
     const response = await fetch(`/api/moments/${selected.id}/comments`, {
       method: "POST",
@@ -284,6 +345,21 @@ export function ProfileMomentsGallery() {
     void navigateSelected(distance > 0 ? 1 : -1);
   }
 
+  useEffect(() => {
+    if (!selected) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") { setSelected(null); return; }
+      if (event.key === "ArrowDown") { event.preventDefault(); void navigateSelected(1); }
+      if (event.key === "ArrowUp") { event.preventDefault(); void navigateSelected(-1); }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => { document.body.style.overflow = previousOverflow; window.removeEventListener("keydown", handleKeyDown); };
+  // Navigasi memakai snapshot galeri pada saat momen aktif berubah.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected]);
+
   const selectedIndex = selected ? moments.findIndex((moment) => moment.id === selected.id) : -1;
 
   return (
@@ -318,7 +394,7 @@ export function ProfileMomentsGallery() {
           <div className="grid grid-cols-2 gap-1.5 p-1.5 sm:grid-cols-3 sm:gap-2 sm:p-2">
             {moments.map((moment) => {
               const AudienceIcon = audience(moment).icon;
-              return <article key={moment.id} className="group relative aspect-square overflow-hidden rounded-xl bg-secondary sm:rounded-2xl"><button type="button" onClick={() => void openMoment(moment)} className="absolute inset-0 text-left" aria-label={`Buka momen ${moment.caption ?? "tanpa caption"}`}>{moment.imageUrl ? <NextImage src={moment.imageUrl} alt={moment.caption ?? "Momen NutriVerse"} fill unoptimized sizes="(max-width: 640px) 50vw, 33vw" className="object-cover transition duration-300 group-hover:scale-105" /> : <span className="absolute inset-0 grid place-items-center text-muted-foreground"><ImageIcon className="h-7 w-7" /></span>}<span className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-80 transition group-hover:opacity-100" /><span className="absolute inset-x-3 bottom-3 flex items-end justify-between gap-2 text-white"><span className="line-clamp-2 text-[9px] font-bold leading-relaxed sm:text-[10px]">{moment.caption || "Momen sehatku"}</span><span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-black/35 backdrop-blur"><AudienceIcon className="h-3 w-3" /></span></span></button><button type="button" disabled={showcaseSavingId === moment.id} onClick={() => void toggleShowcase(moment)} className={`absolute left-2 top-2 z-10 inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 text-[9px] font-bold text-white backdrop-blur transition disabled:opacity-60 ${moment.visibleOnProfile ? "bg-brand/85" : "bg-black/55 hover:bg-black/70"}`} aria-label={moment.visibleOnProfile ? "Sembunyikan dari profil" : "Tampilkan di profil"}>{showcaseSavingId === moment.id ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : moment.visibleOnProfile ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}{moment.visibleOnProfile ? "Ditampilkan" : "Tampilkan"}</button></article>;
+              return <article key={moment.id} className={`group relative aspect-square overflow-hidden rounded-xl bg-secondary sm:rounded-2xl ${moment.isArchived ? "opacity-75" : ""}`}><button type="button" onClick={() => void openMoment(moment)} className="absolute inset-0 text-left" aria-label={`Buka momen ${moment.caption ?? "tanpa caption"}`}>{moment.imageUrl ? <NextImage src={moment.imageUrl} alt={moment.caption ?? "Momen NutriVerse"} fill unoptimized sizes="(max-width: 640px) 50vw, 33vw" className="object-cover transition duration-300 group-hover:scale-105" /> : <span className="absolute inset-0 grid place-items-center text-muted-foreground"><ImageIcon className="h-7 w-7" /></span>}<span className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-80 transition group-hover:opacity-100" /><span className="absolute inset-x-3 bottom-3 flex items-end justify-between gap-2 text-white"><span className="line-clamp-2 text-[9px] font-bold leading-relaxed sm:text-[10px]">{moment.caption || "Momen sehatku"}</span><span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-black/35 backdrop-blur"><AudienceIcon className="h-3 w-3" /></span></span></button>{moment.isArchived ? <button type="button" disabled={showcaseSavingId === moment.id} onClick={() => void restoreMoment(moment)} className="absolute left-2 top-2 z-10 inline-flex h-8 items-center gap-1.5 rounded-full bg-amber/85 px-2.5 text-[9px] font-bold text-white backdrop-blur"><ArchiveRestore className="h-3.5 w-3.5" /> Pulihkan</button> : <button type="button" disabled={showcaseSavingId === moment.id} onClick={() => void toggleShowcase(moment)} className={`absolute left-2 top-2 z-10 inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 text-[9px] font-bold text-white backdrop-blur transition disabled:opacity-60 ${moment.visibleOnProfile ? "bg-brand/85" : "bg-black/55 hover:bg-black/70"}`} aria-label={moment.visibleOnProfile ? "Sembunyikan dari profil" : "Tampilkan di profil"}>{showcaseSavingId === moment.id ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : moment.visibleOnProfile ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}{moment.visibleOnProfile ? "Ditampilkan" : "Tampilkan"}</button>}</article>;
             })}
           </div>
           <footer className="flex flex-col items-center gap-3 border-t border-line p-4">
@@ -417,18 +493,35 @@ export function ProfileMomentsGallery() {
                 )}
 
                 <div className="mt-4 flex flex-wrap gap-2 border-b border-line pb-4">
-                  <button type="button" disabled={showcaseSavingId === selected.id} onClick={() => void toggleShowcase(selected)} className="btn btn-outline btn-sm disabled:opacity-60">
+                  {selected.isArchived ? <button type="button" disabled={showcaseSavingId === selected.id} onClick={() => void restoreMoment(selected)} className="btn btn-outline btn-sm"><ArchiveRestore className="h-4 w-4" /> Pulihkan dari arsip</button> : <button type="button" disabled={showcaseSavingId === selected.id} onClick={() => void toggleShowcase(selected)} className="btn btn-outline btn-sm disabled:opacity-60">
                     {showcaseSavingId === selected.id ? <LoaderCircle className="h-4 w-4 animate-spin" /> : selected.visibleOnProfile ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
                     {selected.visibleOnProfile ? "Ditampilkan di profil" : "Tampilkan di profil"}
-                  </button>
+                  </button>}
                   <button type="button" onClick={() => void download(selected)} className="btn btn-outline btn-sm">
                     <Download className="h-4 w-4" /> Download
                   </button>
+                  <button type="button" onClick={() => startEditing(selected)} className="btn btn-outline btn-sm"><Pencil className="h-4 w-4" /> Edit</button>
+                  {!selected.isArchived && <button type="button" disabled={actionBusy} onClick={() => void archiveSelected()} className="btn btn-outline btn-sm"><Archive className="h-4 w-4" /> Arsipkan</button>}
+                  <button type="button" disabled={actionBusy} onClick={() => void deleteSelected()} className="btn btn-outline btn-sm border-rose-500/25 text-rose-500"><Trash2 className="h-4 w-4" /> Hapus</button>
                 </div>
+
+                {editOpen && (
+                  <section className="mt-4 space-y-3 rounded-2xl border border-brand/20 bg-brand-soft/25 p-3">
+                    <div className="flex items-center justify-between"><p className="text-xs font-extrabold">Edit &amp; privasi Momen</p><button type="button" onClick={() => setEditOpen(false)}><X className="h-4 w-4" /></button></div>
+                    <textarea value={editCaption} onChange={(event) => setEditCaption(event.target.value)} maxLength={280} rows={3} className="input resize-none" placeholder="Caption boleh dikosongkan" />
+                    <button type="button" onClick={() => setEditShowLikeCount((current) => !current)} className="flex w-full items-center justify-between rounded-xl border border-line bg-card px-3 py-2 text-[10px] font-bold"><span>Tampilkan jumlah suka</span>{editShowLikeCount ? <Eye className="h-4 w-4 text-brand" /> : <EyeOff className="h-4 w-4" />}</button>
+                    <select value={editLikerList} onChange={(event) => setEditLikerList(event.target.value as "AUDIENCE" | "OWNER_ONLY")} className="input"><option value="AUDIENCE">Daftar penyuka terlihat audiens</option><option value="OWNER_ONLY">Daftar penyuka hanya saya</option></select>
+                    <select value={editCommentsMode} onChange={(event) => setEditCommentsMode(event.target.value as "AUDIENCE" | "FRIENDS_ONLY" | "OFF")} className="input"><option value="AUDIENCE">Komentar semua audiens</option><option value="FRIENDS_ONLY">Komentar teman saja</option><option value="OFF">Komentar dimatikan</option></select>
+                    <button type="button" disabled={actionBusy} onClick={() => void saveMoment()} className="btn btn-primary w-full"><Check className="h-4 w-4" /> Simpan perubahan</button>
+                  </section>
+                )}
+                {actionMessage && <p className="mt-3 rounded-xl bg-secondary px-3 py-2 text-[10px] text-muted-foreground">{actionMessage}</p>}
 
                 <section className="pt-5">
                   <h3 className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">Komentar</h3>
-                  {commentsLoading ? (
+                  {!commentsEnabled ? (
+                    <div className="mt-4 rounded-2xl border border-dashed border-line p-6 text-center"><Lock className="mx-auto h-5 w-5 text-muted-foreground" /><p className="mt-2 text-xs font-bold">Komentar dinonaktifkan</p></div>
+                  ) : commentsLoading ? (
                     <p className="py-8 text-center text-xs text-muted-foreground">Memuat komentar…</p>
                   ) : comments.length === 0 ? (
                     <p className="py-8 text-center text-xs text-muted-foreground">Belum ada komentar. Jadilah yang pertama.</p>
@@ -458,12 +551,12 @@ export function ProfileMomentsGallery() {
                 </section>
               </div>
 
-              <form onSubmit={addComment} className="flex shrink-0 gap-2 border-t border-line bg-card p-3 sm:p-4">
+              {commentsEnabled ? <form onSubmit={addComment} className="flex shrink-0 gap-2 border-t border-line bg-card p-3 sm:p-4">
                 <input value={commentDraft} onChange={(event) => setCommentDraft(event.target.value)} maxLength={500} className="input min-w-0 flex-1" placeholder="Tulis komentar…" />
                 <button type="submit" disabled={commentBusy || !commentDraft.trim()} className="btn btn-primary shrink-0 px-4" aria-label="Kirim komentar">
                   {commentBusy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 </button>
-              </form>
+              </form> : <div className="flex shrink-0 items-center justify-center gap-2 border-t border-line p-4 text-[10px] font-bold text-muted-foreground"><Lock className="h-3.5 w-3.5" /> Komentar dimatikan</div>}
             </aside>
           </article>
         </div>

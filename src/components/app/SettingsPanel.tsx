@@ -17,7 +17,8 @@ import {
   Activity, 
   HelpCircle,
   TimerReset,
-  StretchHorizontal
+  StretchHorizontal,
+  MessageCircle,
 } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
 import { useCompanionName } from "@/hooks/useCompanionName";
@@ -164,7 +165,13 @@ export function SettingsPanel() {
     sleepHours: 8,
   });
 
-  const [notif, setNotif] = useState({ aktivitas: true, leaderboard: true, sosial: false });
+  const [notif, setNotif] = useState({ aktivitas: true, leaderboard: true, sosial: false, momentLikes: true, momentComments: true, community: true });
+  const [momentPrivacy, setMomentPrivacy] = useState({
+    showLikeCount: true,
+    likerList: "AUDIENCE" as "AUDIENCE" | "OWNER_ONLY",
+    comments: "AUDIENCE" as "AUDIENCE" | "FRIENDS_ONLY" | "OFF",
+    hiddenWords: "",
+  });
   const [privasi, setPrivasi] = useState({ 
     publik: false, 
     leaderboard: true, 
@@ -246,6 +253,13 @@ export function SettingsPanel() {
             notificationsActivity: boolean;
             notificationsLeaderboard: boolean;
             notificationsSocial: boolean;
+            notificationsMomentLikes: boolean;
+            notificationsMomentComments: boolean;
+            notificationsCommunity: boolean;
+            defaultMomentShowLikeCount: boolean;
+            defaultMomentLikerList: "AUDIENCE" | "OWNER_ONLY";
+            defaultMomentComments: "AUDIENCE" | "FRIENDS_ONLY" | "OFF";
+            momentHiddenWords: string[];
             companionInsightsEnabled: boolean;
             companionSafetyNotesEnabled: boolean;
             useDemoData: boolean;
@@ -282,6 +296,15 @@ export function SettingsPanel() {
             aktivitas: result.settings.notificationsActivity,
             leaderboard: result.settings.notificationsLeaderboard,
             sosial: result.settings.notificationsSocial,
+            momentLikes: result.settings.notificationsMomentLikes,
+            momentComments: result.settings.notificationsMomentComments,
+            community: result.settings.notificationsCommunity,
+          });
+          setMomentPrivacy({
+            showLikeCount: result.settings.defaultMomentShowLikeCount,
+            likerList: result.settings.defaultMomentLikerList,
+            comments: result.settings.defaultMomentComments,
+            hiddenWords: result.settings.momentHiddenWords.join(", "),
           });
           setCompanion((current) => ({
             ...current,
@@ -334,7 +357,7 @@ export function SettingsPanel() {
     };
   }, [session?.email]);
 
-  async function saveSettings(payload: Record<string, boolean | number | string>) {
+  async function saveSettings(payload: Record<string, boolean | number | string | string[]>) {
     const response = await fetch("/api/settings", {
       method: "PATCH",
       headers: { "content-type": "application/json" },
@@ -561,6 +584,45 @@ export function SettingsPanel() {
         />
       </SectionCard>
 
+      <SectionCard icon={MessageCircle} title="Privasi & Interaksi Momen">
+        <div className="rounded-2xl border border-brand/15 bg-brand-soft/35 p-4">
+          <p className="text-sm font-bold text-foreground">Pengaturan bawaan unggahan baru</p>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Setiap Momen tetap dapat diatur ulang secara terpisah sebelum atau setelah diunggah.</p>
+        </div>
+        <div className="mt-3 divide-y divide-line/35">
+          <ToggleRow label="Tampilkan jumlah suka" desc="Pengguna yang dapat melihat Momen juga melihat total suka" on={momentPrivacy.showLikeCount} onToggle={() => setMomentPrivacy((current) => ({ ...current, showLikeCount: !current.showLikeCount }))} />
+          <div className="grid gap-2 py-3 sm:grid-cols-[1fr_220px] sm:items-center">
+            <div><p className="text-sm font-semibold">Daftar pengguna yang menyukai</p><p className="text-xs text-muted-foreground">Pemilik Momen selalu dapat melihat daftar untuk moderasi.</p></div>
+            <select className="input" value={momentPrivacy.likerList} onChange={(event) => setMomentPrivacy((current) => ({ ...current, likerList: event.target.value as "AUDIENCE" | "OWNER_ONLY" }))}>
+              <option value="AUDIENCE">Terlihat oleh audiens</option>
+              <option value="OWNER_ONLY">Hanya saya</option>
+            </select>
+          </div>
+          <div className="grid gap-2 py-3 sm:grid-cols-[1fr_220px] sm:items-center">
+            <div><p className="text-sm font-semibold">Siapa yang dapat berkomentar</p><p className="text-xs text-muted-foreground">Komentar lama tidak dihapus ketika komentar dimatikan.</p></div>
+            <select className="input" value={momentPrivacy.comments} onChange={(event) => setMomentPrivacy((current) => ({ ...current, comments: event.target.value as "AUDIENCE" | "FRIENDS_ONLY" | "OFF" }))}>
+              <option value="AUDIENCE">Semua audiens Momen</option>
+              <option value="FRIENDS_ONLY">Teman saja</option>
+              <option value="OFF">Dinonaktifkan</option>
+            </select>
+          </div>
+          <label className="block py-3">
+            <span className="text-sm font-semibold">Filter kata komentar</span>
+            <span className="mt-1 block text-xs text-muted-foreground">Pisahkan dengan koma. Komentar yang memuat kata tersebut otomatis masuk moderasi.</span>
+            <textarea className="input mt-2 min-h-24 resize-y" value={momentPrivacy.hiddenWords} onChange={(event) => setMomentPrivacy((current) => ({ ...current, hiddenWords: event.target.value }))} maxLength={2000} placeholder="contoh: spam, promosi, kata tidak pantas" />
+          </label>
+        </div>
+        <SaveButton
+          disabled={settingsLoading}
+          onSave={() => saveSettings({
+            defaultMomentShowLikeCount: momentPrivacy.showLikeCount,
+            defaultMomentLikerList: momentPrivacy.likerList,
+            defaultMomentComments: momentPrivacy.comments,
+            momentHiddenWords: momentPrivacy.hiddenWords.split(",").map((word) => word.trim()).filter(Boolean),
+          })}
+        />
+      </SectionCard>
+
       {/* 5. Companion settings */}
       <SectionCard icon={Sparkles} title={`Preferensi ${companionName.displayName}`}>
         <div className="divide-y divide-line/35">
@@ -687,6 +749,9 @@ export function SettingsPanel() {
           <ToggleRow label="Pengingat Aktivitas" desc="Ingatkan untuk bergerak dan mencatat hidrasi" on={notif.aktivitas} onToggle={() => setNotif((s) => ({ ...s, aktivitas: !s.aktivitas }))} />
           <ToggleRow label="Pembaruan Peringkat" desc="Beri tahu saat peringkat mingguan diperbarui" on={notif.leaderboard} onToggle={() => setNotif((s) => ({ ...s, leaderboard: !s.leaderboard }))} />
           <ToggleRow label="Semangat &amp; Dukungan" desc="Notifikasi saat anggota Circle memberi dorongan semangat" on={notif.sosial} onToggle={() => setNotif((s) => ({ ...s, sosial: !s.sosial }))} />
+          <ToggleRow label="Suka pada Momen" desc="Beri tahu saat seseorang menyukai Momenmu" on={notif.momentLikes} onToggle={() => setNotif((s) => ({ ...s, momentLikes: !s.momentLikes }))} />
+          <ToggleRow label="Komentar Momen" desc="Beri tahu saat ada komentar baru pada Momenmu" on={notif.momentComments} onToggle={() => setNotif((s) => ({ ...s, momentComments: !s.momentComments }))} />
+          <ToggleRow label="Aktivitas Komunitas" desc="Pembaruan penting dari komunitas yang kamu ikuti" on={notif.community} onToggle={() => setNotif((s) => ({ ...s, community: !s.community }))} />
         </div>
         <SaveButton
           disabled={settingsLoading}
@@ -695,6 +760,9 @@ export function SettingsPanel() {
               notificationsActivity: notif.aktivitas,
               notificationsLeaderboard: notif.leaderboard,
               notificationsSocial: notif.sosial,
+              notificationsMomentLikes: notif.momentLikes,
+              notificationsMomentComments: notif.momentComments,
+              notificationsCommunity: notif.community,
             })
           }
         />

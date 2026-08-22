@@ -1,4 +1,4 @@
-import { PrivacyLevel, Prisma } from "@prisma/client";
+import { MomentCommentMode, MomentLikerListVisibility, PrivacyLevel, Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { apiErrorResponse, assertSameOrigin, finiteNumber } from "@/lib/api";
 import { requireCurrentUser } from "@/lib/auth";
@@ -8,6 +8,8 @@ const booleanFields = [
   "locationPermissionGranted", "darkTheme", "leaderboardVisible",
   "challengeProgressVisible", "notificationsActivity", "notificationsLeaderboard",
   "notificationsSocial", "companionInsightsEnabled", "companionSafetyNotesEnabled",
+  "notificationsMomentLikes", "notificationsMomentComments", "notificationsCommunity",
+  "defaultMomentShowLikeCount",
   "useDemoData", "showSimulationLabels", "gpsSimulationEnabled", "foodSimulationEnabled",
 ] as const;
 const privacyFields = ["profileVisibility", "pulseVisibility", "activityVisibility"] as const;
@@ -57,6 +59,20 @@ export async function PATCH(request: NextRequest) {
       if (typeof body[field] === "string" && Object.values(PrivacyLevel).includes(body[field] as PrivacyLevel)) {
         data[field] = body[field] as PrivacyLevel;
       }
+    }
+    if (typeof body.defaultMomentLikerList === "string" && Object.values(MomentLikerListVisibility).includes(body.defaultMomentLikerList as MomentLikerListVisibility)) {
+      data.defaultMomentLikerList = body.defaultMomentLikerList as MomentLikerListVisibility;
+    }
+    if (typeof body.defaultMomentComments === "string" && Object.values(MomentCommentMode).includes(body.defaultMomentComments as MomentCommentMode)) {
+      data.defaultMomentComments = body.defaultMomentComments as MomentCommentMode;
+    }
+    if (Array.isArray(body.momentHiddenWords)) {
+      const hiddenWords = [...new Set(body.momentHiddenWords
+        .filter((value): value is string => typeof value === "string")
+        .map((value) => value.trim().toLowerCase())
+        .filter((value) => value.length >= 2 && value.length <= 40))]
+        .slice(0, 50);
+      data.momentHiddenWords = hiddenWords;
     }
     if (typeof body.timezone === "string" && body.timezone.length <= 80) {
       try {

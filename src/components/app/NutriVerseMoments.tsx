@@ -4,9 +4,9 @@ import NextImage from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Camera, Check, ChevronDown, ChevronUp, Heart, ImagePlus, LoaderCircle, Lock, MessageCircle, Send, ShieldCheck, Sparkles, Trash2, UserPlus, UsersRound, X } from "lucide-react";
+import { Archive, Ban, Bookmark, Camera, Check, ChevronDown, ChevronUp, Eye, EyeOff, Flag, Heart, ImagePlus, LoaderCircle, Lock, MessageCircle, MoreHorizontal, Pencil, Send, ShieldCheck, Sparkles, Trash2, UserPlus, UsersRound, VolumeX, X } from "lucide-react";
 
-type FeedScope = "public" | "community" | "friends";
+type FeedScope = "public" | "community" | "friends" | "saved";
 type Audience = "PUBLIC" | "COMMUNITY" | "CIRCLE" | "PRIVATE";
 
 type Moment = {
@@ -19,6 +19,12 @@ type Moment = {
   createdAt: string;
   isOwner: boolean;
   likedByMe: boolean;
+  bookmarkedByMe: boolean;
+  likeCount: number | null;
+  showLikeCount: boolean;
+  likerListVisibility: "AUDIENCE" | "OWNER_ONLY";
+  commentsMode: "AUDIENCE" | "FRIENDS_ONLY" | "OFF";
+  isArchived: boolean;
   user: { id: string; name: string; username: string | null; avatarUrl: string | null };
   activitySession: { id: string; activityType: string; startTime: string; distanceMeters: number; durationSeconds: number; verificationStatus: string } | null;
   community: { id: string; name: string; emblemUrl: string | null } | null;
@@ -26,6 +32,8 @@ type Moment = {
   _count: { reactions: number; comments: number };
   connection: { id: string | null; state: "SELF" | "NONE" | "PENDING_SENT" | "PENDING_RECEIVED" | "FRIEND" };
 };
+
+type MomentLiker = { id: string; createdAt: string; user: { id: string; name: string; username: string | null; avatarUrl: string | null } };
 
 type MomentComment = {
   id: string;
@@ -104,6 +112,7 @@ export function NutriVerseMoments() {
   const [selected, setSelected] = useState<Moment | null>(null);
   const [comments, setComments] = useState<MomentComment[]>([]);
   const [commentsLoading, setCommentsLoading] = useState(false);
+  const [commentsEnabled, setCommentsEnabled] = useState(true);
   const [commentDraft, setCommentDraft] = useState("");
   const [commentBusy, setCommentBusy] = useState(false);
   const [composerOpen, setComposerOpen] = useState(false);
@@ -120,6 +129,21 @@ export function NutriVerseMoments() {
   const [studioContext, setStudioContext] = useState<StudioContext | null>(null);
   const [publishing, setPublishing] = useState(false);
   const [composerMessage, setComposerMessage] = useState("");
+  const [showLikeCount, setShowLikeCount] = useState(true);
+  const [likerListVisibility, setLikerListVisibility] = useState<"AUDIENCE" | "OWNER_ONLY">("AUDIENCE");
+  const [commentsMode, setCommentsMode] = useState<"AUDIENCE" | "FRIENDS_ONLY" | "OFF">("AUDIENCE");
+  const [likers, setLikers] = useState<MomentLiker[]>([]);
+  const [likersOpen, setLikersOpen] = useState(false);
+  const [likersLoading, setLikersLoading] = useState(false);
+  const [momentMenuOpen, setMomentMenuOpen] = useState(false);
+  const [editPanelOpen, setEditPanelOpen] = useState(false);
+  const [editCaption, setEditCaption] = useState("");
+  const [editShowLikeCount, setEditShowLikeCount] = useState(true);
+  const [editLikerList, setEditLikerList] = useState<"AUDIENCE" | "OWNER_ONLY">("AUDIENCE");
+  const [editCommentsMode, setEditCommentsMode] = useState<"AUDIENCE" | "FRIENDS_ONLY" | "OFF">("AUDIENCE");
+  const [actionBusy, setActionBusy] = useState(false);
+  const [actionMessage, setActionMessage] = useState("");
+  const [reportReason, setReportReason] = useState("");
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const detailScrollRef = useRef<HTMLDivElement>(null);
@@ -137,14 +161,16 @@ export function NutriVerseMoments() {
   const selectedIndex = selected ? moments.findIndex((moment) => moment.id === selected.id) : -1;
 
   async function loadOptions() {
-    const [communityResponse, templateResponse, contextResponse] = await Promise.all([
+    const [communityResponse, templateResponse, contextResponse, settingsResponse] = await Promise.all([
       fetch("/api/communities?scope=mine", { cache: "no-store" }),
       fetch("/api/share-templates", { cache: "no-store" }),
       fetch("/api/share-templates/context", { cache: "no-store" }),
+      fetch("/api/settings", { cache: "no-store" }),
     ]);
     const communityResult = await communityResponse.json().catch(() => null) as { communities?: Community[] } | null;
     const templateResult = await templateResponse.json().catch(() => null) as { templates?: ShareTemplate[] } | null;
     const contextResult = await contextResponse.json().catch(() => null) as { context?: StudioContext } | null;
+    const settingsResult = await settingsResponse.json().catch(() => null) as { settings?: { defaultMomentShowLikeCount: boolean; defaultMomentLikerList: "AUDIENCE" | "OWNER_ONLY"; defaultMomentComments: "AUDIENCE" | "FRIENDS_ONLY" | "OFF" } } | null;
     if (communityResponse.ok) setCommunities(communityResult?.communities ?? []);
     if (templateResponse.ok) {
       const publishedTemplates = templateResult?.templates ?? [];
@@ -154,6 +180,11 @@ export function NutriVerseMoments() {
     if (contextResponse.ok && contextResult?.context) {
       setStudioContext(contextResult.context);
       setActivityId((current) => current || contextResult.context?.activities[0]?.id || "");
+    }
+    if (settingsResponse.ok && settingsResult?.settings) {
+      setShowLikeCount(settingsResult.settings.defaultMomentShowLikeCount);
+      setLikerListVisibility(settingsResult.settings.defaultMomentLikerList);
+      setCommentsMode(settingsResult.settings.defaultMomentComments);
     }
   }
 
@@ -246,11 +277,19 @@ export function NutriVerseMoments() {
   async function openMoment(moment: Moment) {
     const requestId = commentRequestRef.current + 1;
     commentRequestRef.current = requestId;
-    setSelected(moment); setComments([]); setCommentsLoading(true);
+    setSelected(moment); setComments([]); setLikers([]); setCommentsLoading(true); setCommentsEnabled(moment.commentsMode !== "OFF"); setMomentMenuOpen(false); setEditPanelOpen(false); setActionMessage("");
     try {
+      const likerPreviewRequest = moment.isOwner || moment.likerListVisibility === "AUDIENCE"
+        ? fetch(`/api/moments/${moment.id}/reaction?limit=3`, { cache: "no-store" })
+        : null;
       const response = await fetch(`/api/moments/${moment.id}/comments`, { cache: "no-store" });
-      const result = await response.json().catch(() => null) as { comments?: MomentComment[] } | null;
-      if (requestId === commentRequestRef.current && response.ok) setComments(result?.comments ?? []);
+      const result = await response.json().catch(() => null) as { comments?: MomentComment[]; commentsEnabled?: boolean } | null;
+      if (requestId === commentRequestRef.current && response.ok) { setComments(result?.comments ?? []); setCommentsEnabled(result?.commentsEnabled !== false); }
+      if (likerPreviewRequest) {
+        const likerResponse = await likerPreviewRequest;
+        const likerResult = await likerResponse.json().catch(() => null) as { reactions?: MomentLiker[] } | null;
+        if (requestId === commentRequestRef.current && likerResponse.ok) setLikers(likerResult?.reactions ?? []);
+      }
     } finally {
       if (requestId === commentRequestRef.current) setCommentsLoading(false);
     }
@@ -306,17 +345,99 @@ export function NutriVerseMoments() {
   async function toggleLike(moment: Moment) {
     const response = await fetch(`/api/moments/${moment.id}/reaction`, { method: moment.likedByMe ? "DELETE" : "PUT", headers: { "Content-Type": "application/json" }, body: moment.likedByMe ? undefined : JSON.stringify({ type: "ENCOURAGE" }) });
     if (!response.ok) return;
-    updateMoment(moment.id, (item) => ({ ...item, likedByMe: !item.likedByMe, _count: { ...item._count, reactions: Math.max(0, item._count.reactions + (item.likedByMe ? -1 : 1)) } }));
+    updateMoment(moment.id, (item) => {
+      const delta = item.likedByMe ? -1 : 1;
+      return { ...item, likedByMe: !item.likedByMe, likeCount: item.likeCount === null ? null : Math.max(0, item.likeCount + delta), _count: { ...item._count, reactions: Math.max(0, item._count.reactions + delta) } };
+    });
+    if (selected?.id === moment.id && (moment.isOwner || moment.likerListVisibility === "AUDIENCE")) {
+      const previewResponse = await fetch(`/api/moments/${moment.id}/reaction?limit=3`, { cache: "no-store" });
+      const previewResult = await previewResponse.json().catch(() => null) as { reactions?: MomentLiker[] } | null;
+      if (previewResponse.ok) setLikers(previewResult?.reactions ?? []);
+    }
+  }
+
+  async function toggleBookmark(moment: Moment) {
+    const response = await fetch(`/api/moments/${moment.id}/bookmark`, { method: moment.bookmarkedByMe ? "DELETE" : "PUT" });
+    if (!response.ok) return;
+    updateMoment(moment.id, (item) => ({ ...item, bookmarkedByMe: !item.bookmarkedByMe }));
+    if (scope === "saved" && moment.bookmarkedByMe) setMoments((current) => current.filter((item) => item.id !== moment.id));
+  }
+
+  async function openLikers(moment: Moment) {
+    if (moment.likerListVisibility === "OWNER_ONLY" && !moment.isOwner) return;
+    setLikersOpen(true); setLikersLoading(true); setLikers([]);
+    const response = await fetch(`/api/moments/${moment.id}/reaction?limit=50`, { cache: "no-store" });
+    const result = await response.json().catch(() => null) as { reactions?: MomentLiker[]; error?: string } | null;
+    if (response.ok) setLikers(result?.reactions ?? []); else setActionMessage(result?.error ?? "Daftar penyuka tidak dapat dimuat.");
+    setLikersLoading(false);
+  }
+
+  function openEditPanel(moment: Moment) {
+    setEditCaption(moment.caption ?? "");
+    setEditShowLikeCount(moment.showLikeCount);
+    setEditLikerList(moment.likerListVisibility);
+    setEditCommentsMode(moment.commentsMode);
+    setMomentMenuOpen(false);
+    setEditPanelOpen(true);
+  }
+
+  async function saveMomentSettings() {
+    if (!selected || actionBusy) return;
+    setActionBusy(true); setActionMessage("");
+    const response = await fetch(`/api/moments/${selected.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ caption: editCaption, showLikeCount: editShowLikeCount, likerListVisibility: editLikerList, commentsMode: editCommentsMode }) });
+    const result = await response.json().catch(() => null) as { moment?: Moment; error?: string } | null;
+    setActionBusy(false);
+    if (!response.ok || !result?.moment) { setActionMessage(result?.error ?? "Pengaturan Momen belum dapat disimpan."); return; }
+    updateMoment(selected.id, (item) => ({ ...item, caption: result.moment?.caption ?? null, showLikeCount: result.moment?.showLikeCount ?? editShowLikeCount, likerListVisibility: result.moment?.likerListVisibility ?? editLikerList, commentsMode: result.moment?.commentsMode ?? editCommentsMode, likeCount: editShowLikeCount ? item._count.reactions : null }));
+    setCommentsEnabled(editCommentsMode !== "OFF"); setEditPanelOpen(false); setActionMessage("Pengaturan Momen diperbarui.");
+  }
+
+  async function archiveMoment() {
+    if (!selected || actionBusy) return;
+    setActionBusy(true);
+    const response = await fetch(`/api/moments/${selected.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ isArchived: true }) });
+    setActionBusy(false);
+    if (!response.ok) { setActionMessage("Momen belum dapat diarsipkan."); return; }
+    setMoments((current) => current.filter((item) => item.id !== selected.id)); setSelected(null);
+  }
+
+  async function deleteMoment() {
+    if (!selected || actionBusy || !window.confirm("Hapus Momen ini secara permanen?")) return;
+    setActionBusy(true);
+    const response = await fetch(`/api/moments/${selected.id}`, { method: "DELETE" });
+    setActionBusy(false);
+    if (!response.ok) { setActionMessage("Momen belum dapat dihapus."); return; }
+    setMoments((current) => current.filter((item) => item.id !== selected.id)); setSelected(null);
+  }
+
+  async function safetyAction(action: "mute" | "block") {
+    if (!selected || selected.isOwner || actionBusy) return;
+    setActionBusy(true);
+    const response = await fetch(`/api/users/${selected.userId}/safety`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action }) });
+    setActionBusy(false);
+    if (!response.ok) { setActionMessage("Aksi keamanan belum dapat diproses."); return; }
+    setMoments((current) => current.filter((item) => item.userId !== selected.userId)); setSelected(null);
+  }
+
+  async function reportMoment() {
+    if (!selected || selected.isOwner || reportReason.trim().length < 5 || actionBusy) return;
+    setActionBusy(true);
+    const response = await fetch("/api/community/reports", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ momentId: selected.id, reason: reportReason.trim() }) });
+    const result = await response.json().catch(() => null) as { error?: string } | null;
+    setActionBusy(false);
+    if (!response.ok) { setActionMessage(result?.error ?? "Laporan belum dapat dikirim."); return; }
+    setReportReason(""); setMomentMenuOpen(false); setActionMessage("Laporan dikirim ke moderator NutriVerse.");
   }
 
   async function addComment(event: React.FormEvent) {
     event.preventDefault();
-    if (!selected || !commentDraft.trim() || commentBusy) return;
+    if (!selected || !commentsEnabled || !commentDraft.trim() || commentBusy) return;
     setCommentBusy(true);
     const response = await fetch(`/api/moments/${selected.id}/comments`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ content: commentDraft.trim() }) });
-    const result = await response.json().catch(() => null) as { comment?: MomentComment } | null;
+    const result = await response.json().catch(() => null) as { comment?: MomentComment | null; moderated?: boolean; message?: string; error?: string } | null;
     setCommentBusy(false);
-    if (!response.ok || !result?.comment) return;
+    if (!response.ok) { setActionMessage(result?.error ?? "Komentar belum dapat dikirim."); return; }
+    if (result?.moderated || !result?.comment) { setCommentDraft(""); setActionMessage(result?.message ?? "Komentar masuk moderasi."); return; }
     setComments((current) => [...current, result.comment as MomentComment]); setCommentDraft("");
     updateMoment(selected.id, (item) => ({ ...item, _count: { ...item._count, comments: item._count.comments + 1 } }));
   }
@@ -482,7 +603,7 @@ export function NutriVerseMoments() {
       const upload = await uploadResponse.json().catch(() => null) as { path?: string; error?: string } | null;
       if (!uploadResponse.ok || !upload?.path) { setComposerMessage(`Upload foto gagal: ${upload?.error ?? "Storage tidak menerima foto."}`); return; }
       const studioActivityId = composerMode === "studio" && selectedTemplateUsesActivity ? selectedActivity?.id ?? null : activityId || null;
-      const response = await fetch("/api/moments", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ imagePath: upload.path, caption, privacyLevel: audience, communityId: audience === "COMMUNITY" ? targetCommunity : null, activitySessionId: studioActivityId, duringActivity: Boolean(studioActivityId), shareTemplateId: composerMode === "studio" ? templateId || null : null }) });
+      const response = await fetch("/api/moments", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ imagePath: upload.path, caption, privacyLevel: audience, communityId: audience === "COMMUNITY" ? targetCommunity : null, activitySessionId: studioActivityId, duringActivity: Boolean(studioActivityId), shareTemplateId: composerMode === "studio" ? templateId || null : null, showLikeCount, likerListVisibility, commentsMode }) });
       const result = await response.json().catch(() => null) as { success?: boolean; error?: string } | null;
       if (!response.ok || !result?.success) { setComposerMessage(`Penyimpanan Momen gagal: ${result?.error ?? "Record Momen tidak dapat dibuat."}`); return; }
       closeComposer(); setSourcePhoto(null); setOutputPhoto(null); setCaption(""); setComposerMessage("");
@@ -501,24 +622,44 @@ export function NutriVerseMoments() {
     if (mode === "capture") window.setTimeout(() => void startCamera(), 0);
     else window.setTimeout(() => void renderStudio(selectedTemplate, null), 0);
   }
+
+  useEffect(() => {
+    const openCamera = () => openComposer("capture");
+    window.addEventListener("nutriverse:open-moment-camera", openCamera);
+    return () => window.removeEventListener("nutriverse:open-moment-camera", openCamera);
+  // Shortcut kamera global hanya dipasang sekali selama halaman Momen aktif.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const followLabel = (moment: Moment) => moment.connection.state === "FRIEND" ? "Teman" : moment.connection.state === "PENDING_SENT" ? "Menunggu" : moment.connection.state === "PENDING_RECEIVED" ? "Terima" : "Ikuti";
+  const firstLiker = likers[0]?.user;
+  const remainingLikes = selected?.likeCount === null || selected?.likeCount === undefined ? null : Math.max(0, selected.likeCount - 1);
 
   return (
     <div className="space-y-6">
       <section className="overflow-hidden rounded-3xl border border-line bg-card shadow-soft"><div className="relative overflow-hidden bg-gradient-to-br from-[#063c2b] via-brand to-lime p-6 text-white sm:p-8"><div className="absolute -right-10 -top-12 h-52 w-52 rounded-full border-[34px] border-white/10" /><div className="relative flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-[9px] font-bold uppercase tracking-[0.18em] text-white/75">NutriVerse Moments</p><h1 className="mt-2 max-w-xl font-display text-3xl font-extrabold">Cerita sehat yang dekat, relevan, dan terkontrol.</h1><p className="mt-2 max-w-2xl text-sm text-white/80">Lihat momen publik, komunitas yang kamu ikuti, atau temanmu dalam feed yang terpisah.</p></div><div className="flex flex-wrap gap-2"><button onClick={() => openComposer("studio")} className="btn border-white/30 bg-white/10 text-white hover:bg-white/20"><Sparkles className="h-4 w-4" /> Studio Berbagi</button><button onClick={() => openComposer("capture")} className="btn bg-white text-[#06422f] hover:bg-white/90"><Camera className="h-4 w-4" /> Ambil Momen</button></div></div></div></section>
 
       <section className="mx-auto w-full space-y-5">
-        <nav className="grid grid-cols-3 gap-1 rounded-2xl border border-line bg-secondary p-1" aria-label="Filter momen">
+        <nav className="-mx-4 flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:grid sm:grid-cols-[repeat(3,minmax(0,1fr))_160px] sm:gap-1 sm:overflow-visible sm:rounded-2xl sm:border sm:border-line sm:bg-secondary sm:p-1" aria-label="Filter momen">
           {(["public", "community", "friends"] as FeedScope[]).map((item) => (
             <button
               key={item}
               onClick={() => chooseScope(item)}
-              className={"rounded-xl px-2 py-3 text-xs font-bold transition " + (scope === item ? "bg-card text-brand shadow-sm" : "text-muted-foreground hover:text-foreground")}
+              className={"min-w-[145px] shrink-0 snap-start rounded-full border px-4 py-3 text-xs font-bold transition sm:min-w-0 sm:rounded-xl " + (scope === item ? "border-line bg-card text-brand shadow-sm" : "border-transparent bg-secondary/75 text-muted-foreground hover:text-foreground")}
             >
               {item === "public" ? "Momen Publik" : item === "community" ? "Momen Komunitas" : "Momen Teman"}
             </button>
           ))}
+          <span className="my-2 w-px shrink-0 bg-line sm:hidden" aria-hidden="true" />
+          <button onClick={() => chooseScope("saved")} className={"flex min-w-[132px] shrink-0 snap-start items-center justify-center gap-2 rounded-full border px-4 py-3 text-xs font-bold transition sm:min-w-0 sm:rounded-xl " + (scope === "saved" ? "border-brand/30 bg-brand text-white shadow-sm" : "border-brand/20 bg-brand-soft text-brand hover:border-brand/40")}><Bookmark className={`h-4 w-4 ${scope === "saved" ? "fill-current" : ""}`} /> Tersimpan</button>
         </nav>
+
+        {scope === "saved" && (
+          <div className="flex items-center gap-3 rounded-2xl border border-brand/15 bg-brand-soft/45 px-4 py-3">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brand text-white"><Bookmark className="h-4 w-4 fill-current" /></span>
+            <div><p className="text-xs font-extrabold text-foreground">Koleksi Momen Tersimpan</p><p className="mt-0.5 text-[10px] text-muted-foreground">Koleksi pribadi yang hanya dapat dilihat olehmu.</p></div>
+          </div>
+        )}
 
         {scope === "community" && communities.length > 0 && (
           <div className="flex gap-2 overflow-x-auto pb-1">
@@ -583,7 +724,7 @@ export function NutriVerseMoments() {
                 />
                 <span className="absolute inset-0 hidden items-center justify-center gap-5 bg-black/45 text-white opacity-0 transition group-hover:opacity-100 sm:flex">
                   <span className="inline-flex items-center gap-1.5 text-sm font-extrabold">
-                    <Heart className="h-5 w-5 fill-current" /> {moment._count.reactions}
+                    <Heart className="h-5 w-5 fill-current" /> {moment.likeCount ?? "—"}
                   </span>
                   <span className="inline-flex items-center gap-1.5 text-sm font-extrabold">
                     <MessageCircle className="h-5 w-5 fill-current" /> {moment._count.comments}
@@ -630,6 +771,7 @@ export function NutriVerseMoments() {
                   {followLabel(selected)}
                 </button>
               )}
+              <button onClick={() => setMomentMenuOpen((current) => !current)} className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-muted-foreground hover:bg-secondary" aria-label="Tindakan lainnya"><MoreHorizontal className="h-5 w-5" /></button>
               <button onClick={() => setSelected(null)} className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-muted-foreground hover:bg-secondary" aria-label="Tutup">
                 <X className="h-5 w-5" />
               </button>
@@ -689,6 +831,7 @@ export function NutriVerseMoments() {
                     <UserPlus className="h-4 w-4" /> {followLabel(selected)}
                   </button>
                 )}
+                <button onClick={() => setMomentMenuOpen((current) => !current)} className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-muted-foreground hover:bg-secondary" aria-label="Tindakan lainnya"><MoreHorizontal className="h-5 w-5" /></button>
                 <button onClick={() => setSelected(null)} className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-muted-foreground hover:bg-secondary" aria-label="Tutup">
                   <X className="h-5 w-5" />
                 </button>
@@ -698,16 +841,73 @@ export function NutriVerseMoments() {
                 <p className="text-[9px] font-bold uppercase tracking-wider text-brand">
                   {momentStatus(selected)}{selected.community ? ` · ${selected.community.name}` : ""}
                 </p>
-                <div className="mt-3 flex gap-2">
-                  <button onClick={() => void toggleLike(selected)} className={`inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-xs font-bold ${selected.likedByMe ? "bg-rose-500/10 text-rose-500" : "bg-secondary text-muted-foreground"}`}>
-                    <Heart className={`h-4 w-4 ${selected.likedByMe ? "fill-current" : ""}`} />
-                    {selected._count.reactions} Suka
+                <div className="mt-3 flex items-center gap-4 border-b border-line pb-3">
+                  <button onClick={() => void toggleLike(selected)} className={`inline-flex items-center gap-1.5 text-sm font-extrabold transition active:scale-90 ${selected.likedByMe ? "text-rose-500" : "text-foreground"}`} aria-label={selected.likedByMe ? "Batalkan suka" : "Sukai Momen"}>
+                    <Heart className={`h-7 w-7 ${selected.likedByMe ? "fill-current" : ""}`} />
+                    {selected.likeCount !== null && <span>{selected.likeCount}</span>}
                   </button>
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-3 py-2 text-xs font-bold text-muted-foreground">
-                    <MessageCircle className="h-4 w-4" />
-                    {selected._count.comments} Komentar
-                  </span>
+                  <button onClick={() => detailScrollRef.current?.querySelector("[data-moment-comments]")?.scrollIntoView({ behavior: "smooth", block: "start" })} disabled={!commentsEnabled} className="inline-flex items-center gap-1.5 text-sm font-extrabold text-foreground transition active:scale-90 disabled:opacity-35" aria-label="Lihat komentar">
+                    <MessageCircle className="h-7 w-7" /><span>{selected._count.comments}</span>
+                  </button>
+                  <button onClick={() => void toggleBookmark(selected)} className={`ml-auto transition active:scale-90 ${selected.bookmarkedByMe ? "text-brand" : "text-foreground"}`} aria-label={selected.bookmarkedByMe ? "Hapus dari tersimpan" : "Simpan Momen"}>
+                    <Bookmark className={`h-7 w-7 ${selected.bookmarkedByMe ? "fill-current" : ""}`} />
+                  </button>
                 </div>
+
+                {(selected.isOwner || selected.likerListVisibility === "AUDIENCE") && (firstLiker || (selected.likeCount ?? 0) > 0) && (
+                  <button onClick={() => void openLikers(selected)} className="mt-3 flex max-w-full items-center text-left text-xs text-foreground hover:text-brand">
+                    {likers.length > 0 && <span className="mr-2 flex shrink-0 pl-1">{likers.slice(0, 3).map((liker, index) => <span key={liker.id} className="relative -ml-1 grid h-7 w-7 place-items-center overflow-hidden rounded-full border-2 border-card bg-brand text-[8px] font-bold text-white" style={{ zIndex: 3 - index }}>{liker.user.avatarUrl ? <NextImage src={liker.user.avatarUrl} alt="" fill unoptimized className="object-cover" /> : initials(liker.user.name)}</span>)}</span>}
+                    <span className="truncate">{firstLiker ? <>Disukai oleh <strong>{firstLiker.username ?? firstLiker.name}</strong>{remainingLikes && remainingLikes > 0 ? <> dan <strong>{remainingLikes} lainnya</strong></> : null}</> : "Lihat pengguna yang menyukai"}</span>
+                  </button>
+                )}
+
+                {momentMenuOpen && (
+                  <section className="fixed inset-x-3 bottom-3 z-40 max-h-[75dvh] overflow-y-auto rounded-3xl border border-line bg-card p-4 shadow-2xl lg:static lg:z-auto lg:mt-3 lg:max-h-none lg:overflow-visible lg:rounded-2xl lg:bg-secondary/35 lg:p-3 lg:shadow-none">
+                    <div className="mb-3 flex items-center justify-between lg:hidden"><div><p className="text-sm font-extrabold">Opsi Momen</p><p className="text-[9px] text-muted-foreground">Kelola privasi dan keamanan Momen.</p></div><button onClick={() => setMomentMenuOpen(false)} className="grid h-9 w-9 place-items-center rounded-xl bg-secondary text-muted-foreground"><X className="h-4 w-4" /></button></div>
+                    {selected.isOwner ? (
+                      <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-1">
+                        <button onClick={() => openEditPanel(selected)} className="btn btn-outline btn-sm justify-start"><Pencil className="h-4 w-4" /> Edit Momen</button>
+                        <button onClick={() => void archiveMoment()} disabled={actionBusy} className="btn btn-outline btn-sm justify-start"><Archive className="h-4 w-4" /> Arsipkan</button>
+                        <button onClick={() => void deleteMoment()} disabled={actionBusy} className="btn btn-outline btn-sm justify-start border-rose-500/25 text-rose-500"><Trash2 className="h-4 w-4" /> Hapus permanen</button>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
+                          <button onClick={() => void safetyAction("mute")} disabled={actionBusy} className="btn btn-outline btn-sm justify-start"><VolumeX className="h-4 w-4" /> Bisukan @{selected.user.username ?? "pengguna"}</button>
+                          <button onClick={() => void safetyAction("block")} disabled={actionBusy} className="btn btn-outline btn-sm justify-start border-rose-500/25 text-rose-500"><Ban className="h-4 w-4" /> Blokir pengguna</button>
+                        </div>
+                        <label className="block">
+                          <span className="label">Laporkan Momen</span>
+                          <textarea value={reportReason} onChange={(event) => setReportReason(event.target.value)} maxLength={500} rows={2} className="input mt-1 resize-none" placeholder="Jelaskan alasan laporan…" />
+                        </label>
+                        <button onClick={() => void reportMoment()} disabled={actionBusy || reportReason.trim().length < 5} className="btn btn-outline btn-sm w-full border-amber/30 text-amber"><Flag className="h-4 w-4" /> Kirim ke moderator</button>
+                      </div>
+                    )}
+                  </section>
+                )}
+
+                {editPanelOpen && selected.isOwner && (
+                  <section className="fixed inset-x-3 bottom-3 z-40 max-h-[80dvh] space-y-3 overflow-y-auto rounded-3xl border border-brand/20 bg-card p-4 shadow-2xl lg:static lg:z-auto lg:mt-3 lg:max-h-none lg:overflow-visible lg:rounded-2xl lg:bg-brand-soft/25 lg:p-3 lg:shadow-none">
+                    <div className="flex items-center justify-between"><p className="text-xs font-extrabold">Edit Momen &amp; privasi interaksi</p><button onClick={() => setEditPanelOpen(false)} className="text-muted-foreground"><X className="h-4 w-4" /></button></div>
+                    <textarea value={editCaption} onChange={(event) => setEditCaption(event.target.value)} maxLength={280} rows={3} className="input resize-none" placeholder="Caption boleh dikosongkan" />
+                    <button onClick={() => setEditShowLikeCount((current) => !current)} className="flex w-full items-center justify-between rounded-xl border border-line bg-card px-3 py-2 text-left">
+                      <span><span className="block text-[10px] font-bold">Tampilkan jumlah suka</span><span className="text-[8px] text-muted-foreground">Berlaku khusus Momen ini</span></span>
+                      {editShowLikeCount ? <Eye className="h-4 w-4 text-brand" /> : <EyeOff className="h-4 w-4 text-muted-foreground" />}
+                    </button>
+                    <select value={editLikerList} onChange={(event) => setEditLikerList(event.target.value as "AUDIENCE" | "OWNER_ONLY")} className="input">
+                      <option value="AUDIENCE">Daftar penyuka: terlihat audiens</option>
+                      <option value="OWNER_ONLY">Daftar penyuka: hanya saya</option>
+                    </select>
+                    <select value={editCommentsMode} onChange={(event) => setEditCommentsMode(event.target.value as "AUDIENCE" | "FRIENDS_ONLY" | "OFF")} className="input">
+                      <option value="AUDIENCE">Komentar: semua audiens</option>
+                      <option value="FRIENDS_ONLY">Komentar: teman saja</option>
+                      <option value="OFF">Komentar: dinonaktifkan</option>
+                    </select>
+                    <button onClick={() => void saveMomentSettings()} disabled={actionBusy} className="btn btn-primary w-full"><Check className="h-4 w-4" /> Simpan perubahan</button>
+                  </section>
+                )}
+
+                {actionMessage && <p className="mt-3 rounded-xl bg-secondary px-3 py-2 text-[10px] leading-relaxed text-muted-foreground">{actionMessage}</p>}
 
                 {selected.caption && (
                   <p className="mt-4 border-b border-line pb-4 text-sm leading-6">
@@ -716,9 +916,14 @@ export function NutriVerseMoments() {
                   </p>
                 )}
 
-                <section className="pt-5">
+                <section data-moment-comments className="scroll-mt-4 pt-5">
                   <h3 className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">Komentar</h3>
-                  {commentsLoading ? (
+                  {!commentsEnabled ? (
+                    <div className="mt-4 rounded-2xl border border-dashed border-line p-6 text-center">
+                      <Lock className="mx-auto h-5 w-5 text-muted-foreground" />
+                      <p className="mt-2 text-xs font-bold">Komentar dinonaktifkan pemilik Momen</p>
+                    </div>
+                  ) : commentsLoading ? (
                     <p className="py-8 text-center text-xs text-muted-foreground">Memuat komentar…</p>
                   ) : comments.length === 0 ? (
                     <p className="py-8 text-center text-xs text-muted-foreground">Belum ada komentar. Jadilah yang pertama.</p>
@@ -748,14 +953,31 @@ export function NutriVerseMoments() {
                 </section>
               </div>
 
-              <form onSubmit={addComment} className="flex shrink-0 gap-2 border-t border-line bg-card p-3 sm:p-4">
-                <input value={commentDraft} onChange={(event) => setCommentDraft(event.target.value)} maxLength={500} className="input min-w-0 flex-1" placeholder="Tulis komentar…" />
-                <button disabled={commentBusy || !commentDraft.trim()} className="btn btn-primary shrink-0 px-4" aria-label="Kirim komentar">
-                  <Send className="h-4 w-4" />
-                </button>
-              </form>
+              {commentsEnabled ? (
+                <form onSubmit={addComment} className="flex shrink-0 gap-2 border-t border-line bg-card p-3 sm:p-4">
+                  <input value={commentDraft} onChange={(event) => setCommentDraft(event.target.value)} maxLength={500} className="input min-w-0 flex-1" placeholder={selected.commentsMode === "FRIENDS_ONLY" ? "Komentar khusus teman…" : "Tulis komentar…"} />
+                  <button disabled={commentBusy || !commentDraft.trim()} className="btn btn-primary shrink-0 px-4" aria-label="Kirim komentar">
+                    <Send className="h-4 w-4" />
+                  </button>
+                </form>
+              ) : (
+                <div className="flex shrink-0 items-center justify-center gap-2 border-t border-line bg-card p-4 text-[10px] font-bold text-muted-foreground"><Lock className="h-3.5 w-3.5" /> Komentar dimatikan</div>
+              )}
             </aside>
           </article>
+        </div>
+      ), document.body)}
+
+      {selected && likersOpen && typeof document !== "undefined" && createPortal((
+        <div className="fixed inset-0 z-[10001] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Daftar penyuka" onMouseDown={(event) => { if (event.target === event.currentTarget) setLikersOpen(false); }}>
+          <section className="flex max-h-[min(75dvh,620px)] w-full max-w-md flex-col overflow-hidden rounded-3xl border border-line bg-card shadow-2xl" onMouseDown={(event) => event.stopPropagation()}>
+            <header className="flex items-center justify-between border-b border-line p-4"><div><p className="font-display text-lg font-extrabold">Disukai oleh</p><p className="text-[10px] text-muted-foreground">{selected.likeCount ?? selected._count.reactions} interaksi</p></div><button onClick={() => setLikersOpen(false)} className="grid h-9 w-9 place-items-center rounded-xl text-muted-foreground hover:bg-secondary"><X className="h-5 w-5" /></button></header>
+            <div className="min-h-0 flex-1 overflow-y-auto p-3">
+              {likersLoading ? <p className="py-10 text-center text-xs text-muted-foreground">Memuat penyuka…</p> : likers.length === 0 ? <p className="py-10 text-center text-xs text-muted-foreground">Belum ada yang menyukai Momen ini.</p> : (
+                <div className="space-y-1">{likers.map((liker) => <Link key={liker.id} href={`/profil/${liker.user.id}`} onClick={() => setLikersOpen(false)} className="flex items-center gap-3 rounded-2xl p-3 hover:bg-secondary"><span className="relative grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-full bg-brand text-xs font-bold text-white">{liker.user.avatarUrl ? <NextImage src={liker.user.avatarUrl} alt="" fill unoptimized className="object-cover" /> : initials(liker.user.name)}</span><span className="min-w-0"><span className="block truncate text-xs font-extrabold">{liker.user.name}</span><span className="block truncate text-[10px] text-muted-foreground">@{liker.user.username ?? "pengguna"}</span></span></Link>)}</div>
+              )}
+            </div>
+          </section>
         </div>
       ), document.body)}
 
@@ -939,6 +1161,13 @@ export function NutriVerseMoments() {
                     </select>
                   </label>
                 )}
+
+                <section className="rounded-2xl border border-line bg-secondary/25 p-3">
+                  <div className="flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-brand" /><div><p className="text-[10px] font-extrabold">Privasi interaksi</p><p className="text-[8px] text-muted-foreground">Pengaturan ini hanya berlaku untuk Momen baru ini.</p></div></div>
+                  <button onClick={() => setShowLikeCount((current) => !current)} className="mt-3 flex w-full items-center justify-between rounded-xl border border-line bg-card px-3 py-2 text-left"><span className="text-[9px] font-bold">Tampilkan jumlah suka</span>{showLikeCount ? <Eye className="h-4 w-4 text-brand" /> : <EyeOff className="h-4 w-4 text-muted-foreground" />}</button>
+                  <select value={likerListVisibility} onChange={(event) => setLikerListVisibility(event.target.value as "AUDIENCE" | "OWNER_ONLY")} className="input mt-2 text-[9px]"><option value="AUDIENCE">Daftar penyuka terlihat audiens</option><option value="OWNER_ONLY">Daftar penyuka hanya saya</option></select>
+                  <select value={commentsMode} onChange={(event) => setCommentsMode(event.target.value as "AUDIENCE" | "FRIENDS_ONLY" | "OFF")} className="input mt-2 text-[9px]"><option value="AUDIENCE">Komentar untuk semua audiens</option><option value="FRIENDS_ONLY">Komentar hanya teman</option><option value="OFF">Komentar dinonaktifkan</option></select>
+                </section>
 
                 {composerMode === "capture" && (
                   <label>

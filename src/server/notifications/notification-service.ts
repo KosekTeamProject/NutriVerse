@@ -30,10 +30,11 @@ export async function createUserNotification(
     title: string;
     message: string;
     respectPreferences?: boolean;
+    preferenceOverride?: "notificationsMomentLikes" | "notificationsMomentComments" | "notificationsCommunity";
   },
   database: DatabaseClient = prisma,
 ) {
-  const preference = preferenceField(input.type);
+  const preference = input.preferenceOverride ?? preferenceField(input.type);
   if (input.respectPreferences !== false && preference) {
     const settings = await database.userSettings.findUnique({
       where: { userId: input.userId },

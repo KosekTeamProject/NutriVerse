@@ -1,22 +1,24 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Send, MessageCircle, X, Sparkles } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Camera, Send, X, Sparkles } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useAuthSession } from "@/hooks/useAuthSession";
 import { useProgressData } from "@/providers/ProgressDataProvider";
-import { useGuidedTour } from "@/providers/GuidedTourProvider";
+
+type ConversationMessage = { sender: string; content: string };
+type ConversationResponse = { success?: boolean; messages?: ConversationMessage[] };
 
 export function AIChat() {
   const session = useAuthSession();
   const { overview } = useProgressData();
-  const { isActive: isTourActive } = useGuidedTour();
   const pathname = usePathname();
+  const isMomentsPage = pathname === "/momen";
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<{ role: "user" | "ai"; content: string }[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [sessionId, setSessionId] = useState("");
+  const sessionIdRef = useRef("");
 
   useEffect(() => {
     let storedSessionId = localStorage.getItem("nutriverse_chat_session");
@@ -24,17 +26,17 @@ export function AIChat() {
       storedSessionId = "session-" + Math.random().toString(36).substring(2, 15);
       localStorage.setItem("nutriverse_chat_session", storedSessionId);
     }
-    setSessionId(storedSessionId);
+    sessionIdRef.current = storedSessionId;
 
     // Load history
     fetch("/api/companion/conversations")
       .then(res => res.json())
-      .then(data => {
+      .then((data: ConversationResponse) => {
         if (data.success && data.messages) {
           setMessages(
-            data.messages.map((m: any) => ({
-              role: m.sender === "USER" ? "user" : "ai",
-              content: m.content,
+            data.messages.map((message) => ({
+              role: message.sender === "USER" ? "user" as const : "ai" as const,
+              content: message.content,
             }))
           );
         }
@@ -75,7 +77,7 @@ export function AIChat() {
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: userMessage, sessionId, companionName, userContext, progress }),
+        body: JSON.stringify({ message: userMessage, sessionId: sessionIdRef.current, companionName, userContext, progress }),
       });
 
       const data = await response.json();
@@ -85,7 +87,7 @@ export function AIChat() {
       } else {
         setMessages((prev) => [...prev, { role: "ai", content: `Error: ${data.error}` }]);
       }
-    } catch (error) {
+    } catch {
       setMessages((prev) => [...prev, { role: "ai", content: "Terjadi kesalahan pada jaringan." }]);
     } finally {
       setIsLoading(false);
@@ -93,10 +95,10 @@ export function AIChat() {
   };
 
   return (
-    <div className={`fixed ${pathname === "/komunitas" ? "bottom-48" : "bottom-28"} right-4 sm:bottom-6 sm:right-6 z-50 flex flex-col items-end`}>
+    <div className="fixed bottom-28 right-4 z-50 flex flex-col items-end sm:bottom-6 sm:right-6">
       {/* Chat Window */}
       {isOpen && (
-        <div className="w-[350px] mb-4 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-2xl bg-white dark:bg-zinc-950 flex flex-col h-[500px] transition-all duration-300 animate-in slide-in-from-bottom-5">
+        <div className="mb-4 flex h-[min(500px,calc(100dvh-10rem))] w-[calc(100vw-2rem)] max-w-[350px] flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-2xl transition-all duration-300 animate-in slide-in-from-bottom-5 dark:border-zinc-800 dark:bg-zinc-950">
           <div className="bg-emerald-600 p-4 text-white font-semibold flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
@@ -164,17 +166,20 @@ export function AIChat() {
         </div>
       )}
 
-      {/* Floating Toggle Button */}
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className={`${
-          isOpen 
-            ? "bg-zinc-800 hover:bg-zinc-700" 
-            : "bg-gradient-to-tr from-emerald-600 via-emerald-500 to-teal-400 hover:brightness-105 active:scale-95"
-        } text-white p-4 rounded-full shadow-xl transition-all duration-300 hover:scale-105 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500`}
-      >
-        {isOpen ? <X size={24} /> : <Sparkles size={24} className="animate-pulse" />}
-      </button>
+      <div className="flex flex-col items-center gap-3">
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className={`${isOpen ? "bg-zinc-800 hover:bg-zinc-700" : "bg-gradient-to-tr from-emerald-600 via-emerald-500 to-teal-400 shadow-[0_12px_28px_rgba(0,166,118,0.34)] hover:-translate-y-0.5 hover:brightness-105 active:scale-95"} ${isMomentsPage && !isOpen ? "h-[58px] w-[58px] lg:h-16 lg:w-16" : "h-16 w-16"} grid place-items-center rounded-full text-white transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/60 focus-visible:ring-offset-2`}
+          aria-label={isOpen ? "Tutup Nora" : `Buka ${session?.companionName || "Nora"}`}
+        >
+          {isOpen ? <X className="h-7 w-7" /> : <Sparkles className={`${isMomentsPage ? "h-6 w-6 lg:h-7 lg:w-7" : "h-7 w-7"} animate-pulse`} />}
+        </button>
+        {isMomentsPage && !isOpen && (
+          <button onClick={() => window.dispatchEvent(new Event("nutriverse:open-moment-camera"))} className="grid h-[68px] w-[68px] place-items-center rounded-full bg-gradient-to-tr from-emerald-700 via-emerald-600 to-teal-400 text-white shadow-[0_14px_30px_rgba(0,153,106,0.34)] transition duration-300 hover:-translate-y-0.5 hover:brightness-105 active:scale-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/60 focus-visible:ring-offset-2 lg:hidden" aria-label="Ambil Momen dengan kamera">
+            <Camera className="h-8 w-8" />
+          </button>
+        )}
+      </div>
     </div>
   );
 }

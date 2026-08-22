@@ -1,4 +1,4 @@
-import { ConnectionStatus, Prisma, PrivacyLevel, ShareTemplateStatus } from "@prisma/client";
+import { ConnectionStatus, MomentCommentMode, MomentLikerListVisibility, Prisma, PrivacyLevel, ShareTemplateStatus } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { apiErrorResponse, assertSameOrigin, enforceRateLimit, stringValue } from "@/lib/api";
 import { requireCurrentUser } from "@/lib/auth";
@@ -6,12 +6,13 @@ import { prisma } from "@/lib/prisma";
 import { ownedStoragePath } from "@/lib/storage-ownership";
 import { COMMUNITY_APPROVAL, COMMUNITY_MEMBER } from "@/server/community/community-constants";
 import { signedMomentImages } from "@/server/community/moment-images";
+import { visibleMomentWhere } from "@/server/community/moment-access";
 import { PROFILE_MOMENT_LIMIT } from "@/server/community/profile-moment";
 
-type FeedScope = "public" | "community" | "friends" | "mine" | "showcase";
+type FeedScope = "public" | "community" | "friends" | "saved" | "mine" | "showcase";
 
 function feedScope(value: string | null): FeedScope {
-  if (value === "community" || value === "friends" || value === "mine" || value === "showcase") return value;
+  if (value === "community" || value === "friends" || value === "saved" || value === "mine" || value === "showcase") return value;
   return "public";
 }
 
@@ -21,6 +22,20 @@ async function connectedUserIds(userId: string) {
     select: { requesterId: true, addresseeId: true },
   });
   return connections.map((connection) => connection.requesterId === userId ? connection.addresseeId : connection.requesterId);
+}
+
+async function hiddenSocialUserIds(userId: string) {
+  const [mutes, blocks] = await Promise.all([
+    prisma.userMute.findMany({ where: { muterId: userId }, select: { mutedId: true } }),
+    prisma.userConnection.findMany({
+      where: { status: ConnectionStatus.BLOCKED, OR: [{ requesterId: userId }, { addresseeId: userId }] },
+      select: { requesterId: true, addresseeId: true },
+    }),
+  ]);
+  return [...new Set([
+    ...mutes.map((mute) => mute.mutedId),
+    ...blocks.map((block) => block.requesterId === userId ? block.addresseeId : block.requesterId),
+  ])];
 }
 
 function discoveryJitter(seed: string) {
@@ -52,12 +67,15 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(Math.max(Number(request.nextUrl.searchParams.get("limit")) || 10, 1), 30);
     const cursor = request.nextUrl.searchParams.get("cursor") || undefined;
     const publicOffset = scope === "public" && cursor ? Math.max(Number.parseInt(cursor, 10) || 0, 0) : 0;
+    const hiddenUserIds = scope === "mine" || scope === "showcase" ? [] : await hiddenSocialUserIds(user.id);
 
-    let where: Prisma.MomentWhereInput = { isHidden: false, user: { isSuspended: false } };
+    let where: Prisma.MomentWhereInput = { isHidden: false, isArchived: false, user: { isSuspended: false }, ...(hiddenUserIds.length ? { userId: { notIn: hiddenUserIds } } : {}) };
     if (scope === "showcase") {
       where = { ...where, userId: user.id, visibleOnProfile: true };
     } else if (scope === "mine") {
-      where = { ...where, userId: user.id };
+      where = { isHidden: false, user: { isSuspended: false }, userId: user.id };
+    } else if (scope === "saved") {
+      where = { AND: [where, visibleMomentWhere(user.id), { bookmarks: { some: { userId: user.id } } }] };
     } else if (scope === "friends") {
       const friendIds = await connectedUserIds(user.id);
       where = {
@@ -91,6 +109,10 @@ export async function GET(request: NextRequest) {
         privacyLevel: true,
         visibleOnProfile: true,
         profileDisplayOrder: true,
+        showLikeCount: true,
+        likerListVisibility: true,
+        commentsMode: true,
+        isArchived: true,
         reportCount: true,
         createdAt: true,
         user: { select: { id: true, name: true, username: true, avatarUrl: true } },
@@ -107,6 +129,7 @@ export async function GET(request: NextRequest) {
         community: { select: { id: true, name: true, emblemUrl: true } },
         shareTemplate: { select: { id: true, name: true, version: true } },
         reactions: { where: { userId: user.id }, select: { id: true } },
+        bookmarks: { where: { userId: user.id }, select: { id: true } },
         _count: { select: { reactions: true, comments: { where: { isHidden: false } } } },
       },
       orderBy: scope === "showcase"
@@ -191,12 +214,17 @@ export async function GET(request: NextRequest) {
             : connection?.status === ConnectionStatus.PENDING
               ? connection.requesterId === user.id ? "PENDING_SENT" : "PENDING_RECEIVED"
               : "NONE";
+        const maySeeLikeCount = moment.userId === user.id || moment.showLikeCount;
         return {
           ...moment,
           reportCount: undefined,
           isOwner: moment.userId === user.id,
           likedByMe: moment.reactions.length > 0,
+          bookmarkedByMe: moment.bookmarks.length > 0,
           reactions: undefined,
+          bookmarks: undefined,
+          likeCount: maySeeLikeCount ? moment._count.reactions : null,
+          _count: { ...moment._count, reactions: maySeeLikeCount ? moment._count.reactions : 0 },
           connection: { id: connection?.id ?? null, state: connectionState },
         };
       }),
@@ -279,6 +307,19 @@ export async function POST(request: NextRequest) {
     } : undefined;
 
     const caption = body?.caption === undefined || body.caption === null ? null : stringValue(body.caption, "Caption", { max: 280 });
+    const preferences = await prisma.userSettings.upsert({
+      where: { userId: user.id },
+      create: { userId: user.id },
+      update: {},
+      select: { defaultMomentShowLikeCount: true, defaultMomentLikerList: true, defaultMomentComments: true },
+    });
+    const showLikeCount = typeof body?.showLikeCount === "boolean" ? body.showLikeCount : preferences.defaultMomentShowLikeCount;
+    const likerListVisibility = typeof body?.likerListVisibility === "string" && Object.values(MomentLikerListVisibility).includes(body.likerListVisibility as MomentLikerListVisibility)
+      ? body.likerListVisibility as MomentLikerListVisibility
+      : preferences.defaultMomentLikerList;
+    const commentsMode = typeof body?.commentsMode === "string" && Object.values(MomentCommentMode).includes(body.commentsMode as MomentCommentMode)
+      ? body.commentsMode as MomentCommentMode
+      : preferences.defaultMomentComments;
     const moment = await prisma.moment.create({
       data: {
         userId: user.id,
@@ -291,6 +332,9 @@ export async function POST(request: NextRequest) {
         caption,
         duringActivity: body?.duringActivity === true || Boolean(activity),
         privacyLevel,
+        showLikeCount,
+        likerListVisibility,
+        commentsMode,
       },
       include: { user: { select: { id: true, name: true, username: true, avatarUrl: true } }, community: { select: { id: true, name: true } } },
     });

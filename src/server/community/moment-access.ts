@@ -12,43 +12,49 @@ export function visibleMomentWhere(
   return {
     id: momentId,
     isHidden: false,
-    OR: [
-      { userId },
-      { privacyLevel: PrivacyLevel.PUBLIC },
+    AND: [
       {
-        privacyLevel: PrivacyLevel.CIRCLE,
-        user: {
-          is: {
-            OR: [
-              {
-                connectionsSent: {
-                  some: {
-                    addresseeId: userId,
-                    status: ConnectionStatus.ACCEPTED,
-                  },
-                },
+        OR: [
+          { userId },
+          { privacyLevel: PrivacyLevel.PUBLIC },
+          {
+            privacyLevel: PrivacyLevel.CIRCLE,
+            user: {
+              is: {
+                OR: [
+                  { connectionsSent: { some: { addresseeId: userId, status: ConnectionStatus.ACCEPTED } } },
+                  { connectionsReceived: { some: { requesterId: userId, status: ConnectionStatus.ACCEPTED } } },
+                ],
               },
-              {
-                connectionsReceived: {
-                  some: {
-                    requesterId: userId,
-                    status: ConnectionStatus.ACCEPTED,
-                  },
-                },
-              },
-            ],
+            },
           },
-        },
+          {
+            privacyLevel: PrivacyLevel.COMMUNITY,
+            community: {
+              is: {
+                approvalStatus: COMMUNITY_APPROVAL.APPROVED,
+                isActive: true,
+                members: { some: { userId, status: COMMUNITY_MEMBER.ACTIVE } },
+              },
+            },
+          },
+        ],
       },
       {
-        privacyLevel: PrivacyLevel.COMMUNITY,
-        community: {
-          is: {
-            approvalStatus: COMMUNITY_APPROVAL.APPROVED,
-            isActive: true,
-            members: { some: { userId, status: COMMUNITY_MEMBER.ACTIVE } },
+        OR: [{ userId }, { isArchived: false }],
+      },
+      {
+        OR: [
+          { userId },
+          {
+            user: {
+              is: {
+                connectionsSent: { none: { addresseeId: userId, status: ConnectionStatus.BLOCKED } },
+                connectionsReceived: { none: { requesterId: userId, status: ConnectionStatus.BLOCKED } },
+              },
+            },
           },
-        },
+        ],
       },
     ],
   };

@@ -1,4 +1,4 @@
-import { PrivacyLevel } from "@prisma/client";
+import { MomentCommentMode, MomentLikerListVisibility, PrivacyLevel } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import {
   ApiRequestError,
@@ -54,9 +54,18 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
           ? null
           : stringValue(body.caption, "Caption", { max: 280 });
     const requestedVisibility = typeof body?.visibleOnProfile === "boolean" ? body.visibleOnProfile : undefined;
+    const showLikeCount = typeof body?.showLikeCount === "boolean" ? body.showLikeCount : undefined;
+    const likerListVisibility = typeof body?.likerListVisibility === "string" && Object.values(MomentLikerListVisibility).includes(body.likerListVisibility as MomentLikerListVisibility)
+      ? body.likerListVisibility as MomentLikerListVisibility
+      : undefined;
+    const commentsMode = typeof body?.commentsMode === "string" && Object.values(MomentCommentMode).includes(body.commentsMode as MomentCommentMode)
+      ? body.commentsMode as MomentCommentMode
+      : undefined;
+    const isArchived = typeof body?.isArchived === "boolean" ? body.isArchived : undefined;
     const result = await prisma.$transaction(async (transaction) => {
       let visibilityData: { visibleOnProfile?: boolean; profileDisplayOrder?: number | null } = {};
       if (requestedVisibility === true) {
+        if (isArchived === true) throw new ApiRequestError("Momen yang diarsipkan tidak dapat ditampilkan di profil.", 409, "ARCHIVED_MOMENT");
         if (!existing.visibleOnProfile) {
           const visibleCount = await transaction.moment.count({ where: { userId: user.id, visibleOnProfile: true, isHidden: false } });
           if (visibleCount >= PROFILE_MOMENT_LIMIT) {
@@ -72,9 +81,10 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         visibilityData = { visibleOnProfile: false, profileDisplayOrder: null };
       }
 
+      if (isArchived === true) visibilityData = { visibleOnProfile: false, profileDisplayOrder: null };
       const moment = await transaction.moment.update({
         where: { id: existing.id },
-        data: { caption, privacyLevel, ...visibilityData, ...(privacyLevel ? { communityId: privacyLevel === PrivacyLevel.COMMUNITY ? communityId : null } : {}) },
+        data: { caption, privacyLevel, showLikeCount, likerListVisibility, commentsMode, isArchived, ...visibilityData, ...(privacyLevel ? { communityId: privacyLevel === PrivacyLevel.COMMUNITY ? communityId : null } : {}) },
       });
       const showcaseCount = await transaction.moment.count({ where: { userId: user.id, visibleOnProfile: true, isHidden: false } });
       return { moment, showcaseCount };

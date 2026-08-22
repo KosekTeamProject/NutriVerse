@@ -87,7 +87,7 @@ export async function GET(_request: Request, context: RouteContext) {
         where: {
           AND: [
             visibleMomentWhere(currentUser.id),
-            { userId, visibleOnProfile: true },
+            { userId, visibleOnProfile: true, isArchived: false },
           ],
         },
         select: {

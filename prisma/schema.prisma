@@ -178,6 +178,17 @@ enum PostReactionType {
   CELEBRATE
 }
 
+enum MomentLikerListVisibility {
+  AUDIENCE
+  OWNER_ONLY
+}
+
+enum MomentCommentMode {
+  AUDIENCE
+  FRIENDS_ONLY
+  OFF
+}
+
 enum EventRegistrationStatus {
   JOINED
   CANCELLED
@@ -302,6 +313,9 @@ model User {
   postReactions           PostReaction[]
   momentReactions         MomentReaction[]
   momentComments          MomentComment[]
+  momentBookmarks         MomentBookmark[]
+  mutesCreated            UserMute[]                @relation("UserMuter")
+  mutesReceived           UserMute[]                @relation("UserMuted")
   shareTemplatesCreated   ShareTemplate[]           @relation("ShareTemplateCreator")
   shareTemplatesPublished ShareTemplate[]           @relation("ShareTemplatePublisher")
   eventRegistrations      EventRegistration[]
@@ -372,29 +386,36 @@ model CompanionPreference {
 }
 
 model UserSettings {
-  id                          String       @id @default(uuid())
-  userId                      String       @unique
-  profileVisibility           PrivacyLevel @default(PUBLIC)
-  pulseVisibility             PrivacyLevel @default(PRIVATE)
-  activityVisibility          PrivacyLevel @default(CIRCLE)
-  locationPermissionGranted   Boolean      @default(false)
-  darkTheme                   Boolean      @default(true)
-  leaderboardVisible          Boolean      @default(true)
-  challengeProgressVisible    Boolean      @default(true)
-  notificationsActivity       Boolean      @default(true)
-  notificationsLeaderboard    Boolean      @default(true)
-  notificationsSocial         Boolean      @default(false)
-  companionInsightsEnabled    Boolean      @default(true)
-  companionSafetyNotesEnabled Boolean      @default(true)
-  useDemoData                 Boolean      @default(true)
-  showSimulationLabels        Boolean      @default(true)
-  gpsSimulationEnabled        Boolean      @default(true)
-  foodSimulationEnabled       Boolean      @default(true)
-  timezone                    String       @default("Asia/Jakarta")
+  id                          String                    @id @default(uuid())
+  userId                      String                    @unique
+  profileVisibility           PrivacyLevel              @default(PUBLIC)
+  pulseVisibility             PrivacyLevel              @default(PRIVATE)
+  activityVisibility          PrivacyLevel              @default(CIRCLE)
+  locationPermissionGranted   Boolean                   @default(false)
+  darkTheme                   Boolean                   @default(true)
+  leaderboardVisible          Boolean                   @default(true)
+  challengeProgressVisible    Boolean                   @default(true)
+  notificationsActivity       Boolean                   @default(true)
+  notificationsLeaderboard    Boolean                   @default(true)
+  notificationsSocial         Boolean                   @default(false)
+  notificationsMomentLikes    Boolean                   @default(true)
+  notificationsMomentComments Boolean                   @default(true)
+  notificationsCommunity      Boolean                   @default(true)
+  defaultMomentShowLikeCount  Boolean                   @default(true)
+  defaultMomentLikerList      MomentLikerListVisibility @default(AUDIENCE)
+  defaultMomentComments       MomentCommentMode         @default(AUDIENCE)
+  momentHiddenWords           String[]                  @default([])
+  companionInsightsEnabled    Boolean                   @default(true)
+  companionSafetyNotesEnabled Boolean                   @default(true)
+  useDemoData                 Boolean                   @default(true)
+  showSimulationLabels        Boolean                   @default(true)
+  gpsSimulationEnabled        Boolean                   @default(true)
+  foodSimulationEnabled       Boolean                   @default(true)
+  timezone                    String                    @default("Asia/Jakarta")
   leaderboardRegion           String?
-  rawGpsRetentionDays         Int          @default(30)
-  createdAt                   DateTime     @default(now())
-  updatedAt                   DateTime     @updatedAt
+  rawGpsRetentionDays         Int                       @default(30)
+  createdAt                   DateTime                  @default(now())
+  updatedAt                   DateTime                  @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -1382,7 +1403,7 @@ model PostReaction {
 }
 
 model Moment {
-  id                   String       @id @default(uuid())
+  id                   String                    @id @default(uuid())
   userId               String
   activitySessionId    String?
   communityId          String?
@@ -1391,14 +1412,18 @@ model Moment {
   metricsSnapshot      Json?
   imageUrl             String // Foto kamera langsung
   caption              String?
-  duringActivity       Boolean      @default(false)
-  privacyLevel         PrivacyLevel @default(PRIVATE)
-  visibleOnProfile     Boolean      @default(false)
+  duringActivity       Boolean                   @default(false)
+  privacyLevel         PrivacyLevel              @default(PRIVATE)
+  visibleOnProfile     Boolean                   @default(false)
   profileDisplayOrder  Int?
-  reportCount          Int          @default(0)
-  isHidden             Boolean      @default(false)
-  createdAt            DateTime     @default(now())
-  updatedAt            DateTime     @updatedAt
+  showLikeCount        Boolean                   @default(true)
+  likerListVisibility  MomentLikerListVisibility @default(AUDIENCE)
+  commentsMode         MomentCommentMode         @default(AUDIENCE)
+  isArchived           Boolean                   @default(false)
+  reportCount          Int                       @default(0)
+  isHidden             Boolean                   @default(false)
+  createdAt            DateTime                  @default(now())
+  updatedAt            DateTime                  @updatedAt
 
   user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   activitySession ActivitySession? @relation(fields: [activitySessionId], references: [id], onDelete: SetNull)
@@ -1407,10 +1432,12 @@ model Moment {
   reports         ContentReport[]
   reactions       MomentReaction[]
   comments        MomentComment[]
+  bookmarks       MomentBookmark[]
 
   @@index([privacyLevel, createdAt])
   @@index([userId, createdAt])
   @@index([userId, visibleOnProfile, profileDisplayOrder])
+  @@index([userId, isArchived, createdAt])
   @@index([communityId, createdAt])
   @@index([shareTemplateId])
   @@map("moments")
@@ -1447,6 +1474,34 @@ model MomentComment {
   @@index([momentId, createdAt])
   @@index([userId, createdAt])
   @@map("moment_comments")
+}
+
+model MomentBookmark {
+  id        String   @id @default(uuid())
+  momentId  String
+  userId    String
+  createdAt DateTime @default(now())
+
+  moment Moment @relation(fields: [momentId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([momentId, userId])
+  @@index([userId, createdAt])
+  @@map("moment_bookmarks")
+}
+
+model UserMute {
+  id        String   @id @default(uuid())
+  muterId   String
+  mutedId   String
+  createdAt DateTime @default(now())
+
+  muter User @relation("UserMuter", fields: [muterId], references: [id], onDelete: Cascade)
+  muted User @relation("UserMuted", fields: [mutedId], references: [id], onDelete: Cascade)
+
+  @@unique([muterId, mutedId])
+  @@index([mutedId])
+  @@map("user_mutes")
 }
 
 model ShareTemplate {
