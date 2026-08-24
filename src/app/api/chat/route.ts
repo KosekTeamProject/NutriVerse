@@ -1,81 +1,43 @@
-import { NextResponse } from 'next/server';
-import { prisma } from "@/lib/prisma";
+import { NextRequest, NextResponse } from "next/server";
+import {
+  apiErrorResponse,
+  assertSameOrigin,
+  enforceRateLimit,
+  stringValue,
+} from "@/lib/api";
 import { requireCurrentUser } from "@/lib/auth";
-export async function POST(request: Request) {
+import { createCompanionExchange } from "@/server/companion/companion-chat-service";
+
+export async function POST(request: NextRequest) {
   try {
+    assertSameOrigin(request);
+    await enforceRateLimit(request, "companion:chat", 20, 60_000);
     const user = await requireCurrentUser();
-    const { message, sessionId, companionName, userContext, progress } = await request.json();
-
-    if (!message) {
-      return NextResponse.json({ error: "Pesan tidak boleh kosong" }, { status: 400 });
-    }
-
-    // Save User message to database
-    await prisma.companionConversation.create({
-      data: {
-        userId: user.id,
-        sender: "USER",
-        content: message,
-      },
+    const body = (await request.json().catch(() => null)) as
+      | Record<string, unknown>
+      | null;
+    const message = stringValue(body?.message, "Pesan", {
+      min: 1,
+      max: 2_000,
     });
 
-    const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL;
-    if (!n8nWebhookUrl) {
-      return NextResponse.json({ error: "Konfigurasi n8n tidak ditemukan" }, { status: 500 });
-    }
-
-    // Mengirim pesan ke n8n Webhook beserta sessionId, companionName, dan userContext (profil user)
-    const response = await fetch(n8nWebhookUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ message, sessionId, companionName, userContext, progress }),
+    // Context/progress sent by the browser is deliberately ignored. The
+    // service reconstructs it from rows owned by the authenticated user.
+    const exchange = await createCompanionExchange({
+      userId: user.id,
+      message,
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`n8n Error ${response.status}: ${errorText}`);
-    }
-
-    // Mengambil balasan dari n8n
-    const textResponse = await response.text();
-    let data;
-    try {
-      data = JSON.parse(textResponse);
-    } catch (e) {
-      // Jika n8n membalas dengan teks biasa (bukan JSON)
-      console.log("Response dari n8n bukan JSON:", textResponse);
-      const reply = textResponse || "AI merespons tanpa teks.";
-      await prisma.companionConversation.create({
-        data: { userId: user.id, sender: "ASSISTANT", content: reply },
-      });
-      return NextResponse.json({ reply });
-    }
-    
-    // Sesuaikan 'data.reply' dengan format JSON yang dikembalikan oleh node 'Respond to Webhook' di n8n
-    console.log("DATA DARI N8N:", data);
-    
-    // Jika n8n mengembalikan array (default dari Webhook node tanpa Respond to Webhook)
-    if (Array.isArray(data) && data.length > 0) {
-      data = data[0];
-    }
-    
-    const finalReply = data.reply || data.output || data.text || "AI merespons, namun format tidak dikenali.";
-    
-    // Save AI reply to database
-    await prisma.companionConversation.create({
-      data: {
-        userId: user.id,
-        sender: "ASSISTANT",
-        content: finalReply,
-      },
+    return NextResponse.json({
+      success: true,
+      reply: exchange.answer.reply,
+      safety: exchange.answer.safety,
+      scope: exchange.answer.scope,
+      grounding: exchange.answer.grounding,
+      sources: exchange.answer.sources,
+      requestId: exchange.answer.requestId,
     });
-
-    return NextResponse.json({ reply: finalReply });
   } catch (error) {
-    console.error("Error memanggil n8n:", error);
-    const errorMessage = error instanceof Error ? error.message : "Gagal terhubung ke AI Agent";
-    return NextResponse.json({ error: errorMessage }, { status: 500 });
+    return apiErrorResponse(error);
   }
 }

@@ -3,6 +3,7 @@ import { apiErrorResponse, assertSameOrigin } from "@/lib/api";
 import { requireCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ownedPublicStorageUrl } from "@/lib/storage-ownership";
+import { refreshDailyHealthPulse } from "@/server/health/health-pulse-service";
 
 type NutritionPayload = {
   foodItemId?: unknown;
@@ -179,6 +180,11 @@ export async function POST(request: NextRequest) {
         loggedAt,
       },
       include: { foodItem: true },
+    });
+
+    await refreshDailyHealthPulse({
+      userId: user.id,
+      occurredAt: entry.loggedAt,
     });
 
     return NextResponse.json({ success: true, entry }, { status: 201 });

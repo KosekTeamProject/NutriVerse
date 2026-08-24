@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { apiErrorResponse, assertSameOrigin } from "@/lib/api";
 import { requireCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { refreshDailyHealthPulse } from "@/server/health/health-pulse-service";
 
 type RouteContext = { params: Promise<{ entryId: string }> };
 
@@ -75,6 +76,10 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       },
       include: { foodItem: true },
     });
+    await refreshDailyHealthPulse({
+      userId: user.id,
+      occurredAt: entry.loggedAt,
+    });
     return NextResponse.json({ success: true, entry });
   } catch (error) {
     return apiErrorResponse(error);
@@ -86,12 +91,23 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     assertSameOrigin(request);
     const user = await requireCurrentUser();
     const { entryId } = await context.params;
+    const existing = await prisma.nutritionEntry.findFirst({
+      where: { id: entryId, userId: user.id },
+      select: { loggedAt: true },
+    });
+    if (!existing) {
+      return NextResponse.json({ success: false, error: "Catatan nutrisi tidak ditemukan." }, { status: 404 });
+    }
     const result = await prisma.nutritionEntry.deleteMany({
       where: { id: entryId, userId: user.id },
     });
     if (!result.count) {
       return NextResponse.json({ success: false, error: "Catatan nutrisi tidak ditemukan." }, { status: 404 });
     }
+    await refreshDailyHealthPulse({
+      userId: user.id,
+      occurredAt: existing.loggedAt,
+    });
     return NextResponse.json({ success: true });
   } catch (error) {
     return apiErrorResponse(error);

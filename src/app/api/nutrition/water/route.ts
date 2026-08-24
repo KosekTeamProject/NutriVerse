@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { apiErrorResponse, assertSameOrigin, finiteNumber } from "@/lib/api";
 import { requireCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { refreshDailyHealthPulse } from "@/server/health/health-pulse-service";
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,7 +13,14 @@ export async function POST(request: NextRequest) {
     const log = await prisma.waterLog.create({
       data: { userId: user.id, volumeMl: Math.round(volumeMl) },
     });
-    return NextResponse.json({ success: true, log }, { status: 201 });
+    const healthPulse = await refreshDailyHealthPulse({
+      userId: user.id,
+      occurredAt: log.loggedAt,
+    });
+    return NextResponse.json(
+      { success: true, log, healthPulse: healthPulse.pulse },
+      { status: 201 },
+    );
   } catch (error) {
     return apiErrorResponse(error);
   }

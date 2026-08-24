@@ -1,17 +1,7 @@
 import { Tier } from "@prisma/client";
+import { DAILY_REWARD_POLICY } from "@/lib/economy-rules";
 
-export const ECONOMY_POLICY = {
-  xp: {
-    dailyCap: 300,
-    fullRateUntil: 180,
-    reducedRate: 0.5,
-  },
-  hp: {
-    dailyCap: 150,
-    fullRateUntil: 90,
-    reducedRate: 0.5,
-  },
-} as const;
+export const ECONOMY_POLICY = DAILY_REWARD_POLICY;
 
 const TIER_THRESHOLDS: readonly { tier: Tier; minimumXp: number }[] = [
   { tier: Tier.SPROUT, minimumXp: 0 },

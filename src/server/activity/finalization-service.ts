@@ -8,6 +8,7 @@ import { verifyStoredActivity } from "@/server/activity/activity-service";
 import { reconcileUserBadges } from "@/server/badges/badge-service";
 import { applyVerifiedActivityToChallenges } from "@/server/challenges/challenge-service";
 import { awardVerifiedActivity } from "@/server/economy/economy-service";
+import { refreshDailyHealthPulse } from "@/server/health/health-pulse-service";
 
 function processingErrorMessage(error: unknown) {
   return error instanceof Error
@@ -126,6 +127,13 @@ export async function reconcileActivityFinalization(activitySessionId: string) {
         processingLeaseUntil: null,
       },
       include: { verificationResult: true },
+    });
+
+    await refreshDailyHealthPulse({
+      userId: existing.userId,
+      occurredAt: activity.endTime ?? activity.startTime,
+    }).catch((error: unknown) => {
+      console.error("Health Pulse activity refresh failed", error);
     });
 
     return {

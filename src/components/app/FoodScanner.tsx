@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useMemo } from "react";
 import Link from "next/link";
 import {
   Camera, Upload, Loader2, RotateCcw, Footprints, Bike,
-  Flame, Sparkles, Check, X, HelpCircle, Plus, Leaf, Edit2, ArrowRight, HeartPulse
+  Sparkles, Check, X, HelpCircle, Plus, Leaf, Edit2, ArrowRight, HeartPulse
 } from "lucide-react";
 import { analyze, verdict, type Food, type Nutrition, type NutritionTrustLevel, FOODS } from "@/lib/food";
 import { deterministicFoodEntries } from "@/features/nutrition/data";
@@ -26,12 +26,6 @@ export type LoggedFood = {
 
 type Status = "empty" | "ready" | "scanning" | "verify" | "portion" | "result";
 const PORTIONS = [0.5, 1, 1.5, 2];
-
-const toneClass: Record<string, string> = {
-  brand: "bg-brand-soft text-brand",
-  amber: "bg-amber/15 text-amber",
-  destructive: "bg-destructive/10 text-destructive",
-};
 
 function NutriCell({ label, value, unit }: { label: string; value: number | string; unit?: string }) {
   return (
@@ -57,6 +51,7 @@ export function FoodScanner({ onAdd }: { onAdd?: (entry: LoggedFood) => void }) 
   const [isEditingName, setIsEditingName] = useState(false);
   const [customName, setCustomName] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
 
   const [scannedFood, setScannedFood] = useState<Food | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -171,35 +166,14 @@ export function FoodScanner({ onAdd }: { onAdd?: (entry: LoggedFood) => void }) 
     abortControllerRef.current = controller;
 
     try {
-      let finalImageUrl = imageUrl;
-      
-      if (selectedFile) {
-        const form = new FormData();
-        form.set("bucket", "post-images");
-        form.set("file", selectedFile);
-        
-        const uploadResponse = await fetch("/api/storage/upload", {
-          method: "POST",
-          body: form,
-          signal: controller.signal,
-        });
-        
-        const upload = await uploadResponse.json().catch(() => null);
-        if (!uploadResponse.ok || !upload?.success || !upload.publicUrl) {
-          throw new Error(upload?.error || "Gagal mengunggah foto makanan.");
-        }
-        
-        finalImageUrl = upload.publicUrl;
-        setImageUrl(upload.publicUrl);
-      }
-
+      const form = new FormData();
+      if (selectedFile) form.set("image", selectedFile);
+      const analysisQuery =
+        customName.trim() || (isDemoMode ? activeEntry.title : "");
+      if (analysisQuery) form.set("query", analysisQuery);
       const scanResponse = await fetch("/api/nutrition/scan", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          imageUrl: finalImageUrl,
-          query: customName.trim() || undefined,
-        }),
+        body: form,
         signal: controller.signal,
       });
 
@@ -210,18 +184,16 @@ export function FoodScanner({ onAdd }: { onAdd?: (entry: LoggedFood) => void }) 
 
       setScannedFood(scanResult.food);
       setStatus("verify");
-    } catch (err: any) {
-      if (err.name === "AbortError") return;
+    } catch (err: unknown) {
+      if (err instanceof DOMException && err.name === "AbortError") return;
       console.error("AI scanning error:", err);
       
-      // Clear the image and reset to empty state so the user is forced to re-upload
-      // instead of spamming the "Analyze" button with the same failing image/request.
-      setImageUrl(null);
-      setSelectedFile(null);
-      setCustomName("");
-      setStatus("empty");
-      
-      setErrorMsg(err.message || "Gagal menganalisis. Silakan coba unggah foto ulang.");
+      setStatus(selectedFile || customName.trim() ? "ready" : "empty");
+      setErrorMsg(
+        err instanceof Error
+          ? err.message
+          : "Gagal menganalisis. Silakan coba lagi.",
+      );
     } finally {
       if (abortControllerRef.current === controller) {
         abortControllerRef.current = null;
@@ -241,6 +213,7 @@ export function FoodScanner({ onAdd }: { onAdd?: (entry: LoggedFood) => void }) 
     setErrorMsg(null);
     setStatus("empty");
     if (fileRef.current) fileRef.current.value = "";
+    if (cameraRef.current) cameraRef.current.value = "";
   }
 
   function handleConfirmIdentity() {
@@ -422,6 +395,15 @@ export function FoodScanner({ onAdd }: { onAdd?: (entry: LoggedFood) => void }) 
   return (
     <div className="card card-pad space-y-6">
       <input ref={fileRef} type="file" accept="image/*" onChange={onPick} className="hidden" aria-label="Unggah foto makanan" />
+      <input
+        ref={cameraRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        onChange={onPick}
+        className="hidden"
+        aria-label="Ambil foto makanan dengan kamera"
+      />
 
       <div 
         onDragOver={handleDragOver}
@@ -442,7 +424,7 @@ export function FoodScanner({ onAdd }: { onAdd?: (entry: LoggedFood) => void }) 
             <p className="text-xs text-muted-foreground mt-1">Mode Demo: contoh susunan makanan dimuat</p>
           </div>
         ) : (
-          <button onClick={() => fileRef.current?.click()} className="group flex h-48 sm:h-64 w-full flex-col items-center justify-center gap-3 sm:gap-4 text-muted-foreground transition hover:bg-secondary/40">
+          <button onClick={() => cameraRef.current?.click()} className="group flex h-48 sm:h-64 w-full flex-col items-center justify-center gap-3 sm:gap-4 text-muted-foreground transition hover:bg-secondary/40">
             <span className="grid h-14 w-14 sm:h-16 sm:w-16 place-items-center rounded-full bg-brand-soft text-brand transition-transform group-hover:scale-110 shadow-sm"><Camera className="h-6 w-6 sm:h-7 sm:w-7" /></span>
             <div className="space-y-1 text-center">
               <p className="text-sm sm:text-base font-bold text-foreground">Ambil foto makanan</p>
