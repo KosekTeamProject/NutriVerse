@@ -118,8 +118,10 @@ async function main() {
 
     const n8nNoraUrl = process.env.N8N_NORA_WEBHOOK_URL;
     const openAiKey = process.env.OPENAI_API_KEY;
+    const geminiKey = process.env.GEMINI_API_KEY;
     delete process.env.N8N_NORA_WEBHOOK_URL;
     delete process.env.OPENAI_API_KEY;
+    delete process.env.GEMINI_API_KEY;
     try {
       const exchange = await createCompanionExchange({
         userId: user.id,
@@ -139,6 +141,7 @@ async function main() {
         process.env.N8N_NORA_WEBHOOK_URL = n8nNoraUrl;
       }
       if (openAiKey !== undefined) process.env.OPENAI_API_KEY = openAiKey;
+      if (geminiKey !== undefined) process.env.GEMINI_API_KEY = geminiKey;
     }
 
     await prisma.reward.create({

@@ -17,7 +17,6 @@ const SHORT_LABELS: Record<string, string> = {
   activity: "Aktivitas",
   sleep: "Tidur",
   hydration: "Hidrasi",
-  weight: "Berat",
 };
 
 export function HealthPulseDimensionChart({
@@ -27,7 +26,7 @@ export function HealthPulseDimensionChart({
   showLegend = true,
   className = "",
 }: HealthPulseDimensionChartProps) {
-  // Filter out consistency — Health Pulse weighted score uses the 5 primary dimensions
+  // Weight is an optional capped bonus, not a primary Routine Score dimension.
   const primaryDimensions = current.filter((d) => d.dimension !== "consistency");
 
   // Map previous scores by dimension ID
@@ -57,7 +56,7 @@ export function HealthPulseDimensionChart({
         )}
 
         {/* Grouped Vertical Bars Row */}
-        <div className={`grid min-w-0 grid-cols-5 items-end gap-1 sm:gap-4 ${compact ? "h-36 pt-2" : "h-44 pt-4"}`}>
+        <div className={`grid min-w-0 grid-cols-4 items-end gap-1 sm:gap-4 ${compact ? "h-36 pt-2" : "h-44 pt-4"}`}>
           {primaryDimensions.map((dim) => {
             const currentScore = Math.min(100, Math.max(0, dim.score));
             const prevScore = prevMap.has(dim.dimension)

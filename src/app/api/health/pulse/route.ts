@@ -11,19 +11,23 @@ import {
   calendarDayKey,
   isCalendarDayKey,
 } from "@/server/economy/economy-policy";
-import { refreshDailyHealthPulse } from "@/server/health/health-pulse-service";
+import {
+  getHealthPulseOverview,
+  refreshDailyHealthPulse,
+} from "@/server/health/health-pulse-service";
 
 export async function GET(request: Request) {
   try {
     const user = await requireCurrentUser();
     const { searchParams } = new URL(request.url);
     const limit = Math.min(Math.max(Number(searchParams.get("limit")) || 30, 1), 180);
+    const overview = await getHealthPulseOverview(user.id);
     const pulses = await prisma.healthPulse.findMany({
       where: { userId: user.id },
       orderBy: { pulseDate: "desc" },
       take: limit,
     });
-    return NextResponse.json({ success: true, pulses });
+    return NextResponse.json({ success: true, overview, pulses });
   } catch (error) {
     return apiErrorResponse(error);
   }

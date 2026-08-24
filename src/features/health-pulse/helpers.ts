@@ -15,22 +15,22 @@ export function getHealthDimensionLabel(dim: HealthDimension): string {
 
 export function getHealthPulseStatusLabel(status: HealthPulseStatus): string {
   switch (status) {
-    case "seed": return "Mulai";
-    case "growing": return "Berkembang";
-    case "balanced": return "Seimbang";
-    case "flourishing": return "Sangat Baik";
-    case "thrive": return "Optimal";
+    case "foundation": return "Fondasi";
+    case "growing": return "Bertumbuh";
+    case "consistent": return "Konsisten";
+    case "very-consistent": return "Sangat Konsisten";
+    case "peak-balance": return "Peak Balance";
     default: return status;
   }
 }
 
 export function getHealthPulseStatusDescription(status: HealthPulseStatus): string {
   switch (status) {
-    case "seed": return "Pemantauan kebiasaan sehat Anda baru saja dimulai.";
-    case "growing": return "Anda mulai mencatat dan menjaga tindakan kesehatan dasar.";
-    case "balanced": return "Perilaku kesehatan Anda menunjukkan stabilitas yang konsisten.";
-    case "flourishing": return "Tingkat konsistensi yang tinggi mendukung sasaran kebugaran Anda.";
-    case "thrive": return "Kebiasaan harian Anda terintegrasi secara optimal menjadi progres kesejahteraan.";
+    case "foundation": return "Fondasi kebiasaan sehat sedang dibangun secara bertahap.";
+    case "growing": return "Pola kebiasaan sehat mulai bertumbuh dan lebih stabil.";
+    case "consistent": return "Kebiasaan sehat menunjukkan konsistensi jangka panjang.";
+    case "very-consistent": return "Konsistensi jangka panjang sangat kuat dan tetap perlu dipertahankan.";
+    case "peak-balance": return "Peak Balance tercapai dan harus dipertahankan melalui pola yang berkelanjutan.";
     default: return "";
   }
 }
@@ -93,5 +93,8 @@ export function getPrimaryHealthPulseReason(snapshot: HealthPulseSnapshot): stri
 }
 
 export function getHealthPulseAccessibleSummary(snapshot: HealthPulseSnapshot): string {
+  if (snapshot.score === null) {
+    return snapshot.learningMessage ?? "Health Pulse masih memerlukan data kebiasaan tambahan.";
+  }
   return `Skor Health Pulse Anda adalah ${snapshot.score.toFixed(1)} dari 100 (${getHealthPulseStatusLabel(snapshot.status)}). Perubahan sebesar ${formatHealthPulseChange(snapshot.change)} dibanding sebelumnya, dengan tren ${getHealthPulseTrendLabel(snapshot.trend)}. Area terkuat adalah ${getStrongestDimensionLabel(snapshot)} dan fokus saat ini adalah ${getFocusDimensionLabel(snapshot)}.`;
 }

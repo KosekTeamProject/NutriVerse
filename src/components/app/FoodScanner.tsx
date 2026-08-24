@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useMemo } from "react";
 import Link from "next/link";
+import { createPortal } from "react-dom";
 import {
   Camera, Upload, Loader2, RotateCcw, Footprints, Bike,
   Sparkles, Check, X, HelpCircle, Plus, Leaf, Edit2, ArrowRight, HeartPulse
@@ -52,6 +53,11 @@ export function FoodScanner({ onAdd }: { onAdd?: (entry: LoggedFood) => void }) 
   const [customName, setCustomName] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const [cameraActive, setCameraActive] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
 
   const [scannedFood, setScannedFood] = useState<Food | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -66,6 +72,38 @@ export function FoodScanner({ onAdd }: { onAdd?: (entry: LoggedFood) => void }) 
       }
     };
   }, [imageUrl]);
+
+  useEffect(() => {
+    if (!cameraActive || !videoRef.current || !streamRef.current) return;
+    videoRef.current.srcObject = streamRef.current;
+    void videoRef.current.play();
+  }, [cameraActive]);
+
+  useEffect(() => {
+    if (!cameraOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      streamRef.current?.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+      if (videoRef.current) videoRef.current.srcObject = null;
+      setCameraActive(false);
+      setCameraOpen(false);
+      setCameraError(null);
+    }
+
+    window.addEventListener("keydown", handleEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [cameraOpen]);
+
+  useEffect(() => () => {
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+  }, []);
 
   const activeEntry = deterministicFoodEntries[demoIndex];
 
@@ -115,9 +153,15 @@ export function FoodScanner({ onAdd }: { onAdd?: (entry: LoggedFood) => void }) 
     };
   }, [scannedFood, isDemoMode, activeEntry, matchedFood, customName]);
 
-  function onPick(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  function selectImage(file: File) {
+    if (!file.type.startsWith("image/")) {
+      setErrorMsg("File yang dipilih harus berupa gambar.");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setErrorMsg("Ukuran foto maksimal 10 MB.");
+      return;
+    }
     if (imageUrl && !imageUrl.startsWith("http")) URL.revokeObjectURL(imageUrl);
     setImageUrl(URL.createObjectURL(file));
     setSelectedFile(file);
@@ -125,6 +169,84 @@ export function FoodScanner({ onAdd }: { onAdd?: (entry: LoggedFood) => void }) 
     setScannedFood(null);
     setErrorMsg(null);
     setStatus("ready");
+  }
+
+  function onPick(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    selectImage(file);
+    closeCamera();
+  }
+
+  function stopCamera() {
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    streamRef.current = null;
+    if (videoRef.current) videoRef.current.srcObject = null;
+    setCameraActive(false);
+  }
+
+  function closeCamera() {
+    stopCamera();
+    setCameraOpen(false);
+    setCameraError(null);
+  }
+
+  async function startCamera() {
+    stopCamera();
+    setCameraOpen(true);
+    setCameraError(null);
+
+    try {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error("Kamera live tidak didukung oleh browser ini.");
+      }
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: {
+          facingMode: { ideal: "environment" },
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+        },
+      });
+      streamRef.current = stream;
+      setCameraActive(true);
+    } catch (error) {
+      setCameraActive(false);
+      const unsupported = error instanceof Error && error.message.includes("tidak didukung");
+      setCameraError(
+        unsupported
+          ? `${error.message} Gunakan tombol kamera perangkat di bawah.`
+          : "Kamera tidak dapat dibuka. Izinkan akses kamera di browser dan pastikan halaman memakai HTTPS atau localhost.",
+      );
+    }
+  }
+
+  function capturePhoto() {
+    const video = videoRef.current;
+    if (!video?.videoWidth || !video.videoHeight) {
+      setCameraError("Kamera belum siap. Tunggu sebentar lalu coba ambil foto kembali.");
+      return;
+    }
+
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const context = canvas.getContext("2d");
+    if (!context) {
+      setCameraError("Browser tidak dapat memproses hasil kamera.");
+      return;
+    }
+
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        setCameraError("Foto gagal ditangkap. Silakan coba lagi.");
+        return;
+      }
+      selectImage(new File([blob], `makanan-${Date.now()}.jpg`, { type: "image/jpeg" }));
+      closeCamera();
+    }, "image/jpeg", 0.92);
   }
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -145,13 +267,7 @@ export function FoodScanner({ onAdd }: { onAdd?: (entry: LoggedFood) => void }) 
 
     const file = e.dataTransfer.files?.[0];
     if (file && file.type.startsWith("image/")) {
-      if (imageUrl && !imageUrl.startsWith("http")) URL.revokeObjectURL(imageUrl);
-      setImageUrl(URL.createObjectURL(file));
-      setSelectedFile(file);
-      setIsDemoMode(false);
-      setScannedFood(null);
-      setErrorMsg(null);
-      setStatus("ready");
+      selectImage(file);
     }
   };
 
@@ -202,6 +318,7 @@ export function FoodScanner({ onAdd }: { onAdd?: (entry: LoggedFood) => void }) 
   }
 
   function reset() {
+    closeCamera();
     if (imageUrl && !imageUrl.startsWith("http")) URL.revokeObjectURL(imageUrl);
     setImageUrl(null);
     setSelectedFile(null);
@@ -424,7 +541,7 @@ export function FoodScanner({ onAdd }: { onAdd?: (entry: LoggedFood) => void }) 
             <p className="text-xs text-muted-foreground mt-1">Mode Demo: contoh susunan makanan dimuat</p>
           </div>
         ) : (
-          <button onClick={() => cameraRef.current?.click()} className="group flex h-48 sm:h-64 w-full flex-col items-center justify-center gap-3 sm:gap-4 text-muted-foreground transition hover:bg-secondary/40">
+          <button type="button" onClick={() => void startCamera()} className="group flex h-48 sm:h-64 w-full flex-col items-center justify-center gap-3 sm:gap-4 text-muted-foreground transition hover:bg-secondary/40">
             <span className="grid h-14 w-14 sm:h-16 sm:w-16 place-items-center rounded-full bg-brand-soft text-brand transition-transform group-hover:scale-110 shadow-sm"><Camera className="h-6 w-6 sm:h-7 sm:w-7" /></span>
             <div className="space-y-1 text-center">
               <p className="text-sm sm:text-base font-bold text-foreground">Ambil foto makanan</p>
@@ -509,6 +626,84 @@ export function FoodScanner({ onAdd }: { onAdd?: (entry: LoggedFood) => void }) 
             </div>
           </div>
         </details>
+      )}
+
+      {cameraOpen && typeof document !== "undefined" && createPortal(
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 p-3 backdrop-blur-md sm:p-6"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Kamera pemindai makanan"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) closeCamera();
+          }}
+        >
+          <section
+            className="flex max-h-[calc(100dvh-1.5rem)] w-full max-w-3xl flex-col overflow-hidden rounded-3xl border border-line bg-card shadow-2xl"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <header className="flex shrink-0 items-center justify-between border-b border-line px-4 py-3 sm:px-5">
+              <div>
+                <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-brand">Pindai Makanan</p>
+                <h2 className="mt-1 font-display text-lg font-extrabold">Ambil foto makanan</h2>
+              </div>
+              <button type="button" onClick={closeCamera} className="grid h-9 w-9 place-items-center rounded-xl text-muted-foreground hover:bg-secondary" aria-label="Tutup kamera">
+                <X className="h-5 w-5" />
+              </button>
+            </header>
+
+            <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
+              <div className="relative mx-auto aspect-[4/3] max-h-[68dvh] overflow-hidden rounded-3xl bg-[#07150f]">
+                {cameraActive ? (
+                  <video ref={videoRef} autoPlay muted playsInline className="h-full w-full object-contain" />
+                ) : (
+                  <div className="absolute inset-0 grid place-items-center p-6 text-center text-white">
+                    <div>
+                      <span className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-white/10">
+                        <Camera className="h-8 w-8" />
+                      </span>
+                      <p className="mt-4 text-sm font-bold">Menyiapkan kamera...</p>
+                      <p className="mt-1 text-xs text-white/60">Arahkan kamera ke makanan agar seluruh porsi terlihat jelas.</p>
+                    </div>
+                  </div>
+                )}
+
+                {cameraActive && (
+                  <button
+                    type="button"
+                    onClick={capturePhoto}
+                    className="absolute bottom-5 left-1/2 grid h-16 w-16 -translate-x-1/2 place-items-center rounded-full border-4 border-white bg-brand text-white shadow-xl transition active:scale-95"
+                    aria-label="Tangkap foto makanan"
+                  >
+                    <Camera className="h-7 w-7" />
+                  </button>
+                )}
+
+                <div className="absolute left-4 top-4 rounded-full bg-black/50 px-2.5 py-1.5 text-[8px] font-bold text-white backdrop-blur">
+                  KAMERA BELAKANG · FOTO MAKANAN
+                </div>
+              </div>
+
+              {cameraError && (
+                <div className="mt-3 rounded-xl border border-amber/25 bg-amber/10 p-3 text-xs leading-relaxed text-amber">
+                  {cameraError}
+                </div>
+              )}
+
+              <div className="mt-3 flex flex-wrap justify-center gap-2">
+                {cameraError && (
+                  <button type="button" onClick={() => void startCamera()} className="btn btn-outline btn-sm">
+                    <RotateCcw className="h-4 w-4" /> Coba Lagi
+                  </button>
+                )}
+                <button type="button" onClick={() => cameraRef.current?.click()} className="btn btn-outline btn-sm">
+                  <Camera className="h-4 w-4" /> Kamera Perangkat
+                </button>
+              </div>
+            </div>
+          </section>
+        </div>,
+        document.body,
       )}
 
       {errorMsg ? (

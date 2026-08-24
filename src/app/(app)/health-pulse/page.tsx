@@ -133,17 +133,25 @@ export default function HealthPulseDetailPage() {
           Health Pulse
         </h1>
         <p className="mt-1.5 text-muted-foreground text-sm font-medium">
-          Tampilan jelas mengenai perkembangan kebiasaan kebugaran Anda pada Nutrisi, Aktivitas, Tidur, Hidrasi, dan Manajemen Berat.
+          Indikator pribadi tentang kebiasaan nutrisi, aktivitas, tidur, dan hidrasi yang terbentuk dalam jangka panjang.
         </p>
       </div>
 
       <div className="card card-pad">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div><p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-brand"><Database className="h-4 w-4" /> Asal data hari ini</p><p className="mt-1 text-xs text-muted-foreground">Setiap skor dapat dilacak kembali ke jenis inputnya.</p></div>
-          <span className="pill self-start bg-secondary text-[10px] font-bold text-muted-foreground">{current.dataCompleteness}% DATA TERISI</span>
+          <div className="flex flex-wrap gap-2">
+            <span className="pill bg-brand-soft text-[10px] font-bold text-brand">FASE {current.phase}</span>
+            <span className="pill bg-secondary text-[10px] font-bold text-muted-foreground">BATAS {current.phaseCap || "BELAJAR"}</span>
+          </div>
         </div>
         <div className="mt-4 grid grid-cols-2 gap-2 min-[480px]:grid-cols-4">
           {[{ icon: Footprints, label: "Aktivitas", source: "GPS terverifikasi" }, { icon: Utensils, label: "Nutrisi", source: "Pindai & manual" }, { icon: Droplets, label: "Hidrasi", source: "Catatan mandiri" }, { icon: Moon, label: "Tidur", source: "Catatan mandiri" }].map((item) => { const Icon = item.icon; return <div key={item.label} className="rounded-2xl border border-line bg-secondary/30 p-3"><Icon className="h-4 w-4 text-brand" /><p className="mt-2 text-xs font-bold text-foreground">{item.label}</p><p className="mt-0.5 text-[10px] leading-relaxed text-muted-foreground">{item.source}</p></div>; })}
+        </div>
+        <div className="mt-3 grid gap-2 sm:grid-cols-3">
+          <div className="rounded-xl border border-line bg-secondary/30 p-3 text-xs"><span className="text-muted-foreground">Coverage 7 hari</span><p className="mt-1 font-bold text-foreground">{current.dataCoverage7}%</p></div>
+          <div className="rounded-xl border border-line bg-secondary/30 p-3 text-xs"><span className="text-muted-foreground">Coverage 28 hari</span><p className="mt-1 font-bold text-foreground">{current.dataCoverage28}%</p></div>
+          <div className="rounded-xl border border-line bg-secondary/30 p-3 text-xs"><span className="text-muted-foreground">Fase berikutnya</span><p className="mt-1 font-bold text-foreground">{current.nextPhaseInDays === null ? "Mastery aktif" : `${current.nextPhaseInDays} hari lagi`}</p></div>
         </div>
       </div>
 
@@ -164,17 +172,18 @@ export default function HealthPulseDetailPage() {
             />
           </div>
 
-          {/* Grouped Vertical Bar Comparison Chart */}
-          <div className="card card-pad space-y-3">
-            <h3 className="font-display text-base font-bold text-foreground">Perbandingan Dimensi Health Pulse</h3>
-            <p className="text-xs text-muted-foreground">Perbandingan skor 5 dimensi utama hari ini vs sebelumnya</p>
-            <HealthPulseDimensionChart 
-              current={current.dimensions} 
-              previous={previous.dimensions} 
-              compact={false}
-              showLegend={true}
-            />
-          </div>
+          {current.isPublished && (
+            <div className="card card-pad space-y-3">
+              <h3 className="font-display text-base font-bold text-foreground">Perbandingan Dimensi Health Pulse</h3>
+              <p className="text-xs text-muted-foreground">Pola empat dimensi utama dalam jendela 7 hari</p>
+              <HealthPulseDimensionChart
+                current={current.dimensions}
+                previous={previous.dimensions}
+                compact={false}
+                showLegend={true}
+              />
+            </div>
+          )}
 
           {/* Companion compact interpretation */}
           {noraInsight && (
@@ -184,11 +193,12 @@ export default function HealthPulseDetailPage() {
             </div>
           )}
 
-          {/* Interactive Line Chart Trend (Hari Ini / 7 Hari / 30 Hari) */}
-          <HealthPulseTrendLineChart history={history} />
-
-          {/* 14-Day History Trend Chart */}
-          <HealthPulseHistoryChart history={history} />
+          {current.isPublished && history.length > 0 && (
+            <>
+              <HealthPulseTrendLineChart history={history} />
+              <HealthPulseHistoryChart history={history} />
+            </>
+          )}
         </div>
 
         {/* Sidebar details */}
@@ -197,14 +207,14 @@ export default function HealthPulseDetailPage() {
           <div className="card card-pad space-y-3">
             <div>
               <h3 className="font-display text-base font-bold text-foreground">Kelengkapan Data</h3>
-              <p className="text-xs text-muted-foreground mt-0.5">Penilaian metrik kesehatan hari ini</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Kepercayaan data kebiasaan 7 hari</p>
             </div>
             <div className="flex items-baseline gap-2">
               <span className="text-3xl font-extrabold text-foreground">{current.dataCompleteness}%</span>
               <span className="text-xs text-muted-foreground font-semibold">Siap</span>
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Health Pulse Anda didasarkan pada sebagian besar data aktivitas harian Anda.
+              Kelengkapan menunjukkan seberapa kuat dasar data, bukan tambahan poin Health Pulse.
             </p>
             <p className="text-xs text-muted-foreground leading-relaxed font-semibold italic">
               * Data yang terlewat tidak dianggap sebagai kebiasaan tidak sehat.
@@ -229,7 +239,7 @@ export default function HealthPulseDetailPage() {
               <p className="text-xs text-muted-foreground mt-0.5">Saran target berdasarkan area fokus</p>
             </div>
             <p className="text-xs text-foreground font-semibold">
-              &ldquo;Jalan santai untuk pemulihan dapat membantu menyeimbangkan progres hari ini.&rdquo;
+              &ldquo;{current.recommendedNextAction}&rdquo;
             </p>
             <Link href="/aktivitas" className="btn btn-primary btn-sm w-full inline-flex items-center justify-center gap-1 text-xs">
               Lanjutkan Journey <ArrowRight className="h-3.5 w-3.5" />

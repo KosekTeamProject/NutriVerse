@@ -1042,20 +1042,40 @@ model NutritionSearchCache {
 }
 
 model HealthPulse {
-  id              String   @id @default(uuid())
-  userId          String
-  pulseDate       DateTime @default(now()) @db.Date
-  overallScore    Float    @default(0)
-  nutritionScore  Float    @default(0)
-  activityScore   Float    @default(0)
-  sleepHours      Float?
-  hydrationLiters Float?
-  createdAt       DateTime @default(now())
+  id                 String   @id @default(uuid())
+  userId             String
+  pulseDate          DateTime @default(now()) @db.Date
+  overallScore       Float?
+  nutritionScore     Float    @default(0)
+  activityScore      Float    @default(0)
+  sleepScore         Float?
+  hydrationScore     Float?
+  sleepHours         Float?
+  hydrationLiters    Float?
+  isPublished        Boolean  @default(false)
+  phase              String   @default("LEARNING")
+  phaseCap           Int      @default(0)
+  analysisDay        Int      @default(1)
+  routineScore7      Float?
+  routineScore28     Float?
+  routineScore90     Float?
+  dataCoverage7      Int      @default(0)
+  dataCoverage28     Int      @default(0)
+  dataDays7          Int      @default(0)
+  dimensionCount7    Int      @default(0)
+  weightTrendBonus   Float    @default(0)
+  noDataStreak       Int      @default(0)
+  dimensionScores    Json?
+  reasons            Json?
+  focusDimension     String?
+  strongestDimension String?
+  createdAt          DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, pulseDate])
   @@index([userId, pulseDate])
+  @@index([userId, isPublished, pulseDate])
   @@map("health_pulses")
 }
 

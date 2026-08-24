@@ -130,11 +130,13 @@ export function HealthPulseCard({
   maxReasons = 1
 }: HealthPulseCardProps) {
   const isCompact = variant === "compact";
-  const [animatedScore, setAnimatedScore] = useState(snapshot.previousScore);
+  const displayScore = snapshot.score ?? 0;
+  const displayPreviousScore = snapshot.previousScore ?? displayScore;
+  const [animatedScore, setAnimatedScore] = useState(displayPreviousScore);
 
   useEffect(() => {
-    const start = snapshot.previousScore;
-    const target = snapshot.score;
+    const start = displayPreviousScore;
+    const target = displayScore;
     const duration = 1000; // 1s
     const startTime = performance.now();
 
@@ -152,7 +154,46 @@ export function HealthPulseCard({
 
     const animationFrame = requestAnimationFrame(updateScore);
     return () => cancelAnimationFrame(animationFrame);
-  }, [snapshot.score, snapshot.previousScore]);
+  }, [displayScore, displayPreviousScore]);
+
+  if (!snapshot.isPublished) {
+    return (
+      <div className={`card card-pad space-y-4 ${className}`}>
+        <div className="flex items-center gap-3">
+          <span className="grid h-10 w-10 place-items-center rounded-xl bg-brand-soft text-brand">
+            <Sparkles className="h-5 w-5 animate-breathe" />
+          </span>
+          <div>
+            <h3 className="font-display text-lg font-bold text-foreground">Health Pulse</h3>
+            <p className="text-xs font-bold uppercase tracking-wider text-brand">Fase {snapshot.phase}</p>
+          </div>
+        </div>
+        <div className="rounded-2xl border border-brand/20 bg-brand-soft/10 p-4">
+          <p className="text-sm font-semibold leading-relaxed text-foreground">
+            {snapshot.learningMessage}
+          </p>
+          <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+            Belum ada angka yang ditampilkan. Health Pulse membaca pola jangka panjang dan bukan diagnosis medis.
+          </p>
+        </div>
+        <div className="grid grid-cols-2 gap-2 text-xs">
+          <div className="rounded-xl border border-line bg-secondary/30 p-3">
+            <p className="text-muted-foreground">Coverage 7 hari</p>
+            <p className="mt-1 font-bold text-foreground">{snapshot.dataCoverage7}%</p>
+          </div>
+          <div className="rounded-xl border border-line bg-secondary/30 p-3">
+            <p className="text-muted-foreground">Coverage 28 hari</p>
+            <p className="mt-1 font-bold text-foreground">{snapshot.dataCoverage28}%</p>
+          </div>
+        </div>
+        {isCompact && (
+          <Link href="/health-pulse" className="btn btn-outline btn-sm self-start text-xs font-bold">
+            Lihat Detail <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        )}
+      </div>
+    );
+  }
 
   if (isCompact) {
     return (
@@ -175,7 +216,7 @@ export function HealthPulseCard({
         <div className="flex items-center justify-between py-2 bg-gradient-to-r from-secondary/40 via-card to-brand-soft/20 rounded-2xl px-4 border border-line/40 shadow-sm">
           <span className="text-xs text-muted-foreground font-semibold">Skor Pulse Score</span>
           <span className="text-xs font-bold text-foreground flex items-center gap-1.5 tabular-nums">
-            <span className="text-muted-foreground font-normal line-through text-[11px]">{snapshot.previousScore.toFixed(1)}</span>
+            <span className="text-muted-foreground font-normal line-through text-[11px]">{displayPreviousScore.toFixed(1)}</span>
             <ArrowRight className="h-3.5 w-3.5 text-brand" />
             <span className="text-brand text-lg font-extrabold animate-scale-in">{animatedScore.toFixed(1)}</span>
             <span className="pill bg-brand-soft text-brand text-[10px] font-bold py-0.5 px-1.5">
@@ -213,18 +254,18 @@ export function HealthPulseCard({
     <div className={`card card-pad flex flex-col justify-between space-y-6 ${className}`}>
       <div>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <h3 className="font-display text-lg font-bold">Health Pulse Hari Ini</h3>
+          <h3 className="font-display text-lg font-bold">Health Pulse Jangka Panjang</h3>
           <span className="pill bg-brand-soft text-brand font-bold capitalize">
             {getHealthPulseStatusLabel(snapshot.status)}
           </span>
         </div>
-        <p className="text-xs text-muted-foreground mt-1">Refleksi koordinat kebiasaan harian Anda</p>
+        <p className="text-xs text-muted-foreground mt-1">Fase {snapshot.phase} · batas skor {snapshot.phaseCap}</p>
       </div>
 
       <div className="chart-surface chart-surface-brand flex flex-col items-center gap-6 rounded-2xl border border-brand/15 px-4 py-5 sm:flex-row sm:justify-around sm:gap-4">
         <div className="relative grid place-items-center w-[130px] h-[130px] shrink-0">
           <ProgressRing 
-            value={snapshot.score} 
+            value={displayScore}
             size={130} 
             stroke={10} 
             gradientId="hp-score-detailed"
@@ -234,8 +275,8 @@ export function HealthPulseCard({
           />
           <div className="absolute inset-0 flex flex-col items-center justify-center text-center select-none">
             <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Skor Pulse</p>
-            <p className="text-2xl font-extrabold text-foreground tabular-nums leading-none mt-0.5">{snapshot.score.toFixed(1)}</p>
-            <p className="text-[10px] text-brand font-bold tabular-nums mt-0.5">+{snapshot.change.toFixed(1)}</p>
+            <p className="text-2xl font-extrabold text-foreground tabular-nums leading-none mt-0.5">{displayScore.toFixed(1)}</p>
+            <p className="text-[10px] text-brand font-bold tabular-nums mt-0.5">{formatHealthPulseChange(snapshot.change)}</p>
           </div>
         </div>
 
@@ -256,9 +297,9 @@ export function HealthPulseCard({
         </div>
       </div>
 
-      {/* 5 Dimensions Grid */}
+      {/* Four primary Routine Score dimensions */}
       <div className="space-y-3">
-        <h4 className="font-display text-sm font-bold text-foreground">Lima Dimensi Utama</h4>
+        <h4 className="font-display text-sm font-bold text-foreground">Empat Dimensi Utama</h4>
         <div className="grid gap-3 sm:grid-cols-2">
           {snapshot.dimensions
             .filter((dim) => dim.dimension !== "consistency")

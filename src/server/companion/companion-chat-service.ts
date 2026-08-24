@@ -6,7 +6,20 @@ export async function createCompanionExchange(input: {
   userId: string;
   message: string;
 }) {
-  const answer = await generateCompanionAnswer(input);
+  const newestHistory = await prisma.companionConversation.findMany({
+    where: { userId: input.userId },
+    orderBy: { createdAt: "desc" },
+    take: 12,
+    select: { sender: true, content: true },
+  });
+  const history = newestHistory.reverse().map((item) => ({
+    role:
+      item.sender === CompanionSender.USER
+        ? ("user" as const)
+        : ("assistant" as const),
+    content: item.content,
+  }));
+  const answer = await generateCompanionAnswer({ ...input, history });
   const [userMessage, assistantMessage] = await prisma.$transaction([
     prisma.companionConversation.create({
       data: {

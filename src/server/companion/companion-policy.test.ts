@@ -4,6 +4,7 @@ import {
   classifyCompanionMessage,
   COMPANION_REPLY_TEMPLATES,
   enforceCompanionOutputPolicy,
+  isCasualCompanionMessage,
   requiresExternalHealthEvidence,
 } from "./companion-policy";
 import { isTrustedHealthSourceUrl } from "./companion-ai-service";
@@ -18,6 +19,25 @@ test("allows NutriVerse health and progress questions", () => {
     classifyCompanionMessage("Beri saran menu sarapan untuk saya").scope,
     "nutriverse_health",
   );
+  assert.equal(
+    classifyCompanionMessage("Makro 100 gram dada ayam matang tanpa minyak")
+      .scope,
+    "nutriverse_health",
+  );
+});
+
+test("allows introductions, friendly banter, and general recipes", () => {
+  for (const message of [
+    "Halo aku Ilham",
+    "Kamu lagi ngapain?",
+    "Wkwk bercanda kok",
+    "Kasih resep nasi goreng sederhana",
+  ]) {
+    const decision = classifyCompanionMessage(message);
+    assert.equal(decision.scope, "nutriverse_health");
+    assert.equal(decision.fixedReply, undefined);
+  }
+  assert.equal(isCasualCompanionMessage("Halo aku Ilham"), true);
 });
 
 test("rejects website and coding requests with a fixed template", () => {
@@ -26,6 +46,16 @@ test("rejects website and coding requests with a fixed template", () => {
   );
   assert.equal(decision.scope, "out_of_scope");
   assert.equal(decision.fixedReply, COMPANION_REPLY_TEMPLATES.protectedSystem);
+});
+
+test("rejects school and university assignment requests", () => {
+  for (const message of [
+    "Kerjakan tugas sekolah saya",
+    "Tolong jawab soal kuliah ini",
+    "Buat makalah untuk dikumpulkan besok",
+  ]) {
+    assert.equal(classifyCompanionMessage(message).scope, "out_of_scope");
+  }
 });
 
 test("blocks personal diagnosis and medication decisions", () => {
@@ -65,6 +95,30 @@ test("requires trusted web evidence for health guidance but not personal totals"
   );
   assert.equal(
     requiresExternalHealthEvidence("Mengapa tidur terlalu lama tidak selalu baik?"),
+    true,
+  );
+  assert.equal(
+    requiresExternalHealthEvidence(
+      "Apa kebiasaan sederhana yang bisa membantu kualitas tidur orang dewasa?",
+    ),
+    true,
+  );
+  assert.equal(
+    requiresExternalHealthEvidence("Kasih resep nasi goreng sederhana"),
+    false,
+  );
+  assert.equal(
+    requiresExternalHealthEvidence("Kasih resep nasi goreng untuk diet sehat"),
+    true,
+  );
+  assert.equal(
+    requiresExternalHealthEvidence("Kamu lagi ngapain?"),
+    false,
+  );
+  assert.equal(
+    requiresExternalHealthEvidence(
+      "Makro 100 gram dada ayam matang tanpa minyak",
+    ),
     true,
   );
 });

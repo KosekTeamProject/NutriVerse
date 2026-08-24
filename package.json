@@ -12,7 +12,8 @@
     "test:integration": "tsx scripts/backend-integration-smoke.ts",
     "maintenance:backend": "tsx scripts/backend-maintenance.ts",
     "maintenance:preview": "tsx scripts/backend-maintenance-preview.ts",
-    "validate:migration": "tsx scripts/validate-pending-migration.ts"
+    "validate:migration": "tsx scripts/validate-pending-migration.ts",
+    "migrate:deploy:pg": "tsx scripts/deploy-pending-migrations-pg.ts"
   },
   "dependencies": {
     "@hugeicons/core-free-icons": "^4.2.2",

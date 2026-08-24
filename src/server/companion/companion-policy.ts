@@ -33,8 +33,17 @@ const HEALTH_AND_PRODUCT_TERMS = [
   "sleep",
   "nutrisi",
   "gizi",
+  "makro",
+  "makronutrisi",
+  "mikronutrisi",
+  "nilai gizi",
+  "kandungan gizi",
   "diet",
   "menu",
+  "resep",
+  "masak",
+  "memasak",
+  "bahan makanan",
   "sarapan",
   "cemilan",
   "buah",
@@ -70,6 +79,10 @@ const HEALTH_AND_PRODUCT_TERMS = [
   "challenge",
   "tantangan",
   "makanan",
+  "ayam",
+  "daging",
+  "ikan",
+  "telur",
   "scan",
   "kamera",
   "dashboard",
@@ -101,6 +114,13 @@ const OUT_OF_SCOPE_TERMS = [
   "debug program",
   "buat aplikasi",
   "kerjakan tugas",
+  "tugas sekolah",
+  "tugas kuliah",
+  "kerjakan soal",
+  "jawab soal",
+  "buat makalah",
+  "laporan praktikum",
+  "jawaban ujian",
   "buat skripsi",
   "trading",
   "saham",
@@ -161,6 +181,21 @@ function containsAny(message: string, terms: readonly string[]) {
   return terms.some((term) => message.includes(term));
 }
 
+const CASUAL_COMPANION_PATTERNS = [
+  /^(halo|hai|hi|hello|pagi|siang|sore|malam)\b/i,
+  /\b(kenalin|kenalan|perkenalkan|nama (aku|saya)|panggil (aku|saya))\b/i,
+  /\b(apa kabar|lagi apa|lagi ngapain|sedang apa|kamu siapa|siapa namamu|nama kamu siapa|temani aku|temenin aku|semangatin aku)\b/i,
+  /^(terus )?(aku |saya )?(harus |mesti )?(gimana|bagaimana|ngapain)\b/i,
+  /\b(bercanda|candaan|tebak-tebakan|lelucon|jokes?|lucu|garing)\b/i,
+  /^(wkwk+|haha+|hehe+|hihi+|lol)[!,.? ]*$/i,
+  /^(oke|ok|sip|siap|mantap|makasih|terima kasih|noted)[!,.? ]*$/i,
+];
+
+export function isCasualCompanionMessage(message: string) {
+  const normalized = message.trim().toLocaleLowerCase("id-ID");
+  return CASUAL_COMPANION_PATTERNS.some((pattern) => pattern.test(normalized));
+}
+
 export function classifyCompanionMessage(
   message: string,
 ): CompanionPolicyDecision {
@@ -202,10 +237,8 @@ export function classifyCompanionMessage(
     };
   }
 
-  const isGreeting = /^(halo|hai|hi|hello|pagi|siang|sore|malam|makasih|terima kasih)[!,.? ]*$/i.test(
-    normalized,
-  );
-  if (!isGreeting && !containsAny(normalized, HEALTH_AND_PRODUCT_TERMS)) {
+  const isCasual = isCasualCompanionMessage(normalized);
+  if (!isCasual && !containsAny(normalized, HEALTH_AND_PRODUCT_TERMS)) {
     return {
       scope: "out_of_scope",
       safety: "normal",
@@ -217,7 +250,7 @@ export function classifyCompanionMessage(
   return {
     scope: "nutriverse_health",
     safety: "normal",
-    reason: isGreeting ? "GREETING" : "ALLOWED_TOPIC",
+    reason: isCasual ? "CASUAL_COMPANION_CONVERSATION" : "ALLOWED_TOPIC",
   };
 }
 
@@ -241,13 +274,17 @@ const EXTERNAL_EVIDENCE_TERMS = [
   "kebutuhan",
   "rekomendasi",
   "saran",
-  "menu",
   "diet",
   "memperbaiki",
   "meningkatkan",
   "menurunkan",
   "vitamin",
   "mineral",
+  "makro",
+  "makronutrisi",
+  "mikronutrisi",
+  "nilai gizi",
+  "kandungan gizi",
   "kolesterol",
   "tekanan darah",
 ];
@@ -258,10 +295,29 @@ const EXTERNAL_EVIDENCE_TERMS = [
  */
 export function requiresExternalHealthEvidence(message: string) {
   const normalized = message.trim().toLocaleLowerCase("id-ID");
-  if (/^(halo|hai|hi|hello|pagi|siang|sore|malam)[!,.? ]*$/i.test(normalized)) {
-    return false;
-  }
-  return containsAny(normalized, EXTERNAL_EVIDENCE_TERMS);
+  if (isCasualCompanionMessage(normalized)) return false;
+
+  const isRecipeOrMenu =
+    /\b(resep|menu|cara (masak|memasak|membuat)|bahan makanan)\b/i.test(
+      normalized,
+    );
+  const hasHealthClaim =
+    /\b(diet|sehat|kesehatan|nutrisi|gizi|kalori|protein|rendah (gula|garam|lemak|kalori)|tinggi (protein|serat)|turun berat|menurunkan berat|diabetes|kolesterol|tekanan darah)\b/i.test(
+      normalized,
+  );
+  if (isRecipeOrMenu && !hasHealthClaim) return false;
+
+  const asksGeneralGuidance =
+    /\b(tidur|sleep|hidrasi|air|minum|nutrisi|gizi|makan|aktivitas|olahraga|jalan|lari|pemulihan|berat badan)\b/u.test(
+      normalized,
+    ) &&
+    /\b(tips|cara|kebiasaan|membantu|menjaga|kualitas|yang baik|yang sehat)\b/u.test(
+      normalized,
+    );
+
+  return (
+    containsAny(normalized, EXTERNAL_EVIDENCE_TERMS) || asksGeneralGuidance
+  );
 }
 
 export function enforceCompanionOutputPolicy(input: {

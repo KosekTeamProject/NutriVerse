@@ -12,14 +12,6 @@ import type {
   TodayJourney,
 } from "@/features/behavior/types";
 import type {
-  HealthDataTrustLevel,
-  HealthDimension,
-  HealthDimensionScore,
-  HealthPulseSnapshot,
-  HealthPulseStatus,
-  HealthPulseTrend,
-} from "@/features/health-pulse/types";
-import type {
   CommunityOverview,
   ProgressChallenge,
   ProgressMetric,
@@ -30,13 +22,9 @@ import {
   utcDayBoundsForKey,
 } from "@/server/economy/economy-policy";
 import {
-  calculateHealthPulseScore,
-  nutritionAttainmentScore,
   sleepDurationScore,
-  targetAttainmentScore,
-  weightGoalScore,
-  type PulseDimensionScores,
 } from "@/server/health/health-pulse-policy";
+import { getHealthPulseOverview } from "@/server/health/health-pulse-service";
 
 const DAY_MS = 86_400_000;
 
@@ -54,7 +42,6 @@ type DayAggregate = {
   verifiedActivities: number;
   sleepHours?: number;
   pulseHydrationLiters?: number;
-  weightKg?: number;
 };
 
 function rounded(value: number, digits = 0) {
@@ -106,38 +93,6 @@ function dayAggregate(): DayAggregate {
     nutritionEntries: 0,
     verifiedActivities: 0,
   } satisfies DayAggregate;
-}
-
-function statusForScore(score: number): HealthPulseStatus {
-  if (score >= 80) return "thrive";
-  if (score >= 70) return "flourishing";
-  if (score >= 55) return "balanced";
-  if (score >= 35) return "growing";
-  return "seed";
-}
-
-function trendForChange(change: number): HealthPulseTrend {
-  if (change >= 1) return "improving";
-  if (change <= -5) return "needs-attention";
-  if (change < -1) return "recovering";
-  return "stable";
-}
-
-function dimensionSummary(
-  dimension: HealthDimension,
-  score: number,
-  hasData: boolean,
-) {
-  if (!hasData) return "Belum ada data untuk dimensi ini pada hari tersebut.";
-  const labels: Record<HealthDimension, string> = {
-    nutrition: "Asupan protein dari catatan makanan membentuk skor nutrisi.",
-    activity: "Aktivitas GPS terverifikasi membentuk skor aktivitas.",
-    sleep: "Durasi tidur yang dicatat pengguna membentuk skor tidur.",
-    hydration: "Catatan air minum membentuk skor hidrasi.",
-    weight: "Catatan berat terbaru dibandingkan dengan target pengguna.",
-    consistency: "Konsistensi dihitung dari tindakan sehat beberapa hari terakhir.",
-  };
-  return score >= 100 ? `${labels[dimension]} Target hari ini tercapai.` : labels[dimension];
 }
 
 function estimateSteps(distanceMeters: number, type: ActivityType) {
@@ -208,7 +163,6 @@ export async function buildProgressOverview(
     nutritionEntries,
     waterLogs,
     pulseInputs,
-    healthMetrics,
     challengeRows,
     xpToday,
     hpToday,
@@ -259,15 +213,6 @@ export async function buildProgressOverview(
         },
       },
       orderBy: { pulseDate: "asc" },
-    }),
-    prisma.healthMetric.findMany({
-      where: {
-        userId,
-        recordedAt: { lt: todayBounds.end },
-      },
-      select: { recordedAt: true, weightKg: true },
-      orderBy: { recordedAt: "desc" },
-      take: 365,
     }),
     prisma.challenge.findMany({
       where: {
@@ -348,179 +293,19 @@ export async function buildProgressOverview(
       aggregate.pulseHydrationLiters = pulse.hydrationLiters;
     }
   }
-  for (const entry of healthMetrics) {
-    if (entry.weightKg === null) continue;
-    const key = calendarDayKey(entry.recordedAt, timezone);
-    const aggregate = aggregates.get(key);
-    if (aggregate) aggregate.weightKg = entry.weightKg;
-  }
-
-  const dimensionHistory = new Map<
-    string,
-    {
-      dimensions: HealthDimensionScore[];
-      completeness: number;
-      score: number;
-    }
-  >();
-  const snapshotRows: HealthPulseSnapshot[] = [];
-
-  for (const [index, key] of dayKeys.entries()) {
-    const aggregate = aggregates.get(key) ?? dayAggregate();
-    const previousKey = dayKeys[index - 1];
-    const previousDimensions = previousKey
-      ? dimensionHistory.get(previousKey)?.dimensions
-      : undefined;
-    const hydrationMl =
-      aggregate.waterMl ||
-      (aggregate.pulseHydrationLiters ?? 0) * 1_000;
-    const latestWeightEntry =
-      aggregate.weightKg !== undefined
-        ? {
-            weightKg: aggregate.weightKg,
-            recordedAt: utcDayBoundsForKey(key, timezone).start,
-          }
-        : healthMetrics.find(
-            (entry) => calendarDayKey(entry.recordedAt, timezone) <= key,
-          );
-    const latestWeight = latestWeightEntry?.weightKg ?? undefined;
-    const weightIsFresh =
-      latestWeightEntry !== undefined &&
-      utcDayBoundsForKey(key, timezone).end.getTime() -
-        latestWeightEntry.recordedAt.getTime() <=
-        30 * DAY_MS;
-    const hasData = {
-      nutrition: aggregate.nutritionEntries > 0,
-      activity: aggregate.verifiedActivities > 0,
-      sleep: aggregate.sleepHours !== undefined,
-      hydration: hydrationMl > 0,
-      weight:
-        weightIsFresh && latestWeight !== undefined && latestWeight !== null,
-    };
-    const targetWeight = profile?.targetWeightKg ?? profile?.weightKg;
-    const scores: Record<Exclude<HealthDimension, "consistency">, number> = {
-      nutrition: nutritionAttainmentScore({
-        calories: aggregate.calories,
-        protein: aggregate.protein,
-        fiber: aggregate.fiber,
-        calorieTarget: targets.calories,
-        proteinTarget: targets.protein,
-        fiberTarget: targets.fiber,
-      }),
-      activity: targetAttainmentScore(
-        aggregate.activeSeconds / 60,
-        targets.activeMinutes,
-      ),
-      sleep: sleepDurationScore(aggregate.sleepHours ?? 0, targets.sleep),
-      hydration: targetAttainmentScore(hydrationMl, targets.water),
-      weight:
-        latestWeight && targetWeight
-          ? weightGoalScore(latestWeight, targetWeight)
-          : hasData.weight
-            ? 100
-            : 0,
-    };
-    const dimensions = (
-      ["nutrition", "activity", "sleep", "hydration", "weight"] as const
-    ).map((dimension) => {
-      const previous =
-        previousDimensions?.find((entry) => entry.dimension === dimension)?.score ??
-        scores[dimension];
-      const score = scores[dimension];
-      const change = rounded(score - previous, 1);
-      const trust: Record<
-        Exclude<HealthDimension, "consistency">,
-        HealthDataTrustLevel
-      > = {
-        nutrition: hasData.nutrition ? "partially-verified" : "missing",
-        activity: hasData.activity ? "trusted" : "missing",
-        sleep: hasData.sleep ? "self-reported" : "missing",
-        hydration: hasData.hydration ? "self-reported" : "missing",
-        weight: hasData.weight ? "self-reported" : "missing",
-      };
-      return {
-        dimension,
-        score,
-        previousScore: previous,
-        change,
-        trend: trendForChange(change),
-        trust: trust[dimension],
-        completeness: hasData[dimension] ? 100 : 0,
-        summary: dimensionSummary(dimension, score, hasData[dimension]),
-      } satisfies HealthDimensionScore;
-    });
-    const availableDimensions = dimensions.filter(
-      (dimension) => dimension.trust !== "missing",
-    );
-    const previousSnapshot = snapshotRows.at(-1);
-    const pulseScores: PulseDimensionScores = Object.fromEntries(
-      availableDimensions.map((dimension) => [dimension.dimension, dimension.score]),
-    );
-    const calculatedPulse = calculateHealthPulseScore({
-      scores: pulseScores,
-      previousScore: previousSnapshot?.score,
-      previousCompleteness: previousSnapshot?.dataCompleteness,
-    });
-    const completeness = calculatedPulse.completeness;
-    const score = calculatedPulse.overallScore;
-    const previousScore = snapshotRows.at(-1)?.score ?? score;
-    const change = rounded(score - previousScore, 1);
-    const strongest =
-      [...availableDimensions].sort((left, right) => right.score - left.score)[0]
-        ?.dimension ?? "activity";
-    const focus =
-      dimensions
-        .filter((dimension) => dimension.trust !== "missing")
-        .sort((left, right) => left.score - right.score)[0]?.dimension ??
-      "hydration";
-    const reasons = [
-      aggregate.verifiedActivities > 0
-        ? `${aggregate.verifiedActivities} aktivitas GPS terverifikasi tercatat.`
-        : "Belum ada aktivitas GPS terverifikasi pada hari ini.",
-      aggregate.nutritionEntries > 0
-        ? `${aggregate.nutritionEntries} catatan makanan membentuk skor nutrisi.`
-        : "Belum ada catatan makanan pada hari ini.",
-      hydrationMl > 0
-        ? `${rounded(hydrationMl / 1_000, 1)} liter hidrasi telah dicatat.`
-        : "Data hidrasi belum dicatat.",
-    ];
-    const snapshot: HealthPulseSnapshot = {
-      id: `health-pulse-${key}`,
-      travelerId: user.id,
-      score,
-      previousScore,
-      change,
-      status: statusForScore(score),
-      trend: trendForChange(change),
-      strongestDimension: strongest,
-      focusDimension: focus,
-      dataCompleteness: completeness,
-      generatedAt: utcDayBoundsForKey(key, timezone).end.toISOString(),
-      dimensions,
-      reasons,
-      recommendedNextAction:
-        focus === "activity"
-          ? "Tambahkan aktivitas ringan yang dapat diverifikasi."
-          : focus === "nutrition"
-            ? "Catat makanan berikutnya untuk melengkapi asupan hari ini."
-            : focus === "sleep"
-              ? "Catat durasi tidur untuk melengkapi pola pemulihan."
-              : focus === "hydration"
-                ? "Tambahkan catatan air minum berikutnya."
-                : "Perbarui catatan berat saat pengukuran berikutnya tersedia.",
-    };
-    snapshotRows.push(snapshot);
-    dimensionHistory.set(key, { dimensions, completeness, score });
-  }
-
-  const currentSnapshot = snapshotRows.at(-1)!;
-  const previousSnapshot = snapshotRows.at(-2) ?? currentSnapshot;
+  const healthPulseOverview = await getHealthPulseOverview(userId, now);
   const healthyHistory: HealthyDayHistoryPoint[] = dayKeys.slice(-28).map((key) => {
     const aggregate = aggregates.get(key) ?? dayAggregate();
-    const snapshot = snapshotRows.find((row) => row.id === `health-pulse-${key}`)!;
     const hydrationMl =
       aggregate.waterMl ||
       (aggregate.pulseHydrationLiters ?? 0) * 1_000;
+    const dataCompleteness =
+      [
+        aggregate.verifiedActivities > 0,
+        aggregate.nutritionEntries > 0,
+        aggregate.sleepHours !== undefined,
+        hydrationMl > 0,
+      ].filter(Boolean).length * 25;
     const goalHits = [
       progressPercent(aggregate.activeSeconds / 60, targets.activeMinutes),
       progressPercent(aggregate.protein, targets.protein),
@@ -536,14 +321,14 @@ export async function buildProgressOverview(
         ? "achieved"
         : recoveryProtected && meaningfulActionCount >= 2
           ? "recovery-day"
-          : snapshot.dataCompleteness < 40
+          : dataCompleteness < 40
             ? "incomplete-data"
             : "forming";
     return {
       date: key,
       status,
       meaningfulActionCount,
-      dataCompleteness: snapshot.dataCompleteness,
+      dataCompleteness,
       recoveryProtected,
       explanation:
         status === "achieved"
@@ -870,12 +655,9 @@ export async function buildProgressOverview(
     },
     daily,
     healthPulse: {
-      current: currentSnapshot,
-      previous: previousSnapshot,
-      history: snapshotRows.map((snapshot, index) => ({
-        date: dayKeys[index],
-        score: snapshot.score,
-      })),
+      current: healthPulseOverview.current,
+      previous: healthPulseOverview.previous,
+      history: healthPulseOverview.history,
     },
     todayJourney,
     healthyDays: {
