@@ -80,6 +80,8 @@ async function runRedemption(
           title: "Reward berhasil ditukar",
           message: `${reward.title} sedang menunggu proses fulfillment.`,
           respectPreferences: false,
+          actionUrl: "/reward",
+          dedupeKey: `reward-redemption-created:${redemption.id}`,
         },
         transaction,
       );
@@ -225,6 +227,8 @@ async function refundRedemption(input: RefundRedemptionInput) {
               : "Penukaran kedaluwarsa",
           message: `${redemption.reward.title} dibatalkan dan ${redemption.hpSpent} HP telah dikembalikan.`,
           respectPreferences: false,
+          actionUrl: "/reward",
+          dedupeKey: `reward-redemption-${input.status.toLowerCase()}:${redemption.id}`,
         },
         transaction,
       );
@@ -315,6 +319,8 @@ export async function fulfillRedemption(input: {
         title: "Reward telah dipenuhi",
         message: `${existing.reward.title} telah selesai diproses. Referensi: ${input.fulfillmentReference}.`,
         respectPreferences: false,
+        actionUrl: "/reward",
+        dedupeKey: `reward-redemption-fulfilled:${redemption.id}`,
       },
       transaction,
     );

@@ -423,17 +423,28 @@ model UserSettings {
 }
 
 model UserNotification {
-  id        String           @id @default(uuid())
-  userId    String
-  type      NotificationType @default(SYSTEM)
-  title     String
-  message   String
-  isRead    Boolean          @default(false)
-  createdAt DateTime         @default(now())
+  id             String           @id @default(uuid())
+  userId         String
+  type           NotificationType @default(SYSTEM)
+  title          String
+  message        String
+  isRead         Boolean          @default(false)
+  readAt         DateTime?
+  archivedAt     DateTime?
+  expiresAt      DateTime?
+  requiresAction Boolean          @default(false)
+  processingAt   DateTime?
+  resolvedAt     DateTime?
+  actionUrl      String?
+  actionKey      String?
+  dedupeKey      String?          @unique
+  createdAt      DateTime         @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, isRead])
+  @@index([userId, archivedAt, createdAt])
+  @@index([userId, actionKey, resolvedAt])
   @@map("user_notifications")
 }
 

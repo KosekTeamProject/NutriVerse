@@ -87,9 +87,19 @@ Konten `CIRCLE` hanya dapat dibaca koneksi berstatus `ACCEPTED`. Post, komentar,
 
 ## Notifikasi, storage, dan privasi
 
-- `GET /api/notifications`
+- `GET /api/notifications?scope=active|history&limit=1..50&cursor=:notificationId` mengembalikan `nextCursor` untuk pagination.
+- `PATCH /api/notifications` menandai semua notifikasi aktif sebagai sudah dibaca.
 - `PATCH /api/notifications/:notificationId/read`
 - `GET|POST|DELETE /api/notifications/devices`
+
+Lifecycle notifikasi:
+
+- Notifikasi informasional tetap berada di daftar terbaru selama 24 jam setelah dibaca, lalu dipindahkan ke riwayat secara idempoten ketika daftar notifikasi berikutnya dimuat.
+- Notifikasi dengan `requiresAction=true` tetap aktif setelah dibaca dan baru masuk riwayat ketika `resolvedAt` terisi atau `expiresAt` terlewati.
+- `processingAt` membedakan tindakan yang masih perlu dilakukan dari tindakan yang sudah dikirim dan sedang menunggu keputusan, misalnya proses banding aktivitas.
+- `actionUrl` hanya menerima path internal aplikasi. `actionKey` menghubungkan penyelesaian proses domain dengan notifikasi terkait tanpa menggandakan data ke tabel riwayat baru.
+- `dedupeKey` bersifat unik per pengguna dan membuat event domain yang sama idempoten sehingga retry request tidak menghasilkan notifikasi ganda.
+- Riwayat dan notifikasi aktif tetap menggunakan tabel `user_notifications`; status arsip ditandai melalui `archivedAt`.
 - `POST|DELETE /api/storage/upload`
 - `GET /api/storage/signed-url`
 - `GET /api/privacy/export`

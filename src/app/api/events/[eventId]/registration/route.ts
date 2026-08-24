@@ -80,6 +80,8 @@ export async function POST(request: NextRequest, context: RouteContext) {
             type: NotificationType.EVENT,
             title: "Pendaftaran event berhasil",
             message: `Kamu terdaftar pada event ${event.title}.`,
+            actionUrl: `/komunitas/event/${event.id}`,
+            dedupeKey: `event-registration:${event.id}`,
           },
           transaction,
         );

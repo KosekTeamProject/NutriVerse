@@ -58,7 +58,15 @@ export async function PUT(request: NextRequest, context: RouteContext) {
       update: { type },
     });
     if (!existing && moment.userId !== user.id && moment.user.settings?.notificationsMomentLikes !== false) {
-      await createUserNotification({ userId: moment.userId, type: NotificationType.SOCIAL, title: "Momenmu disukai", message: `${user.name} menyukai Momenmu.`, preferenceOverride: "notificationsMomentLikes" });
+      await createUserNotification({
+        userId: moment.userId,
+        type: NotificationType.SOCIAL,
+        title: "Momenmu disukai",
+        message: `${user.name} menyukai Momenmu.`,
+        preferenceOverride: "notificationsMomentLikes",
+        actionUrl: "/momen",
+        dedupeKey: `moment-reaction:${moment.id}:${user.id}`,
+      });
     }
     return NextResponse.json({ success: true, reaction });
   } catch (error) {

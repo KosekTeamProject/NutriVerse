@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import NextImage from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { Activity, Bell, CalendarCheck, Flame, Gift, Heart, Home, Images, LayoutDashboard, LogIn, LogOut, Menu, Moon, ScanLine, Settings, Sparkles, Sun, Trophy, UserRound, UsersRound, X } from "lucide-react";
+import { Activity, Bell, CalendarCheck, CheckCheck, Flame, Gift, Heart, Home, Images, LayoutDashboard, LogIn, LogOut, Menu, Moon, ScanLine, Settings, Sparkles, Sun, Trophy, UserRound, UsersRound, X } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuthSession } from "@/hooks/useAuthSession";
 import { clearAuthSession, readAuthSession, saveAuthSession } from "@/features/auth/session";
@@ -47,10 +47,36 @@ type HeaderNotification = {
   title: string;
   message: string;
   isRead: boolean;
+  requiresAction: boolean;
+  processingAt: string | null;
+  resolvedAt: string | null;
+  expiresAt: string | null;
+  actionUrl: string | null;
   createdAt: string;
 };
 
-function notificationHref(type: string) {
+function notificationPriority(notification: HeaderNotification) {
+  const expired = notification.expiresAt && new Date(notification.expiresAt).getTime() <= Date.now();
+  if (notification.requiresAction && !notification.processingAt && !notification.resolvedAt && !expired) return 0;
+  if (notification.processingAt && !notification.resolvedAt && !expired) return 1;
+  if (!notification.isRead) return 2;
+  return 3;
+}
+
+function headerNotificationStatus(notification: HeaderNotification) {
+  const expired = notification.expiresAt && new Date(notification.expiresAt).getTime() <= Date.now();
+  if (notification.resolvedAt) return null;
+  if (expired) return { label: "Kedaluwarsa", className: "text-muted-foreground" };
+  if (notification.processingAt) return { label: "Sedang diproses", className: "text-sky" };
+  if (notification.requiresAction) return { label: "Perlu tindakan", className: "text-amber" };
+  return null;
+}
+
+function notificationHref(notification: HeaderNotification) {
+  if (notification.actionUrl?.startsWith("/") && !notification.actionUrl.startsWith("//")) {
+    return notification.actionUrl;
+  }
+  const { type } = notification;
   if (type === "CHALLENGE") return "/challenge";
   if (type === "REWARD") return "/reward";
   if (type === "EVENT") return "/komunitas";
@@ -110,6 +136,7 @@ export function AppShell({ children }: { readonly children: React.ReactNode }) {
   const [authChecked, setAuthChecked] = useState(false);
   const [economy, setEconomy] = useState({ totalXp: 0, currentHp: 0 });
   const [notifications, setNotifications] = useState<HeaderNotification[]>([]);
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const { dark, toggleTheme } = useTheme();
 
   const isPublicPage = pathname === "/onboarding" || pathname.startsWith("/bantuan");
@@ -177,12 +204,17 @@ export function AppShell({ children }: { readonly children: React.ReactNode }) {
     
     const fetchNotifs = async () => {
       try {
-        const response = await fetch("/api/notifications", { cache: "no-store" });
+        const response = await fetch("/api/notifications?scope=active&limit=8", { cache: "no-store" });
         const result = (await response.json().catch(() => null)) as
-          | { success?: boolean; notifications?: HeaderNotification[] }
+          | { success?: boolean; notifications?: HeaderNotification[]; unreadCount?: number }
           | null;
         if (!cancelled && response.ok && result?.success) {
-          setNotifications(result.notifications ?? []);
+          setNotifications([...(result.notifications ?? [])].sort((left, right) => {
+            const priorityDifference = notificationPriority(left) - notificationPriority(right);
+            if (priorityDifference !== 0) return priorityDifference;
+            return new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime();
+          }));
+          setUnreadNotificationCount(result.unreadCount ?? 0);
         }
       } catch {
         // Notifikasi tidak menggagalkan shell saat koneksi terputus.
@@ -190,7 +222,7 @@ export function AppShell({ children }: { readonly children: React.ReactNode }) {
     };
 
     fetchNotifs();
-    const interval = setInterval(fetchNotifs, 3000);
+    const interval = setInterval(fetchNotifs, 30_000);
     
     return () => {
       cancelled = true;
@@ -248,12 +280,18 @@ export function AppShell({ children }: { readonly children: React.ReactNode }) {
         item.id === notification.id ? { ...item, isRead: true } : item,
       ),
     );
+    setUnreadNotificationCount((count) => Math.max(0, count - 1));
     void fetch(`/api/notifications/${notification.id}/read`, {
       method: "PATCH",
     });
   }
 
-  const unreadNotifications = notifications.filter((item) => !item.isRead);
+  async function markAllNotificationsRead() {
+    const response = await fetch("/api/notifications", { method: "PATCH" }).catch(() => null);
+    if (!response?.ok) return;
+    setNotifications((items) => items.map((item) => ({ ...item, isRead: true })));
+    setUnreadNotificationCount(0);
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -306,34 +344,52 @@ export function AppShell({ children }: { readonly children: React.ReactNode }) {
                 <button
                   onClick={() => { setNotificationsOpen((value) => !value); setProfileOpen(false); }}
                   className="relative grid h-8 w-8 place-items-center rounded-lg text-muted-foreground transition hover:bg-secondary hover:text-foreground sm:h-9 sm:w-9"
-                  aria-label={`${unreadNotifications.length} notifikasi belum dibaca`}
+                  aria-label={`${unreadNotificationCount} notifikasi belum dibaca`}
                   aria-expanded={notificationsOpen}
                   aria-controls="header-notifications"
                 >
                   <Bell className="h-[18px] w-[18px]" />
-                  {unreadNotifications.length > 0 && <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-destructive ring-2 ring-background" />}
+                  {unreadNotificationCount > 0 && <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-destructive ring-2 ring-background" />}
                 </button>
                 {notificationsOpen && (
                   <section id="header-notifications" className="fixed inset-x-3 top-[7rem] z-50 overflow-hidden rounded-2xl border border-line bg-card shadow-2xl sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-80" aria-label="Daftar notifikasi">
-                    <div className="flex items-center justify-between border-b border-line/60 px-4 py-3">
+                    <div className="flex items-center justify-between gap-3 border-b border-line/60 px-4 py-3">
                       <div>
                         <p className="font-display text-sm font-bold text-foreground">Notifikasi</p>
-                        <p className="text-[10px] text-muted-foreground">{notifications.length} pembaruan dari database</p>
+                        <p className="text-[10px] text-muted-foreground">Pembaruan terbaru untukmu</p>
                       </div>
-                      <span className="grid h-7 min-w-7 place-items-center rounded-full bg-destructive/10 px-2 text-[10px] font-bold text-destructive">{unreadNotifications.length}</span>
+                      <div className="flex items-center gap-1.5">
+                        {unreadNotificationCount > 0 && (
+                          <button onClick={() => void markAllNotificationsRead()} className="grid h-7 w-7 place-items-center rounded-lg text-muted-foreground transition hover:bg-secondary hover:text-brand" aria-label="Tandai semua notifikasi sudah dibaca">
+                            <CheckCheck className="h-4 w-4" />
+                          </button>
+                        )}
+                        <span className="grid h-7 min-w-7 place-items-center rounded-full bg-destructive/10 px-2 text-[10px] font-bold text-destructive">{unreadNotificationCount}</span>
+                      </div>
                     </div>
-                    <div className="p-2">
+                    <div className="max-h-[min(28rem,calc(100vh-12rem))] overflow-y-auto p-2">
                       {notifications.length === 0 && <p className="px-3 py-6 text-center text-xs text-muted-foreground">Belum ada notifikasi.</p>}
-                      {notifications.map((item) => (
-                        <Link key={item.id} href={notificationHref(item.type)} onClick={() => openNotification(item)} className="flex gap-3 rounded-xl px-3 py-3 transition hover:bg-secondary">
+                      {notifications.map((item) => {
+                        const status = headerNotificationStatus(item);
+                        return (
+                        <Link key={item.id} href={notificationHref(item)} onClick={() => openNotification(item)} className="flex gap-3 rounded-xl px-3 py-3 transition hover:bg-secondary">
                           <span className={`relative mt-1 h-2 w-2 shrink-0 rounded-full ${item.isRead ? "bg-muted-foreground/35" : "bg-brand"}`}>{!item.isRead && <span className="absolute inset-0 animate-ping rounded-full bg-brand/40" />}</span>
                           <span className="min-w-0 flex-1">
                             <span className="block text-xs font-bold text-foreground">{item.title}</span>
                             <span className="mt-0.5 block text-[10px] leading-relaxed text-muted-foreground">{item.message}</span>
-                            <span className="mt-1 block text-[9px] font-semibold text-brand">{notificationTime(item.createdAt)}</span>
+                            <span className="mt-1 flex flex-wrap items-center gap-2 text-[9px] font-semibold text-brand">
+                              <span>{notificationTime(item.createdAt)}</span>
+                              {status && <span className={status.className}>• {status.label}</span>}
+                            </span>
                           </span>
                         </Link>
-                      ))}
+                        );
+                      })}
+                    </div>
+                    <div className="border-t border-line/60 p-2">
+                      <Link href="/notifikasi" onClick={() => setNotificationsOpen(false)} className="flex items-center justify-center rounded-xl px-3 py-2.5 text-xs font-bold text-brand transition hover:bg-brand-soft">
+                        Lihat semua dan riwayat
+                      </Link>
                     </div>
                   </section>
                 )}

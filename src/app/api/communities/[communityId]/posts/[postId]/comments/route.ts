@@ -26,6 +26,8 @@ export async function POST(request: NextRequest, context: RouteContext) {
         title: `Komentar baru di ${post.guild?.name ?? "komunitas"}`,
         message: `${user.name} mengomentari informasi yang kamu bagikan.`,
         preferenceOverride: "notificationsCommunity",
+        actionUrl: `/komunitas/ruang/${communityId}`,
+        dedupeKey: `community-comment:${comment.id}`,
       });
     }
     return NextResponse.json({ success: true, comment }, { status: 201 });

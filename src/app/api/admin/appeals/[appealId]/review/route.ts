@@ -1,4 +1,4 @@
-import { AppealStatus } from "@prisma/client";
+import { AppealStatus, NotificationType } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import {
   apiErrorResponse,
@@ -9,6 +9,10 @@ import { requireAdminUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { approveActivityReview } from "@/server/activity/activity-review-service";
 import { reconcileActivityFinalization } from "@/server/activity/finalization-service";
+import {
+  createUserNotification,
+  resolveUserNotificationsByActionKey,
+} from "@/server/notifications/notification-service";
 
 type RouteContext = { params: Promise<{ appealId: string }> };
 
@@ -88,6 +92,25 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
           reason: notes,
         },
       });
+      await resolveUserNotificationsByActionKey(
+        appeal.userId,
+        `activity-appeal:${appeal.activitySessionId}`,
+        transaction,
+      );
+      if (status === AppealStatus.REJECTED) {
+        await createUserNotification(
+          {
+            userId: appeal.userId,
+            type: NotificationType.ACTIVITY,
+            title: "Banding aktivitas selesai ditinjau",
+            message: `Bandingmu belum dapat disetujui. Catatan reviewer: ${notes}`,
+            respectPreferences: false,
+            actionUrl: `/aktivitas/${appeal.activitySessionId}`,
+            dedupeKey: `activity-appeal-rejected:${appeal.id}`,
+          },
+          transaction,
+        );
+      }
       return updated;
     });
 

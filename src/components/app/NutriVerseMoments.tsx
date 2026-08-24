@@ -147,10 +147,11 @@ export function NutriVerseMoments() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const detailScrollRef = useRef<HTMLDivElement>(null);
-  const touchStartYRef = useRef<number | null>(null);
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const wheelDeltaRef = useRef(0);
   const momentNavigationLockedRef = useRef(false);
   const commentRequestRef = useRef(0);
+  const feedRequestRef = useRef<AbortController | null>(null);
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState("");
 
@@ -159,6 +160,7 @@ export function NutriVerseMoments() {
   const selectedTemplateUsesActivity = selectedTemplate?.allowedDataKeys.some((key) => key.startsWith("activity.")) ?? false;
   const selectedTemplateUsesPhoto = selectedTemplate?.allowedDataKeys.includes("moment.photo") ?? false;
   const selectedIndex = selected ? moments.findIndex((moment) => moment.id === selected.id) : -1;
+  const composerHasDraft = Boolean(sourcePhoto || outputPhoto || caption.trim());
 
   async function loadOptions() {
     const [communityResponse, templateResponse, contextResponse, settingsResponse] = await Promise.all([
@@ -189,6 +191,9 @@ export function NutriVerseMoments() {
   }
 
   async function loadFeed(cursor?: string): Promise<Moment[]> {
+    const controller = new AbortController();
+    feedRequestRef.current?.abort();
+    feedRequestRef.current = controller;
     if (cursor) setLoadingMore(true);
     else setLoading(true);
     setError("");
@@ -196,21 +201,33 @@ export function NutriVerseMoments() {
       const params = new URLSearchParams({ scope, limit: "20" });
       if (cursor) params.set("cursor", cursor);
       if (scope === "community" && communityFilter) params.set("communityId", communityFilter);
-      const response = await fetch(`/api/moments?${params}`, { cache: "no-store" });
+      const response = await fetch(`/api/moments?${params}`, {
+        cache: "no-store",
+        signal: controller.signal,
+      });
       const result = await response.json().catch(() => null) as { success?: boolean; moments?: Moment[]; nextCursor?: string | null; error?: string } | null;
       if (!response.ok || !result?.success) { setError(result?.error ?? "Feed momen belum dapat dimuat."); return []; }
       const receivedMoments = result.moments ?? [];
       setMoments((current) => cursor ? [...current, ...receivedMoments.filter((item) => !current.some((old) => old.id === item.id))] : receivedMoments);
       setNextCursor(result.nextCursor ?? null);
       return receivedMoments;
-    } catch {
+    } catch (loadError) {
+      if (loadError instanceof DOMException && loadError.name === "AbortError") return [];
       setError("Feed momen belum dapat dimuat. Periksa koneksi lalu coba lagi.");
       return [];
-    } finally { setLoading(false); setLoadingMore(false); }
+    } finally {
+      if (!controller.signal.aborted) {
+        setLoading(false);
+        setLoadingMore(false);
+      }
+    }
   }
 
   useEffect(() => { const timer = window.setTimeout(() => void loadOptions(), 0); return () => window.clearTimeout(timer); }, []);
-  useEffect(() => () => { streamRef.current?.getTracks().forEach((track) => track.stop()); }, []);
+  useEffect(() => () => {
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    feedRequestRef.current?.abort();
+  }, []);
   useEffect(() => {
     if (!cameraActive || !videoRef.current || !streamRef.current) return;
     videoRef.current.srcObject = streamRef.current;
@@ -222,10 +239,14 @@ export function NutriVerseMoments() {
     document.body.style.overflow = "hidden";
     function handleEscape(event: KeyboardEvent) {
       if (event.key !== "Escape") return;
+      if (composerHasDraft && !window.confirm("Buang foto dan caption yang belum dibagikan?")) return;
       streamRef.current?.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
       if (videoRef.current) videoRef.current.srcObject = null;
       setCameraActive(false);
+      setSourcePhoto(null);
+      setOutputPhoto(null);
+      setCaption("");
       setComposerOpen(false);
     }
     window.addEventListener("keydown", handleEscape);
@@ -233,7 +254,7 @@ export function NutriVerseMoments() {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", handleEscape);
     };
-  }, [composerOpen]);
+  }, [composerHasDraft, composerOpen]);
   useEffect(() => {
     if (!selected) return;
     const previousOverflow = document.body.style.overflow;
@@ -245,10 +266,10 @@ export function NutriVerseMoments() {
       }
       const target = event.target as HTMLElement | null;
       if (target?.matches("input, textarea, select, [contenteditable='true']")) return;
-      if (event.key === "ArrowDown") {
+      if (event.key === "ArrowDown" || event.key === "ArrowRight") {
         event.preventDefault();
         void navigateMoment(1);
-      } else if (event.key === "ArrowUp") {
+      } else if (event.key === "ArrowUp" || event.key === "ArrowLeft") {
         event.preventDefault();
         void navigateMoment(-1);
       }
@@ -272,7 +293,12 @@ export function NutriVerseMoments() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { const timer = window.setTimeout(() => void loadFeed(), 0); return () => window.clearTimeout(timer); }, [scope, communityFilter]);
 
-  function chooseScope(nextScope: FeedScope) { setScope(nextScope); setCommunityFilter(""); setMoments([]); }
+  function chooseScope(nextScope: FeedScope) {
+    if (nextScope === scope) return;
+    setScope(nextScope);
+    setCommunityFilter("");
+    setMoments([]);
+  }
 
   async function openMoment(moment: Moment) {
     const requestId = commentRequestRef.current + 1;
@@ -328,13 +354,14 @@ export function NutriVerseMoments() {
   }
 
   function handleMomentTouchEnd(event: React.TouchEvent) {
-    const startY = touchStartYRef.current;
-    touchStartYRef.current = null;
-    if (startY === null) return;
-    const endY = event.changedTouches[0]?.clientY ?? startY;
-    const distance = startY - endY;
-    if (Math.abs(distance) < 55) return;
-    void navigateMoment(distance > 0 ? 1 : -1);
+    const start = touchStartRef.current;
+    touchStartRef.current = null;
+    if (!start) return;
+    const touch = event.changedTouches[0];
+    const distanceX = start.x - (touch?.clientX ?? start.x);
+    const distanceY = start.y - (touch?.clientY ?? start.y);
+    if (Math.abs(distanceX) < 55 || Math.abs(distanceX) <= Math.abs(distanceY)) return;
+    void navigateMoment(distanceX > 0 ? 1 : -1);
   }
 
   function updateMoment(id: string, update: (moment: Moment) => Moment) {
@@ -523,8 +550,14 @@ export function NutriVerseMoments() {
     stopCamera();
   }
 
-  function closeComposer() {
+  function closeComposer(force = false) {
+    if (!force && composerHasDraft && !window.confirm("Buang foto dan caption yang belum dibagikan?")) return;
     stopCamera();
+    setSourcePhoto(null);
+    setOutputPhoto(null);
+    setCaption("");
+    setComposerMessage("");
+    setCameraError("");
     setComposerOpen(false);
   }
 
@@ -606,7 +639,7 @@ export function NutriVerseMoments() {
       const response = await fetch("/api/moments", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ imagePath: upload.path, caption, privacyLevel: audience, communityId: audience === "COMMUNITY" ? targetCommunity : null, activitySessionId: studioActivityId, duringActivity: Boolean(studioActivityId), shareTemplateId: composerMode === "studio" ? templateId || null : null, showLikeCount, likerListVisibility, commentsMode }) });
       const result = await response.json().catch(() => null) as { success?: boolean; error?: string } | null;
       if (!response.ok || !result?.success) { setComposerMessage(`Penyimpanan Momen gagal: ${result?.error ?? "Record Momen tidak dapat dibuat."}`); return; }
-      closeComposer(); setSourcePhoto(null); setOutputPhoto(null); setCaption(""); setComposerMessage("");
+      closeComposer(true);
       if ((scope === "public" && audience === "PUBLIC") || (scope === "community" && audience === "COMMUNITY") || (scope === "friends" && audience === "CIRCLE")) await loadFeed();
     } finally { setPublishing(false); }
   }
@@ -634,25 +667,64 @@ export function NutriVerseMoments() {
   const followLabel = (moment: Moment) => moment.connection.state === "FRIEND" ? "Teman" : moment.connection.state === "PENDING_SENT" ? "Menunggu" : moment.connection.state === "PENDING_RECEIVED" ? "Terima" : "Ikuti";
   const firstLiker = likers[0]?.user;
   const remainingLikes = selected?.likeCount === null || selected?.likeCount === undefined ? null : Math.max(0, selected.likeCount - 1);
+  const emptyState = scope === "community"
+    ? communities.length === 0
+      ? { title: "Belum mengikuti komunitas", description: "Gabung komunitas untuk menemukan cerita sehat dari anggota lain.", action: "Jelajahi Komunitas" }
+      : { title: "Belum ada Momen komunitas", description: "Momen dari komunitas yang kamu ikuti akan tampil di sini.", action: "Jelajahi Komunitas" }
+    : scope === "friends"
+      ? { title: "Belum ada Momen teman", description: "Hubungkan akun dengan teman agar perjalanan sehat kalian dapat saling menguatkan.", action: "Lihat Momen Publik" }
+      : scope === "saved"
+        ? { title: "Koleksi tersimpan masih kosong", description: "Simpan Momen yang ingin kamu lihat kembali tanpa membuatnya terlihat oleh orang lain.", action: "Jelajahi Momen" }
+        : { title: "Belum ada Momen publik", description: "Jadilah yang pertama membagikan perjalanan sehat hari ini.", action: "Buat Momen" };
 
   return (
     <div className="space-y-6">
-      <section className="overflow-hidden rounded-3xl border border-line bg-card shadow-soft"><div className="relative overflow-hidden bg-gradient-to-br from-[#063c2b] via-brand to-lime p-6 text-white sm:p-8"><div className="absolute -right-10 -top-12 h-52 w-52 rounded-full border-[34px] border-white/10" /><div className="relative flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-[9px] font-bold uppercase tracking-[0.18em] text-white/75">NutriVerse Moments</p><h1 className="mt-2 max-w-xl font-display text-3xl font-extrabold">Cerita sehat yang dekat, relevan, dan terkontrol.</h1><p className="mt-2 max-w-2xl text-sm text-white/80">Lihat momen publik, komunitas yang kamu ikuti, atau temanmu dalam feed yang terpisah.</p></div><div className="flex flex-wrap gap-2"><button onClick={() => openComposer("studio")} className="btn border-white/30 bg-white/10 text-white hover:bg-white/20"><Sparkles className="h-4 w-4" /> Studio Berbagi</button><button onClick={() => openComposer("capture")} className="btn bg-white text-[#06422f] hover:bg-white/90"><Camera className="h-4 w-4" /> Ambil Momen</button></div></div></div></section>
+      <section className="overflow-hidden rounded-3xl border border-line bg-card shadow-soft">
+        <div className="relative overflow-hidden bg-gradient-to-br from-[#063c2b] via-brand to-lime p-5 text-white sm:p-8">
+          <div className="absolute -right-14 -top-16 h-44 w-44 rounded-full border-[28px] border-white/10 sm:-right-10 sm:-top-12 sm:h-52 sm:w-52 sm:border-[34px]" />
+          <div className="relative flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-white/75">NutriVerse Moments</p>
+              <h1 className="mt-2 max-w-xl font-display text-2xl font-extrabold leading-tight sm:text-3xl">Cerita sehat yang dekat, relevan, dan terkontrol.</h1>
+              <p className="mt-2 max-w-2xl text-xs leading-relaxed text-white/80 sm:text-sm">Lihat Momen publik, komunitas yang kamu ikuti, atau temanmu dalam ruang yang terpisah.</p>
+            </div>
+            <div className="grid shrink-0 grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-end">
+              <button onClick={() => openComposer("studio")} className="btn min-w-0 border-white/30 bg-white/10 px-3 text-xs text-white hover:bg-white/20 sm:px-4 sm:text-sm"><Sparkles className="h-4 w-4" /> Studio Berbagi</button>
+              <button onClick={() => openComposer("capture")} className="btn min-w-0 bg-white px-3 text-xs text-[#06422f] hover:bg-white/90 sm:px-4 sm:text-sm"><Camera className="h-4 w-4" /> Ambil Momen</button>
+            </div>
+          </div>
+        </div>
+      </section>
 
       <section className="mx-auto w-full space-y-5">
-        <nav className="-mx-4 flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:grid sm:grid-cols-[repeat(3,minmax(0,1fr))_160px] sm:gap-1 sm:overflow-visible sm:rounded-2xl sm:border sm:border-line sm:bg-secondary sm:p-1" aria-label="Filter momen">
-          {(["public", "community", "friends"] as FeedScope[]).map((item) => (
+        <div className="sticky top-[7rem] z-30 -mx-4 border-y border-line/60 bg-background/95 px-4 py-2 shadow-[0_8px_24px_-22px_rgba(0,0,0,.45)] backdrop-blur-md sm:top-20 sm:mx-0 sm:rounded-2xl sm:border sm:p-1.5 lg:top-24">
+          <div className="flex min-w-0 items-center gap-2">
+            <nav className="grid min-w-0 flex-1 grid-cols-3 rounded-xl bg-secondary/80 p-1" aria-label="Sumber Momen">
+              {(["public", "community", "friends"] as FeedScope[]).map((item) => {
+                const shortLabel = item === "public" ? "Publik" : item === "community" ? "Komunitas" : "Teman";
+                return (
+                  <button
+                    key={item}
+                    onClick={() => chooseScope(item)}
+                    className={"min-w-0 rounded-lg px-2 py-2.5 text-[10px] font-extrabold transition sm:px-4 sm:text-xs " + (scope === item ? "bg-card text-brand shadow-sm ring-1 ring-line/70" : "text-muted-foreground hover:text-foreground")}
+                  >
+                    <span className="sm:hidden">{shortLabel}</span>
+                    <span className="hidden sm:inline">Momen {shortLabel}</span>
+                  </button>
+                );
+              })}
+            </nav>
             <button
-              key={item}
-              onClick={() => chooseScope(item)}
-              className={"min-w-[145px] shrink-0 snap-start rounded-full border px-4 py-3 text-xs font-bold transition sm:min-w-0 sm:rounded-xl " + (scope === item ? "border-line bg-card text-brand shadow-sm" : "border-transparent bg-secondary/75 text-muted-foreground hover:text-foreground")}
+              onClick={() => chooseScope("saved")}
+              className={"inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl border px-3 text-xs font-extrabold transition sm:h-auto sm:min-w-36 sm:self-stretch sm:px-4 " + (scope === "saved" ? "border-brand bg-brand text-white shadow-sm" : "border-line bg-card text-muted-foreground hover:border-brand/30 hover:text-brand")}
+              aria-label="Momen tersimpan"
+              title="Momen tersimpan"
             >
-              {item === "public" ? "Momen Publik" : item === "community" ? "Momen Komunitas" : "Momen Teman"}
+              <Bookmark className={`h-4 w-4 ${scope === "saved" ? "fill-current" : ""}`} />
+              <span className="hidden sm:inline">Tersimpan</span>
             </button>
-          ))}
-          <span className="my-2 w-px shrink-0 bg-line sm:hidden" aria-hidden="true" />
-          <button onClick={() => chooseScope("saved")} className={"flex min-w-[132px] shrink-0 snap-start items-center justify-center gap-2 rounded-full border px-4 py-3 text-xs font-bold transition sm:min-w-0 sm:rounded-xl " + (scope === "saved" ? "border-brand/30 bg-brand text-white shadow-sm" : "border-brand/20 bg-brand-soft text-brand hover:border-brand/40")}><Bookmark className={`h-4 w-4 ${scope === "saved" ? "fill-current" : ""}`} /> Tersimpan</button>
-        </nav>
+          </div>
+        </div>
 
         {scope === "saved" && (
           <div className="flex items-center gap-3 rounded-2xl border border-brand/15 bg-brand-soft/45 px-4 py-3">
@@ -682,11 +754,10 @@ export function NutriVerseMoments() {
         )}
 
         {loading ? (
-          <div className="grid min-h-80 place-items-center rounded-3xl border border-line bg-card">
-            <div className="text-center">
-              <LoaderCircle className="mx-auto h-7 w-7 animate-spin text-brand" />
-              <p className="mt-3 text-xs text-muted-foreground">Memuat momen…</p>
-            </div>
+          <div className="grid grid-cols-3 gap-0.5 overflow-hidden rounded-2xl sm:gap-2 2xl:grid-cols-4" aria-busy="true" aria-label="Memuat Momen">
+            {Array.from({ length: 12 }, (_, index) => (
+              <span key={index} className="aspect-square animate-pulse bg-secondary sm:rounded-xl" />
+            ))}
           </div>
         ) : error && moments.length === 0 ? (
           <div className="grid min-h-72 place-items-center rounded-3xl border border-line bg-card p-6 text-center">
@@ -699,9 +770,16 @@ export function NutriVerseMoments() {
         ) : moments.length === 0 ? (
           <div className="grid min-h-72 w-full place-items-center rounded-3xl border border-dashed border-line bg-card p-6 text-center">
             <div>
-              <ImagePlus className="mx-auto h-9 w-9 text-muted-foreground" />
-              <p className="mt-4 text-sm font-bold">Belum ada momen di sini</p>
-              <p className="mt-2 text-xs text-muted-foreground">Momen akan muncul sesuai audiens yang dipilih pengunggah.</p>
+              <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-secondary text-muted-foreground"><ImagePlus className="h-5 w-5" /></span>
+              <p className="mt-4 text-sm font-bold">{emptyState.title}</p>
+              <p className="mx-auto mt-2 max-w-sm text-xs leading-relaxed text-muted-foreground">{emptyState.description}</p>
+              {scope === "community" ? (
+                <Link href="/komunitas" className="btn btn-outline btn-sm mt-5">{emptyState.action}</Link>
+              ) : scope === "public" ? (
+                <button onClick={() => openComposer("capture")} className="btn btn-primary btn-sm mt-5"><Camera className="h-4 w-4" /> {emptyState.action}</button>
+              ) : (
+                <button onClick={() => chooseScope("public")} className="btn btn-outline btn-sm mt-5">{emptyState.action}</button>
+              )}
             </div>
           </div>
         ) : (
@@ -767,7 +845,7 @@ export function NutriVerseMoments() {
                 <p className="truncate text-[9px] text-muted-foreground">@{selected.user.username ?? "pengguna"} · {relativeTime(selected.createdAt)}</p>
               </div>
               {scope === "public" && !selected.isOwner && (
-                <button disabled={selected.connection.state === "PENDING_SENT" || selected.connection.state === "FRIEND"} onClick={() => void follow(selected)} className="btn btn-outline btn-sm px-3 text-[10px]">
+                <button disabled={selected.connection.state === "PENDING_SENT" || selected.connection.state === "FRIEND"} onClick={() => void follow(selected)} className="btn btn-outline btn-sm hidden px-3 text-[10px] min-[430px]:inline-flex">
                   {followLabel(selected)}
                 </button>
               )}
@@ -778,9 +856,12 @@ export function NutriVerseMoments() {
             </header>
 
             <div
-              className="relative aspect-[4/5] w-full shrink-0 touch-none bg-black lg:aspect-auto lg:h-full lg:min-h-0"
+              className="relative aspect-[4/5] w-full shrink-0 touch-pan-y bg-black lg:aspect-auto lg:h-full lg:min-h-0"
               onWheel={handleMomentWheel}
-              onTouchStart={(event) => { touchStartYRef.current = event.touches[0]?.clientY ?? null; }}
+              onTouchStart={(event) => {
+                const touch = event.touches[0];
+                touchStartRef.current = touch ? { x: touch.clientX, y: touch.clientY } : null;
+              }}
               onTouchEnd={handleMomentTouchEnd}
             >
               <NextImage
@@ -792,7 +873,7 @@ export function NutriVerseMoments() {
                 className="object-contain"
               />
               <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center lg:hidden">
-                <span className="rounded-full bg-black/55 px-3 py-1.5 text-[9px] font-bold text-white backdrop-blur">Geser ↑↓ untuk momen lain</span>
+                <span className="rounded-full bg-black/55 px-3 py-1.5 text-[9px] font-bold text-white backdrop-blur">Geser ←→ untuk Momen lain · {selectedIndex + 1}/{moments.length}</span>
               </div>
               <nav className="absolute right-4 top-1/2 hidden -translate-y-1/2 flex-col items-center gap-2 lg:flex" aria-label="Navigasi antar momen">
                 <button
@@ -853,6 +934,16 @@ export function NutriVerseMoments() {
                     <Bookmark className={`h-7 w-7 ${selected.bookmarkedByMe ? "fill-current" : ""}`} />
                   </button>
                 </div>
+
+                {scope === "public" && !selected.isOwner && (
+                  <button
+                    disabled={selected.connection.state === "PENDING_SENT" || selected.connection.state === "FRIEND"}
+                    onClick={() => void follow(selected)}
+                    className="btn btn-outline btn-sm mt-3 w-full min-[430px]:hidden"
+                  >
+                    <UserPlus className="h-4 w-4" /> {followLabel(selected)}
+                  </button>
+                )}
 
                 {(selected.isOwner || selected.likerListVisibility === "AUDIENCE") && (firstLiker || (selected.likeCount ?? 0) > 0) && (
                   <button onClick={() => void openLikers(selected)} className="mt-3 flex max-w-full items-center text-left text-xs text-foreground hover:text-brand">
@@ -954,7 +1045,7 @@ export function NutriVerseMoments() {
               </div>
 
               {commentsEnabled ? (
-                <form onSubmit={addComment} className="flex shrink-0 gap-2 border-t border-line bg-card p-3 sm:p-4">
+                <form onSubmit={addComment} className="sticky bottom-0 z-20 flex shrink-0 gap-2 border-t border-line bg-card/95 p-3 pb-[max(.75rem,env(safe-area-inset-bottom))] backdrop-blur sm:p-4">
                   <input value={commentDraft} onChange={(event) => setCommentDraft(event.target.value)} maxLength={500} className="input min-w-0 flex-1" placeholder={selected.commentsMode === "FRIENDS_ONLY" ? "Komentar khusus teman…" : "Tulis komentar…"} />
                   <button disabled={commentBusy || !commentDraft.trim()} className="btn btn-primary shrink-0 px-4" aria-label="Kirim komentar">
                     <Send className="h-4 w-4" />
@@ -999,7 +1090,7 @@ export function NutriVerseMoments() {
                   {composerMode === "studio" ? "Pilih template untuk ceritamu" : "Bagikan momen sehatmu"}
                 </h2>
               </div>
-              <button onClick={closeComposer} className="grid h-9 w-9 place-items-center rounded-xl text-muted-foreground hover:bg-secondary" aria-label="Tutup">
+              <button onClick={() => closeComposer()} className="grid h-9 w-9 place-items-center rounded-xl text-muted-foreground hover:bg-secondary" aria-label="Tutup">
                 <X className="h-5 w-5" />
               </button>
             </header>

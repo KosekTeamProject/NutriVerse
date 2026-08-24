@@ -293,6 +293,10 @@ export async function rejectActivityWithCompensation(input: {
           message:
             "Aktivitas tidak lolos verifikasi setelah review. Reward terkait telah disesuaikan dan kamu dapat mengajukan banding.",
           respectPreferences: false,
+          requiresAction: true,
+          actionUrl: `/aktivitas/${activity.id}`,
+          actionKey: `activity-appeal:${activity.id}`,
+          dedupeKey: `activity-review-rejected:${activity.id}`,
         },
         transaction,
       );
@@ -439,6 +443,8 @@ export async function approveActivityReview(input: {
           message:
             "Aktivitasmu telah disetujui setelah review dan reward sedang direkonsiliasi.",
           respectPreferences: false,
+          actionUrl: `/aktivitas/${activity.id}`,
+          dedupeKey: `activity-review-approved:${activity.id}`,
         },
         transaction,
       );

@@ -55,7 +55,15 @@ export async function POST(request: NextRequest, context: RouteContext) {
       select: { id: true, content: true, createdAt: true, userId: true, user: { select: { id: true, name: true, username: true, avatarUrl: true } } },
     });
     if (!moderated && moment.userId !== user.id && moment.user.settings?.notificationsMomentComments !== false) {
-      await createUserNotification({ userId: moment.userId, type: NotificationType.SOCIAL, title: "Komentar baru di Momen", message: `${user.name} mengomentari Momenmu.`, preferenceOverride: "notificationsMomentComments" });
+      await createUserNotification({
+        userId: moment.userId,
+        type: NotificationType.SOCIAL,
+        title: "Komentar baru di Momen",
+        message: `${user.name} mengomentari Momenmu.`,
+        preferenceOverride: "notificationsMomentComments",
+        actionUrl: "/momen",
+        dedupeKey: `moment-comment:${comment.id}`,
+      });
     }
     return NextResponse.json({ success: true, comment: moderated ? null : { ...comment, canDelete: true }, moderated, message: moderated ? "Komentar disimpan untuk ditinjau pemilik Momen." : undefined }, { status: 201 });
   } catch (error) {

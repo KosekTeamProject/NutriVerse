@@ -11,6 +11,7 @@ import {
 } from "@/lib/api";
 import { requireCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { startProcessingUserNotificationsByActionKey } from "@/server/notifications/notification-service";
 
 type RouteContext = { params: Promise<{ activityId: string }> };
 
@@ -71,15 +72,24 @@ export async function POST(request: NextRequest, context: RouteContext) {
         { status: 409 },
       );
     }
-    const appeal = await prisma.appeal.create({
-      data: {
-        activitySessionId: activity.id,
-        userId: user.id,
-        reason: stringValue(body?.reason, "Alasan banding", {
-          min: 10,
-          max: 1_000,
-        }),
-      },
+    const reason = stringValue(body?.reason, "Alasan banding", {
+      min: 10,
+      max: 1_000,
+    });
+    const appeal = await prisma.$transaction(async (transaction) => {
+      const created = await transaction.appeal.create({
+        data: {
+          activitySessionId: activity.id,
+          userId: user.id,
+          reason,
+        },
+      });
+      await startProcessingUserNotificationsByActionKey(
+        user.id,
+        `activity-appeal:${activity.id}`,
+        transaction,
+      );
+      return created;
     });
     return NextResponse.json({ success: true, appeal }, { status: 201 });
   } catch (error) {

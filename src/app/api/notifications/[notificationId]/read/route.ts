@@ -10,9 +10,10 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     assertSameOrigin(request);
     const user = await requireCurrentUser();
     const { notificationId } = await context.params;
+    const now = new Date();
     const result = await prisma.userNotification.updateMany({
       where: { id: notificationId, userId: user.id },
-      data: { isRead: true },
+      data: { isRead: true, readAt: now },
     });
     if (!result.count) return NextResponse.json({ success: false, error: "Notifikasi tidak ditemukan." }, { status: 404 });
     return NextResponse.json({ success: true });

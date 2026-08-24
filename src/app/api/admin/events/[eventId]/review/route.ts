@@ -33,7 +33,14 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     const updated = await prisma.event.update({ where: { id: eventId }, data });
     await prisma.auditLog.create({ data: { actorUserId: admin.id, action: `REVIEW_EVENT_${String(action).toUpperCase()}`, entityName: "Event", entityId: event.id, beforeState: event, afterState: updated, reason: note } });
     if (event.createdByUserId) {
-      await createUserNotification({ userId: event.createdByUserId, type: NotificationType.EVENT, title: action === "approve" ? "Event disetujui" : action === "needs_revision" ? "Event perlu direvisi" : action === "reject" ? "Event ditolak" : "Informasi event diperbarui", message: note ?? `Status pengajuan ${event.title} telah diperbarui.` });
+      await createUserNotification({
+        userId: event.createdByUserId,
+        type: NotificationType.EVENT,
+        title: action === "approve" ? "Event disetujui" : action === "needs_revision" ? "Event perlu direvisi" : action === "reject" ? "Event ditolak" : "Informasi event diperbarui",
+        message: note ?? `Status pengajuan ${event.title} telah diperbarui.`,
+        actionUrl: `/komunitas/event/${event.id}`,
+        dedupeKey: `event-review:${event.id}:${String(action)}`,
+      });
     }
     return NextResponse.json({ success: true, event: updated });
   } catch (error) {

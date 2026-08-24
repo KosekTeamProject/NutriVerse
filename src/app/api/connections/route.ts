@@ -144,6 +144,8 @@ export async function POST(request: NextRequest) {
         type: NotificationType.SOCIAL,
         title: "Permintaan koneksi diterima",
         message: `${user.name} menerima permintaan koneksimu.`,
+        actionUrl: `/profil/${user.id}`,
+        dedupeKey: `connection-accepted:${existing.id}`,
       });
       return NextResponse.json({ success: true, connection: accepted });
     }
@@ -159,6 +161,8 @@ export async function POST(request: NextRequest) {
       type: NotificationType.SOCIAL,
       title: "Permintaan koneksi baru",
       message: `${user.name} ingin terhubung denganmu di NutriVerse.`,
+      actionUrl: `/profil/${user.id}`,
+      dedupeKey: `connection-request:${connection.id}`,
     });
     return NextResponse.json({ success: true, connection }, { status: 201 });
   } catch (error) {
