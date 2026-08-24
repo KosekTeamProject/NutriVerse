@@ -1,4 +1,5 @@
 import { ActivityType, VerificationStatus } from "@prisma/client";
+import { minimumMovementMetersForAccuracy } from "@/lib/activity";
 
 export const ACTIVITY_VERIFICATION_POLICY = {
   maximumAccuracyMeters: 35,
@@ -239,8 +240,8 @@ export function verifyActivityTelemetry(input: VerifyActivityInput): ActivityVer
       current.speed !== null && current.speed !== undefined && Number.isFinite(current.speed)
         ? current.speed * 3.6
         : 0;
-    const segmentSpeedKmh = Math.max(calculatedSpeedKmh, reportedSpeedKmh);
-    maxSpeedKmh = Math.max(maxSpeedKmh, segmentSpeedKmh);
+    const segmentSpeedKmh = calculatedSpeedKmh;
+    maxSpeedKmh = Math.max(maxSpeedKmh, segmentSpeedKmh, reportedSpeedKmh);
 
     if (
       segmentDurationSeconds < ACTIVITY_VERIFICATION_POLICY.teleportWindowSeconds &&
@@ -253,6 +254,13 @@ export function verifyActivityTelemetry(input: VerifyActivityInput): ActivityVer
     if (segmentSpeedKmh > maximumActivitySpeed) {
       addReason(reasons, "UNUSUAL_SPEED");
       riskScore += 35;
+      continue;
+    }
+
+    const minimumMovementMeters = minimumMovementMetersForAccuracy(
+      Math.max(previous.accuracy ?? 0, current.accuracy ?? 0),
+    );
+    if (segmentDistanceMeters < minimumMovementMeters) {
       continue;
     }
 

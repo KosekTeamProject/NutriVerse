@@ -29,6 +29,14 @@ import {
   calendarDayKey,
   utcDayBoundsForKey,
 } from "@/server/economy/economy-policy";
+import {
+  calculateHealthPulseScore,
+  nutritionAttainmentScore,
+  sleepDurationScore,
+  targetAttainmentScore,
+  weightGoalScore,
+  type PulseDimensionScores,
+} from "@/server/health/health-pulse-policy";
 
 const DAY_MS = 86_400_000;
 
@@ -366,34 +374,48 @@ export async function buildProgressOverview(
     const hydrationMl =
       aggregate.waterMl ||
       (aggregate.pulseHydrationLiters ?? 0) * 1_000;
-    const latestWeight =
-      aggregate.weightKg ??
-      healthMetrics.find(
-        (entry) => calendarDayKey(entry.recordedAt, timezone) <= key,
-      )
-        ?.weightKg ??
-      undefined;
+    const latestWeightEntry =
+      aggregate.weightKg !== undefined
+        ? {
+            weightKg: aggregate.weightKg,
+            recordedAt: utcDayBoundsForKey(key, timezone).start,
+          }
+        : healthMetrics.find(
+            (entry) => calendarDayKey(entry.recordedAt, timezone) <= key,
+          );
+    const latestWeight = latestWeightEntry?.weightKg ?? undefined;
+    const weightIsFresh =
+      latestWeightEntry !== undefined &&
+      utcDayBoundsForKey(key, timezone).end.getTime() -
+        latestWeightEntry.recordedAt.getTime() <=
+        30 * DAY_MS;
     const hasData = {
       nutrition: aggregate.nutritionEntries > 0,
       activity: aggregate.verifiedActivities > 0,
       sleep: aggregate.sleepHours !== undefined,
       hydration: hydrationMl > 0,
-      weight: latestWeight !== undefined && latestWeight !== null,
+      weight:
+        weightIsFresh && latestWeight !== undefined && latestWeight !== null,
     };
     const targetWeight = profile?.targetWeightKg ?? profile?.weightKg;
     const scores: Record<Exclude<HealthDimension, "consistency">, number> = {
-      nutrition: progressPercent(aggregate.protein, targets.protein),
-      activity: progressPercent(
+      nutrition: nutritionAttainmentScore({
+        calories: aggregate.calories,
+        protein: aggregate.protein,
+        fiber: aggregate.fiber,
+        calorieTarget: targets.calories,
+        proteinTarget: targets.protein,
+        fiberTarget: targets.fiber,
+      }),
+      activity: targetAttainmentScore(
         aggregate.activeSeconds / 60,
         targets.activeMinutes,
       ),
-      sleep: progressPercent(aggregate.sleepHours ?? 0, targets.sleep),
-      hydration: progressPercent(hydrationMl, targets.water),
+      sleep: sleepDurationScore(aggregate.sleepHours ?? 0, targets.sleep),
+      hydration: targetAttainmentScore(hydrationMl, targets.water),
       weight:
         latestWeight && targetWeight
-          ? Math.round(
-              clamp(100 - (Math.abs(latestWeight - targetWeight) / targetWeight) * 100),
-            )
+          ? weightGoalScore(latestWeight, targetWeight)
           : hasData.weight
             ? 100
             : 0,
@@ -430,18 +452,21 @@ export async function buildProgressOverview(
     const availableDimensions = dimensions.filter(
       (dimension) => dimension.trust !== "missing",
     );
-    const completeness = Math.round((availableDimensions.length / 5) * 100);
-    const score = availableDimensions.length
-      ? rounded(
-          availableDimensions.reduce((sum, dimension) => sum + dimension.score, 0) /
-            availableDimensions.length,
-          1,
-        )
-      : 0;
+    const previousSnapshot = snapshotRows.at(-1);
+    const pulseScores: PulseDimensionScores = Object.fromEntries(
+      availableDimensions.map((dimension) => [dimension.dimension, dimension.score]),
+    );
+    const calculatedPulse = calculateHealthPulseScore({
+      scores: pulseScores,
+      previousScore: previousSnapshot?.score,
+      previousCompleteness: previousSnapshot?.dataCompleteness,
+    });
+    const completeness = calculatedPulse.completeness;
+    const score = calculatedPulse.overallScore;
     const previousScore = snapshotRows.at(-1)?.score ?? score;
     const change = rounded(score - previousScore, 1);
     const strongest =
-      [...dimensions].sort((left, right) => right.score - left.score)[0]
+      [...availableDimensions].sort((left, right) => right.score - left.score)[0]
         ?.dimension ?? "activity";
     const focus =
       dimensions
@@ -500,11 +525,11 @@ export async function buildProgressOverview(
       progressPercent(aggregate.activeSeconds / 60, targets.activeMinutes),
       progressPercent(aggregate.protein, targets.protein),
       progressPercent(hydrationMl, targets.water),
-      progressPercent(aggregate.sleepHours ?? 0, targets.sleep),
+      sleepDurationScore(aggregate.sleepHours ?? 0, targets.sleep),
     ];
     const meaningfulActionCount = goalHits.filter((value) => value >= 50).length;
     const recoveryProtected =
-      progressPercent(aggregate.sleepHours ?? 0, targets.sleep) >= 80 &&
+      sleepDurationScore(aggregate.sleepHours ?? 0, targets.sleep) >= 80 &&
       progressPercent(aggregate.activeSeconds / 60, targets.activeMinutes) < 50;
     const status =
       meaningfulActionCount >= 3
@@ -597,7 +622,10 @@ export async function buildProgressOverview(
     protein: metric(today.protein, targets.protein, "g", 1),
     carbs: metric(today.carbs, targets.carbs, "g", 1),
     fiber: metric(today.fiber, targets.fiber, "g", 1),
-    sleep: metric(today.sleepHours ?? 0, targets.sleep, "jam", 1),
+    sleep: {
+      ...metric(today.sleepHours ?? 0, targets.sleep, "jam", 1),
+      percent: sleepDurationScore(today.sleepHours ?? 0, targets.sleep),
+    },
   };
 
   const goalRows: BehaviorGoal[] = [

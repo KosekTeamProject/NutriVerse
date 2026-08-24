@@ -5,12 +5,13 @@ import { useRouter } from "next/navigation";
 import {
   Play, Pause, Square, RotateCcw, Footprints, Bike, Timer, Gauge, Zap,
   TriangleAlert, ShieldCheck, Save, Check, Navigation, Radio,
-  Car, ClockAlert, Scale, Accessibility, MoonStar, MessageSquareText,
+  Car, ClockAlert, MessageSquareText,
   Download, ChevronRight,
 } from "lucide-react";
 import {
   ACTIVITY, haversine, formatTime, paceMinPerKm, speedKmh, computeXp,
-  applyDailyXpPolicy, XP_SAFETY_POLICY, type ActivityKind, type LatLng,
+  applyDailyXpPolicy, XP_SAFETY_POLICY, minimumMovementMetersForAccuracy,
+  type ActivityKind, type LatLng,
 } from "@/lib/activity";
 import { downloadActivityPng } from "@/features/activity/export-activity-png";
 import { LiveRouteMap } from "@/features/activity/components/LiveRouteMap";
@@ -223,6 +224,7 @@ export function ActivityTracker() {
       previousTimestamp === null ? 0 : (timestamp - previousTimestamp) / 1000;
     if (previous && gapSeconds > 120) {
       setSampleGaps((count) => count + 1);
+      segmentNumber.current += 1;
       startNewRouteSegment.current = true;
       lastPoint.current = null;
       lastTs.current = null;
@@ -266,15 +268,10 @@ export function ActivityTracker() {
 
     const segmentDistance = haversine(acceptedPrevious, point);
     const calculatedSpeedKmh = (segmentDistance / deltaSeconds) * 3.6;
-    const deviceSpeedKmh =
-      typeof reportedSpeed === "number" && reportedSpeed >= 0
-        ? reportedSpeed * 3.6
-        : 0;
-    const evaluatedSpeedKmh = Math.max(calculatedSpeedKmh, deviceSpeedKmh);
-    const minimumMovementMeters = Math.max(
-      2,
-      Math.min(8, (typeof accuracy === "number" ? accuracy : 8) * 0.35),
-    );
+    // Device-reported speed is frequently absent or noisy in browser GPS.
+    // Coordinate-derived speed is deterministic and matches server verification.
+    const evaluatedSpeedKmh = calculatedSpeedKmh;
+    const minimumMovementMeters = minimumMovementMetersForAccuracy(accuracy);
     const configuration = ACTIVITY[kindRef.current];
 
     if (deltaSeconds < 2 && evaluatedSpeedKmh > 150) {
@@ -646,7 +643,8 @@ export function ActivityTracker() {
   const baseXp = computeXp(distance, kind);
   const xpEarnedToday = overview?.economy.xpToday ?? 0;
   const xpPolicy = applyDailyXpPolicy(baseXp, xpEarnedToday);
-  const xp = suspicious ? 0 : xpPolicy.awarded;
+  const provisionalXp = suspicious ? 0 : xpPolicy.awarded;
+  const xp = serverAwardXp ?? provisionalXp;
   const averageSpeed = speedKmh(distance, elapsed);
   const displayedSpeed = status === "tracking" ? liveSpeed : averageSpeed;
   const active = starting || status === "tracking" || status === "paused";

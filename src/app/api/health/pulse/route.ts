@@ -1,13 +1,17 @@
-import { VerificationStatus } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
-import { apiErrorResponse, assertSameOrigin, finiteNumber } from "@/lib/api";
+import {
+  ApiRequestError,
+  apiErrorResponse,
+  assertSameOrigin,
+  finiteNumber,
+} from "@/lib/api";
 import { requireCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import {
   calendarDayKey,
   isCalendarDayKey,
-  utcDayBoundsForKey,
 } from "@/server/economy/economy-policy";
+import { refreshDailyHealthPulse } from "@/server/health/health-pulse-service";
 
 export async function GET(request: Request) {
   try {
@@ -44,58 +48,24 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       );
     }
-    const bounds = utcDayBoundsForKey(dayKey, timezone);
-    const pulseDate = new Date(`${dayKey}T00:00:00.000Z`);
-    const sleepHours = finiteNumber(body?.sleepHours, "Durasi tidur", { min: 0, max: 24, optional: true });
-    const hydrationLiters = finiteNumber(body?.hydrationLiters, "Hidrasi", { min: 0, max: 15, optional: true });
-    const [profile, nutrition, activity] = await Promise.all([
-      prisma.healthProfile.findUnique({ where: { userId: user.id } }),
-      prisma.nutritionEntry.aggregate({
-        where: { userId: user.id, loggedAt: { gte: bounds.start, lt: bounds.end } },
-        _sum: { protein: true },
-      }),
-      prisma.activitySession.aggregate({
-        where: {
-          userId: user.id,
-          verificationStatus: VerificationStatus.VERIFIED,
-          endTime: { gte: bounds.start, lt: bounds.end },
-        },
-        _sum: { durationSeconds: true },
-      }),
-    ]);
-    const nutritionScore = Math.min(
-      100,
-      ((nutrition._sum.protein ?? 0) / Math.max(1, profile?.dailyProteinTargetGrams ?? 80)) * 100,
-    );
-    const activityScore = Math.min(100, ((activity._sum.durationSeconds ?? 0) / 1800) * 100);
-    const sleepScore =
-      sleepHours === undefined ? 0 : Math.min(100, (sleepHours / Math.max(1, profile?.dailySleepTargetHours ?? 8)) * 100);
-    const hydrationScore =
-      hydrationLiters === undefined
-        ? 0
-        : Math.min(100, ((hydrationLiters * 1000) / Math.max(1, profile?.dailyWaterTargetMl ?? 2000)) * 100);
-    const availableScores = [
-      nutritionScore,
-      activityScore,
-      ...(sleepHours !== undefined ? [sleepScore] : []),
-      ...(hydrationLiters !== undefined ? [hydrationScore] : []),
-    ];
-    const overallScore =
-      availableScores.reduce((total, score) => total + score, 0) / Math.max(1, availableScores.length);
-    const pulse = await prisma.healthPulse.upsert({
-      where: { userId_pulseDate: { userId: user.id, pulseDate } },
-      create: {
-        userId: user.id,
-        pulseDate,
-        overallScore,
-        nutritionScore,
-        activityScore,
-        sleepHours,
-        hydrationLiters,
-      },
-      update: { overallScore, nutritionScore, activityScore, sleepHours, hydrationLiters },
+    const sleepHours = finiteNumber(body?.sleepHours, "Durasi tidur", {
+      min: 1,
+      max: 16,
+      optional: true,
     });
-    return NextResponse.json({ success: true, pulse, timezone });
+    if (sleepHours === undefined) {
+      throw new ApiRequestError(
+        "Isi durasi tidur antara 1 sampai 16 jam.",
+        400,
+        "SLEEP_DURATION_REQUIRED",
+      );
+    }
+    const result = await refreshDailyHealthPulse({
+      userId: user.id,
+      dayKey,
+      sleepHours,
+    });
+    return NextResponse.json({ success: true, ...result });
   } catch (error) {
     return apiErrorResponse(error);
   }

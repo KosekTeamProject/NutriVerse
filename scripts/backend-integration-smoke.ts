@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { verifyStoredActivity } from "@/server/activity/activity-service";
 import { evaluateAndAwardUserBadges } from "@/server/badges/badge-service";
 import { applyVerifiedActivityToChallenges } from "@/server/challenges/challenge-service";
+import { createCompanionExchange } from "@/server/companion/companion-chat-service";
 import { awardVerifiedActivity } from "@/server/economy/economy-service";
 import { redeemReward } from "@/server/rewards/reward-service";
 import {
@@ -115,6 +116,31 @@ async function main() {
       throw new Error("Dynamic community aggregation failed");
     }
 
+    const n8nNoraUrl = process.env.N8N_NORA_WEBHOOK_URL;
+    const openAiKey = process.env.OPENAI_API_KEY;
+    delete process.env.N8N_NORA_WEBHOOK_URL;
+    delete process.env.OPENAI_API_KEY;
+    try {
+      const exchange = await createCompanionExchange({
+        userId: user.id,
+        message: "Bagaimana progres Health Pulse saya hari ini?",
+      });
+      const conversationCount = await prisma.companionConversation.count({
+        where: { userId: user.id },
+      });
+      if (
+        exchange.answer.provider !== "database-fallback" ||
+        conversationCount !== 2
+      ) {
+        throw new Error("Companion conversation persistence failed");
+      }
+    } finally {
+      if (n8nNoraUrl !== undefined) {
+        process.env.N8N_NORA_WEBHOOK_URL = n8nNoraUrl;
+      }
+      if (openAiKey !== undefined) process.env.OPENAI_API_KEY = openAiKey;
+    }
+
     await prisma.reward.create({
       data: {
         id: rewardId,
@@ -146,6 +172,7 @@ async function main() {
       challengeContributionsProcessed: true,
       firstStepBadgeAwarded: true,
       dynamicProgressAggregated: true,
+      companionConversationPersisted: true,
       communityMetricsAggregated: true,
       rewardReplayProtected: firstRedemption.idempotentReplay || replayRedemption.idempotentReplay,
       finalRewardStock: reward.stock,

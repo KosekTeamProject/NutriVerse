@@ -1,0 +1,103 @@
+{
+  "name": "NutriVerse - Food Scan",
+  "nodes": [
+    {
+      "parameters": {
+        "authentication": "headerAuth",
+        "httpMethod": "POST",
+        "path": "nutriverse/food-scan",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "2cb2cdf0-825b-4aba-ac7a-f24320137322",
+      "name": "Food Scan Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [-620, 0],
+      "webhookId": "nutriverse-food-scan"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $json.body ?? $json;\nif (!body.imageDataUrl && !body.imageUrl && !body.query) throw new Error('SCAN_INPUT_REQUIRED');\nconst content = [{ type: 'input_text', text: `Identifikasi makanan pada gambar dan estimasikan zat gizi untuk porsi yang terlihat. Konteks: ${body.query || 'tidak ada'}. Jika gambar ambigu gunakan nama netral dan estimasi konservatif.` }];\nif (body.imageDataUrl || body.imageUrl) content.push({ type: 'input_image', image_url: body.imageDataUrl || body.imageUrl, detail: 'low' });\nconst schema = { type: 'object', additionalProperties: false, required: ['name','portion','kcal','protein','carbs','fat','fiber','sugar','sodium','vitamins'], properties: { name: { type: 'string', minLength: 1, maxLength: 200 }, portion: { type: 'string', minLength: 1, maxLength: 100 }, kcal: { type: 'number', minimum: 0, maximum: 5000 }, protein: { type: 'number', minimum: 0, maximum: 1000 }, carbs: { type: 'number', minimum: 0, maximum: 1000 }, fat: { type: 'number', minimum: 0, maximum: 1000 }, fiber: { type: 'number', minimum: 0, maximum: 1000 }, sugar: { type: 'number', minimum: 0, maximum: 1000 }, sodium: { type: 'number', minimum: 0, maximum: 20000 }, vitamins: { type: 'string', maxLength: 300 } } };\nreturn [{ json: { requestId: body.requestId, openAiBody: { model: 'gpt-5-mini', store: false, input: [{ role: 'user', content }], text: { format: { type: 'json_schema', name: 'nutriverse_food_analysis', strict: true, schema } } } } }];"
+      },
+      "id": "1eaf032b-fe70-46c5-ac49-84059c80de25",
+      "name": "Prepare OpenAI Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-360, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/responses",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify($json.openAiBody) }}",
+        "options": {
+          "timeout": 30000,
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "792a3324-f11d-41ef-ac66-b65efbaac818",
+      "name": "OpenAI Food Vision",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-80, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $json;\nlet text = response.output_text;\nif (!text && Array.isArray(response.output)) { for (const item of response.output) { for (const part of item.content || []) { if (typeof part.text === 'string') { text = part.text; break; } } if (text) break; } }\nif (!text) throw new Error('OPENAI_EMPTY_OUTPUT');\nconst food = JSON.parse(text);\nreturn [{ json: { success: true, food } }];"
+      },
+      "id": "c7abca85-1879-42b5-af55-b85791371f94",
+      "name": "Parse Food JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [200, 0]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "a882ba1b-818a-4e9a-b9c6-30af28d61b53",
+      "name": "Return Food Analysis",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [480, 0]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Food Scan Webhook": {
+      "main": [[{"node": "Prepare OpenAI Request", "type": "main", "index": 0}]]
+    },
+    "Prepare OpenAI Request": {
+      "main": [[{"node": "OpenAI Food Vision", "type": "main", "index": 0}]]
+    },
+    "OpenAI Food Vision": {
+      "main": [[{"node": "Parse Food JSON", "type": "main", "index": 0}]]
+    },
+    "Parse Food JSON": {
+      "main": [[{"node": "Return Food Analysis", "type": "main", "index": 0}]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "a903225e-ae40-4182-b2d3-bd2506018f43",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

@@ -1,17 +1,12 @@
 import { createHash } from "node:crypto";
-import { ActivityType, VerificationStatus } from "@prisma/client";
+import { VerificationStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { ACTIVITY_XP_PER_KILOMETER } from "@/lib/activity";
 import {
   type ActivityVerificationDecision,
   type VerificationReasonCode,
   verifyActivityTelemetry,
 } from "@/server/activity/verification-engine";
-
-const XP_PER_KILOMETER: Record<ActivityType, number> = {
-  WALK: 60,
-  RUN: 100,
-  CYCLED: 45,
-};
 
 function createTelemetryDigest(
   samples: readonly {
@@ -104,11 +99,14 @@ export async function verifyStoredActivity(
   const distanceKilometers = decision.trustedDistanceMeters / 1000;
   const averagePace =
     distanceKilometers > 0
-      ? decision.trustedDurationSeconds / distanceKilometers
+      ? activeDurationSeconds / distanceKilometers
       : 0;
   const eligibleXp =
     decision.verificationStatus === VerificationStatus.VERIFIED
-      ? Math.floor(distanceKilometers * XP_PER_KILOMETER[session.activityType])
+      ? Math.floor(
+          distanceKilometers *
+            ACTIVITY_XP_PER_KILOMETER[session.activityType],
+        )
       : 0;
   const eligibleHp =
     decision.verificationStatus === VerificationStatus.VERIFIED

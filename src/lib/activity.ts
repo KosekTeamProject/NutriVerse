@@ -1,9 +1,17 @@
+import { DAILY_REWARD_POLICY } from "@/lib/economy-rules";
+
 export type ActivityKind = "walk" | "run" | "bike";
 
+export const ACTIVITY_XP_PER_KILOMETER = {
+  WALK: 60,
+  RUN: 100,
+  CYCLED: 45,
+} as const;
+
 export const ACTIVITY: Record<ActivityKind, { label: string; xpPerKm: number; maxSpeedKmh: number }> = {
-  walk: { label: "Jalan Kaki", xpPerKm: 60, maxSpeedKmh: 10 },
-  run: { label: "Lari", xpPerKm: 100, maxSpeedKmh: 20 },
-  bike: { label: "Bersepeda", xpPerKm: 45, maxSpeedKmh: 50 },
+  walk: { label: "Jalan Kaki", xpPerKm: ACTIVITY_XP_PER_KILOMETER.WALK, maxSpeedKmh: 10 },
+  run: { label: "Lari", xpPerKm: ACTIVITY_XP_PER_KILOMETER.RUN, maxSpeedKmh: 20 },
+  bike: { label: "Bersepeda", xpPerKm: ACTIVITY_XP_PER_KILOMETER.CYCLED, maxSpeedKmh: 50 },
 };
 
 export type LatLng = { lat: number; lng: number };
@@ -124,6 +132,18 @@ export function speedKmh(distanceM: number, elapsedSec: number): number {
   return distanceM / 1000 / (elapsedSec / 3600);
 }
 
+export function minimumMovementMetersForAccuracy(accuracy?: number | null) {
+  return Math.max(
+    2,
+    Math.min(
+      8,
+      (typeof accuracy === "number" && Number.isFinite(accuracy)
+        ? accuracy
+        : 8) * 0.35,
+    ),
+  );
+}
+
 export function computeXp(distanceM: number, kind: ActivityKind): number {
   return Math.floor((distanceM / 1000) * ACTIVITY[kind].xpPerKm);
 }
@@ -132,11 +152,7 @@ export function computeXp(distanceM: number, kind: ActivityKind): number {
  * Guardrail proposal for the browser demo. The server remains the authority for
  * production XP and may tune these values after product and safety evaluation.
  */
-export const XP_SAFETY_POLICY = {
-  dailyCap: 300,
-  fullRateUntil: 180,
-  reducedRate: 0.5,
-} as const;
+export const XP_SAFETY_POLICY = DAILY_REWARD_POLICY.xp;
 
 export type DailyXpResult = {
   readonly awarded: number;

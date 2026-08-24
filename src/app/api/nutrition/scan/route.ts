@@ -1,109 +1,115 @@
 import { NextRequest, NextResponse } from "next/server";
-import { apiErrorResponse, assertSameOrigin } from "@/lib/api";
+import {
+  ApiRequestError,
+  apiErrorResponse,
+  assertSameOrigin,
+  enforceRateLimit,
+} from "@/lib/api";
 import { requireCurrentUser } from "@/lib/auth";
+import { analyzeFoodScan } from "@/server/nutrition/food-scan-service";
+import { sanitizeUploadedImage } from "@/server/storage/image-processing";
+
+const MAX_SCAN_IMAGE_BYTES = 8 * 1024 * 1024;
+
+function validatedImageUrl(value: unknown) {
+  if (typeof value !== "string" || value.length > 2_000) return undefined;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" ? url.toString() : undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
     assertSameOrigin(request);
-    await requireCurrentUser();
+    await enforceRateLimit(request, "nutrition:scan", 30, 60 * 60_000);
+    const user = await requireCurrentUser();
+    const contentType = request.headers.get("content-type") ?? "";
+    let query: string | undefined;
+    let imageUrl: string | undefined;
+    let imageDataUrl: string | undefined;
 
-    const body = await request.json().catch(() => null);
-    if (!body) {
-      return NextResponse.json({ success: false, error: "Payload tidak valid." }, { status: 400 });
+    if (contentType.includes("multipart/form-data")) {
+      const form = await request.formData();
+      const queryValue = form.get("query");
+      const file = form.get("image");
+      query =
+        typeof queryValue === "string"
+          ? queryValue.trim().slice(0, 500) || undefined
+          : undefined;
+      if (file instanceof File) {
+        if (file.size <= 0 || file.size > MAX_SCAN_IMAGE_BYTES) {
+          throw new ApiRequestError(
+            "Ukuran foto makanan harus di bawah 8 MB.",
+            400,
+            "SCAN_IMAGE_SIZE",
+          );
+        }
+        const sanitized = await sanitizeUploadedImage({
+          bytes: Buffer.from(await file.arrayBuffer()),
+          declaredContentType: file.type,
+          maxBytes: 2 * 1024 * 1024,
+          maxDimension: 1_600,
+        });
+        imageDataUrl = `data:${sanitized.contentType};base64,${sanitized.bytes.toString("base64")}`;
+      }
+    } else {
+      const body = (await request.json().catch(() => null)) as
+        | Record<string, unknown>
+        | null;
+      query =
+        typeof body?.query === "string"
+          ? body.query.trim().slice(0, 500) || undefined
+          : undefined;
+      imageUrl = validatedImageUrl(body?.imageUrl);
     }
 
-    const { imageUrl, query } = body;
-    if (!imageUrl && (!query || !query.trim())) {
-      return NextResponse.json(
-        { success: false, error: "Harus menyertakan gambar makanan atau teks pencarian." },
-        { status: 400 }
+    if (!imageDataUrl && !imageUrl && !query) {
+      throw new ApiRequestError(
+        "Ambil foto makanan atau isi nama makanan terlebih dahulu.",
+        400,
+        "SCAN_INPUT_REQUIRED",
       );
     }
 
-    const n8nWebhookUrl = process.env.N8N_SCAN_WEBHOOK_URL;
-    const n8nSharedSecret = process.env.N8N_SCAN_SHARED_SECRET;
-
-    if (!n8nWebhookUrl) {
-      return NextResponse.json(
-        { success: false, error: "Konfigurasi n8n scan tidak ditemukan pada server." },
-        { status: 500 }
-      );
-    }
-
-    // Set up a 15-second timeout for the n8n request
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
-
-    try {
-      const response = await fetch(n8nWebhookUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(n8nSharedSecret ? { "x-nutriverse-agent-secret": n8nSharedSecret } : {}),
-        },
-        body: JSON.stringify({ imageUrl, query }),
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`n8n HTTP ${response.status}: ${errorText}`);
-      }
-
-      const text = await response.text();
-      let data;
-      try {
-        data = JSON.parse(text);
-      } catch (e) {
-        throw new Error("Respons dari server analisis tidak berformat JSON.");
-      }
-
-      // If n8n returns an array (common default response behavior if array of objects is returned)
-      if (Array.isArray(data) && data.length > 0) {
-        data = data[0];
-      }
-
-      // Basic validation of fields returned from n8n
-      const foodName = data.name || data.foodName || query || "Makanan Teranalisis";
-      const portion = data.portion || "1 porsi";
-      const kcal = typeof data.kcal === "number" ? data.kcal : (data.calories || 250);
-      const protein = typeof data.protein === "number" ? data.protein : 0;
-      const carbs = typeof data.carbs === "number" ? data.carbs : 0;
-      const fat = typeof data.fat === "number" ? data.fat : 0;
-      const fiber = typeof data.fiber === "number" ? data.fiber : 0;
-      const sugar = typeof data.sugar === "number" ? data.sugar : 0;
-      const sodium = typeof data.sodium === "number" ? data.sodium : (data.sodiumMg || 0);
-      const vitamins = data.vitamins || "A, B";
-
-      return NextResponse.json({
-        success: true,
-        food: {
-          name: foodName,
-          portion,
-          kcal,
-          protein,
-          carbs,
-          fat,
-          fiber,
-          sugar,
-          sodium,
-          vitamins,
-        },
-      });
-    } catch (fetchError: any) {
-      clearTimeout(timeoutId);
-      console.error("Fetch to n8n scan webhook failed:", fetchError);
-      
-      const isTimeout = fetchError.name === "AbortError";
-      const errMsg = isTimeout 
-        ? "Analisis makanan melebihi batas waktu (timeout 15s). Coba lagi beberapa saat lagi." 
-        : `Gagal menganalisis gizi makanan: ${fetchError.message || "Unknown error"}`;
-        
-      return NextResponse.json({ success: false, error: errMsg }, { status: 500 });
-    }
+    const result = await analyzeFoodScan({
+      userId: user.id,
+      query,
+      imageDataUrl,
+      imageUrl,
+    });
+    return NextResponse.json({ success: true, ...result });
   } catch (error) {
+    if (
+      error instanceof Error &&
+      (error.message.startsWith("FOOD_SCAN_UNAVAILABLE") ||
+        error.message === "FOOD_SCAN_NOT_CONFIGURED")
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "Layanan analisis makanan belum aktif. Nyalakan workflow n8n atau isi OPENAI_API_KEY pada backend sebagai fallback.",
+          code: "FOOD_SCAN_UNAVAILABLE",
+        },
+        { status: 503 },
+      );
+    }
+    if (
+      error instanceof Error &&
+      [
+        "UNSUPPORTED_IMAGE_TYPE",
+        "INVALID_IMAGE_CONTENT",
+        "PROCESSED_IMAGE_TOO_LARGE",
+      ].includes(error.message)
+    ) {
+      return NextResponse.json(
+        { success: false, error: "Foto tidak valid. Gunakan JPG, PNG, atau WebP." },
+        { status: 400 },
+      );
+    }
     return apiErrorResponse(error);
   }
 }
