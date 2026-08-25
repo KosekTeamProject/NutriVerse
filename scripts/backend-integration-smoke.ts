@@ -108,7 +108,8 @@ async function main() {
       progressOverview.daily.protein.value < 38 ||
       progressOverview.daily.water.value < 750 ||
       progressOverview.daily.steps.value <= 0 ||
-      progressOverview.healthPulse.current.dataCompleteness <= 0
+      progressOverview.healthPulse.current.unlockGuide?.checklist.length !== 4 ||
+      (progressOverview.healthPulse.current.unlockGuide?.todayCompleted ?? 0) < 2
     ) {
       throw new Error("Dynamic progress aggregation failed");
     }

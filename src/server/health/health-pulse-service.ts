@@ -4,6 +4,7 @@ import type {
   HealthDataTrustLevel,
   HealthDimensionScore,
   HealthPulseSnapshot,
+  HealthPulseUnlockGuide,
 } from "@/features/health-pulse/types";
 import {
   calendarDayKey,
@@ -45,6 +46,13 @@ function dateKeysEndingAt(dayKey: string, count: number) {
   );
 }
 
+function shiftDayKey(dayKey: string, amount: number) {
+  const [year, month, day] = dayKey.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day) + amount * DAY_MS)
+    .toISOString()
+    .slice(0, 10);
+}
+
 function emptyAggregate(): EvidenceAggregate {
   return {
     calories: 0,
@@ -54,6 +62,90 @@ function emptyAggregate(): EvidenceAggregate {
     activityMinutes: 0,
     verifiedActivityCount: 0,
     hydrationMl: 0,
+  };
+}
+
+function buildUnlockGuide(input: {
+  dayKey: string;
+  scoreThroughDate: string;
+  aggregate: EvidenceAggregate;
+  activityTargetMinutes: number;
+  waterTargetMl: number;
+  result: LongTermHealthPulseResult;
+}): HealthPulseUnlockGuide {
+  const hydrationRatio = input.aggregate.hydrationMl / Math.max(1, input.waterTargetMl);
+  const checklist: HealthPulseUnlockGuide["checklist"] = [
+    {
+      id: "nutrition",
+      label: "Catat nutrisi minimal 2 kali",
+      detail: `${input.aggregate.nutritionLogCount}/2 catatan makan hari ini`,
+      completed: input.aggregate.nutritionLogCount >= 2,
+      actionHref: "/scan",
+      actionLabel: "Catat makanan",
+    },
+    {
+      id: "activity",
+      label: "Selesaikan aktivitas GPS tervalidasi",
+      detail: input.aggregate.verifiedActivityCount > 0
+        ? `${Math.max(1, Math.round(input.aggregate.activityMinutes))} menit terverifikasi`
+        : `Belum ada aktivitas; target pribadimu ${input.activityTargetMinutes} menit`,
+      completed:
+        input.aggregate.verifiedActivityCount > 0 &&
+        input.aggregate.activityMinutes > 0,
+      actionHref: "/aktivitas",
+      actionLabel: "Mulai aktivitas",
+    },
+    {
+      id: "sleep",
+      label: "Catat waktu tidur terakhir",
+      detail: input.aggregate.sleepHours !== undefined
+        ? `${rounded(input.aggregate.sleepHours)} jam tercatat`
+        : "Belum ada durasi tidur hari ini",
+      completed: input.aggregate.sleepHours !== undefined,
+      actionHref: "/health-pulse#daily-check-in",
+      actionLabel: "Isi tidur",
+    },
+    {
+      id: "hydration",
+      label: "Penuhi minimal 75% target hidrasi",
+      detail: `${input.aggregate.hydrationMl}/${input.waterTargetMl} ml (${Math.round(
+        Math.min(1, hydrationRatio) * 100,
+      )}%)`,
+      completed: hydrationRatio >= 0.75,
+      actionHref: "/health-pulse#daily-check-in",
+      actionLabel: "Tambah air",
+    },
+  ];
+  const todayCompleted = checklist.filter((item) => item.completed).length;
+  const todayIsComplete = todayCompleted === checklist.length;
+  const projectedCompleteDays = todayIsComplete
+    ? input.result.consecutiveCompleteDays + 1
+    : input.result.consecutiveCompleteDays;
+  const fastDaysRemaining = Math.max(0, 4 - projectedCompleteDays);
+  const standardDaysRemaining = Math.max(0, 7 - input.result.analysisDay);
+  const message = input.result.published
+    ? `Diagram sudah terbuka. Skor hari ini memakai data yang selesai sampai ${input.scoreThroughDate}.`
+    : todayIsComplete && projectedCompleteDays >= 4
+      ? "Checklist hari ini lengkap. Diagram akan terbuka setelah pergantian hari dan snapshot hari ini ditutup."
+      : input.result.analysisDay >= 7 && input.result.routine7.dimensionCount === 0
+        ? "Tujuh hari sudah dinilai. Tambahkan minimal satu data kebiasaan agar estimasi awal dapat dihitung."
+        : `Selesaikan checklist harian. Jalur cepat tersisa ${fastDaysRemaining} hari lengkap; jalur normal tersisa ${standardDaysRemaining} hari.`;
+
+  return {
+    isUnlocked: input.result.published,
+    scoreThroughDate: input.scoreThroughDate,
+    evaluatedDays: input.result.analysisDay,
+    standardDaysRequired: 7,
+    consecutiveCompleteDays: input.result.consecutiveCompleteDays,
+    projectedCompleteDays,
+    fastTrackDaysRequired: 4,
+    todayCompleted,
+    todayTotal: 4,
+    todayIsComplete,
+    dataConfidence: input.result.dataConfidence,
+    confidenceCap: input.result.confidenceCap,
+    message,
+    checklist,
   };
 }
 
@@ -106,11 +198,8 @@ function dimensionsForSnapshot(
 }
 
 function learningMessage(result: LongTermHealthPulseResult) {
-  if (result.analysisDay <= 7) {
-    return `Health Pulse sedang mempelajari pola kebiasaanmu, hari ${result.analysisDay} dari 7.`;
-  }
   if (!result.published) {
-    return `Data belum cukup: ${result.routine7.dataDays}/4 hari dan ${result.routine7.dimensionCount}/3 dimensi minimum.`;
+    return `Health Pulse telah menilai ${result.analysisDay}/7 hari selesai. Lengkapi 4 kebiasaan selama 4 hari berturut-turut untuk membuka lebih cepat.`;
   }
   return null;
 }
@@ -120,6 +209,7 @@ function snapshotFromResult(input: {
   dayKey: string;
   result: LongTermHealthPulseResult;
   previousDimensions?: Partial<Record<PulseDimension, number>>;
+  unlockGuide?: HealthPulseUnlockGuide;
 }): HealthPulseSnapshot {
   const { result } = input;
   const dimensions = dimensionsForSnapshot(
@@ -148,6 +238,7 @@ function snapshotFromResult(input: {
     routineScore90: result.routine90.score,
     isPublished: result.published,
     learningMessage: learningMessage(result),
+    unlockGuide: input.unlockGuide,
     generatedAt: new Date(`${input.dayKey}T23:59:59.999Z`).toISOString(),
     dimensions,
     reasons: result.reasons,
@@ -260,8 +351,10 @@ export async function refreshDailyHealthPulse(input: {
   });
   const timezone = user.settings?.timezone ?? "Asia/Jakarta";
   const dayKey = input.dayKey ?? calendarDayKey(occurredAt, timezone);
+  const scoreThroughDayKey = shiftDayKey(dayKey, -1);
   const pulseDate = new Date(`${dayKey}T00:00:00.000Z`);
-  const dayKeys = dateKeysEndingAt(dayKey, 90);
+  // Keep today for the live checklist plus 90 completed days for scoring.
+  const dayKeys = dateKeysEndingAt(dayKey, 91);
   const firstBounds = utcDayBoundsForKey(dayKeys[0], timezone);
   const finalBounds = utcDayBoundsForKey(dayKey, timezone);
 
@@ -406,11 +499,19 @@ export async function refreshDailyHealthPulse(input: {
     weights,
     journeyStartDate:
       earliestPulse?.pulseDate.toISOString().slice(0, 10) ?? dayKey,
-    asOfDate: dayKey,
+    asOfDate: scoreThroughDayKey,
     previousPublishedScore: previous?.overallScore,
     targetWeightKg: profile?.targetWeightKg,
   });
   const currentAggregate = aggregates.get(dayKey) ?? emptyAggregate();
+  const unlockGuide = buildUnlockGuide({
+    dayKey,
+    scoreThroughDate: scoreThroughDayKey,
+    aggregate: currentAggregate,
+    activityTargetMinutes,
+    waterTargetMl,
+    result,
+  });
 
   const pulse = await prisma.healthPulse.upsert({
     where: { userId_pulseDate: { userId: input.userId, pulseDate } },
@@ -488,6 +589,7 @@ export async function refreshDailyHealthPulse(input: {
       dayKey,
       result,
       previousDimensions: jsonDimensionScores(previous?.dimensionScores),
+      unlockGuide,
     }),
   };
 }

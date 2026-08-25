@@ -58,11 +58,11 @@ test("nutrition uses calories, protein, and fiber instead of protein alone", () 
   assert.equal(score, 75);
 });
 
-test("a new user has no numeric Pulse during the first seven days", () => {
+test("a new user stays in learning before four complete days", () => {
   const asOfDate = "2026-08-25";
   const result = calculateLongTermHealthPulse({
-    days: perfectDays(asOfDate, 7),
-    journeyStartDate: journeyStartForDay(asOfDate, 7),
+    days: perfectDays(asOfDate, 3),
+    journeyStartDate: journeyStartForDay(asOfDate, 3),
     asOfDate,
   });
   assert.equal(result.phase, "LEARNING");
@@ -70,27 +70,93 @@ test("a new user has no numeric Pulse during the first seven days", () => {
   assert.equal(result.score, null);
 });
 
-test("insufficient data remains unpublished after learning", () => {
+test("four consecutive complete days unlock the fast track", () => {
   const asOfDate = "2026-08-25";
   const result = calculateLongTermHealthPulse({
-    days: perfectDays(asOfDate, 3),
-    journeyStartDate: journeyStartForDay(asOfDate, 20),
+    days: perfectDays(asOfDate, 4),
+    journeyStartDate: journeyStartForDay(asOfDate, 4),
     asOfDate,
   });
-  assert.equal(result.routine7.dataDays, 3);
+  assert.equal(result.consecutiveCompleteDays, 4);
+  assert.equal(result.unlockRoute, "fast-track");
+  assert.equal(result.phase, "FOUNDATION");
+  assert.equal(result.published, true);
+  assert.equal(result.score, 55);
+});
+
+test("a partial fourth day does not unlock before the standard window", () => {
+  const asOfDate = "2026-08-25";
+  const partialDay: DailyHealthPulseEvidence = {
+    date: asOfDate,
+    nutritionScore: 100,
+    nutritionLogCount: 2,
+    activityMinutes: 0,
+    activityTargetMinutes: 30,
+    verifiedActivityCount: 0,
+  };
+  const result = calculateLongTermHealthPulse({
+    days: [...perfectDays(shiftDay(asOfDate, -1), 3), partialDay],
+    journeyStartDate: journeyStartForDay(asOfDate, 4),
+    asOfDate,
+  });
+  assert.equal(result.consecutiveCompleteDays, 0);
   assert.equal(result.published, false);
   assert.equal(result.score, null);
 });
 
-test("one perfect day cannot produce a Health Pulse", () => {
+test("the standard seven-day route opens with one dimension and a low-confidence cap", () => {
   const asOfDate = "2026-08-25";
   const result = calculateLongTermHealthPulse({
-    days: [perfectDay(asOfDate)],
-    journeyStartDate: journeyStartForDay(asOfDate, 240),
+    days: [
+      {
+        date: asOfDate,
+        nutritionScore: 100,
+        nutritionLogCount: 2,
+        activityMinutes: 0,
+        activityTargetMinutes: 30,
+        verifiedActivityCount: 0,
+      },
+    ],
+    journeyStartDate: journeyStartForDay(asOfDate, 7),
+    asOfDate,
+  });
+  assert.equal(result.unlockRoute, "standard");
+  assert.equal(result.dataConfidence, "very-low");
+  assert.equal(result.confidenceCap, 35);
+  assert.equal(result.published, true);
+  assert.equal(result.score, 35);
+});
+
+test("seven empty days stay locked until at least one habit is recorded", () => {
+  const asOfDate = "2026-08-25";
+  const result = calculateLongTermHealthPulse({
+    days: [],
+    journeyStartDate: journeyStartForDay(asOfDate, 7),
     asOfDate,
   });
   assert.equal(result.published, false);
   assert.equal(result.score, null);
+});
+
+test("evidence after the scoring date does not change the snapshot", () => {
+  const asOfDate = "2026-08-24";
+  const baseInput = {
+    days: perfectDays(asOfDate, 7).map((day) => ({
+      ...day,
+      nutritionScore: 60,
+      activityMinutes: 15,
+      sleepScore: 60,
+      hydrationRatio: 0.5,
+    })),
+    journeyStartDate: journeyStartForDay(asOfDate, 7),
+    asOfDate,
+  };
+  const withoutToday = calculateLongTermHealthPulse(baseInput);
+  const withFutureToday = calculateLongTermHealthPulse({
+    ...baseInput,
+    days: [...baseInput.days, perfectDay("2026-08-25")],
+  });
+  assert.deepEqual(withFutureToday, withoutToday);
 });
 
 test("maturity phases enforce caps 55, 70, 85, and 100", () => {

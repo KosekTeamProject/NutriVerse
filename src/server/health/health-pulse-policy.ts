@@ -24,6 +24,8 @@ export type HealthPulseStatus =
   | "consistent"
   | "very-consistent"
   | "peak-balance";
+export type HealthPulseUnlockRoute = "fast-track" | "standard" | "existing" | null;
+export type HealthPulseDataConfidence = "very-low" | "low" | "fair" | "complete";
 
 export type DailyHealthPulseEvidence = {
   date: string;
@@ -65,6 +67,10 @@ export type LongTermHealthPulseResult = {
   routine90: RoutineWindowResult;
   weightTrendBonus: number;
   noDataStreak: number;
+  consecutiveCompleteDays: number;
+  unlockRoute: HealthPulseUnlockRoute;
+  dataConfidence: HealthPulseDataConfidence;
+  confidenceCap: number;
   strongestDimension: PulseDimension;
   focusDimension: PulseDimension;
   reasons: string[];
@@ -138,13 +144,17 @@ export function nutritionAttainmentScore(input: {
   return rounded(protein * 0.5 + fiber * 0.3 + calories * 0.2);
 }
 
-export function phaseForAnalysisDay(analysisDay: number): {
+export function phaseForAnalysisDay(analysisDay: number, isUnlocked = analysisDay >= 8): {
   phase: HealthPulsePhase;
   cap: number;
   nextPhaseInDays: number | null;
 } {
-  if (analysisDay <= 7) {
-    return { phase: "LEARNING", cap: 0, nextPhaseInDays: 8 - analysisDay };
+  if (!isUnlocked) {
+    return {
+      phase: "LEARNING",
+      cap: 0,
+      nextPhaseInDays: Math.max(0, 7 - analysisDay),
+    };
   }
   if (analysisDay <= 30) {
     return { phase: "FOUNDATION", cap: 55, nextPhaseInDays: 31 - analysisDay };
@@ -173,6 +183,32 @@ function hasEvidence(day: DailyHealthPulseEvidence) {
     day.sleepScore !== undefined ||
     day.hydrationRatio !== undefined
   );
+}
+
+export function isCompleteHealthPulseDay(day: DailyHealthPulseEvidence) {
+  return (
+    day.nutritionLogCount >= 2 &&
+    day.nutritionScore !== undefined &&
+    day.verifiedActivityCount > 0 &&
+    day.activityMinutes > 0 &&
+    day.sleepScore !== undefined &&
+    day.hydrationRatio !== undefined &&
+    day.hydrationRatio >= 0.75
+  );
+}
+
+export function consecutiveCompleteHealthPulseDays(
+  days: readonly DailyHealthPulseEvidence[],
+  asOfDate: string,
+) {
+  const byDate = new Map(days.map((day) => [day.date, day]));
+  let streak = 0;
+  for (const key of [...dayKeysEndingAt(asOfDate, 90)].reverse()) {
+    const day = byDate.get(key);
+    if (!day || !isCompleteHealthPulseDay(day)) break;
+    streak += 1;
+  }
+  return streak;
 }
 
 /**
@@ -312,10 +348,9 @@ export function calculateLongTermHealthPulse(input: {
   targetWeightKg?: number | null;
 }): LongTermHealthPulseResult {
   const analysisDay = Math.max(
-    1,
+    0,
     daysBetween(input.journeyStartDate, input.asOfDate) + 1,
   );
-  const phaseInfo = phaseForAnalysisDay(analysisDay);
   const routine7 = calculateRoutineWindow({
     days: input.days,
     asOfDate: input.asOfDate,
@@ -338,6 +373,10 @@ export function calculateLongTermHealthPulse(input: {
     ? clamp(input.previousPublishedScore!)
     : null;
   const noDataStreak = consecutiveNoDataDays(input.days, input.asOfDate);
+  const consecutiveCompleteDays = consecutiveCompleteHealthPulseDays(
+    input.days,
+    input.asOfDate,
+  );
   const weightTrendBonus = calculateSafeWeightTrendBonus({
     weights: input.weights ?? [],
     asOfDate: input.asOfDate,
@@ -353,18 +392,46 @@ export function calculateLongTermHealthPulse(input: {
   const focusDimension =
     [...dimensionEntries].sort((left, right) => left[1] - right[1])[0]?.[0] ??
     "activity";
+  const fastTrackEligible = consecutiveCompleteDays >= 4;
+  const standardEligible = analysisDay >= 7 && routine7.dimensionCount >= 1;
   const eligibleForFirstScore =
-    previousScore !== null ||
-    (analysisDay >= 8 && routine7.dataDays >= 4 && routine7.dimensionCount >= 3);
+    previousScore !== null || fastTrackEligible || standardEligible;
+  const unlockRoute: HealthPulseUnlockRoute = previousScore !== null
+    ? "existing"
+    : fastTrackEligible
+      ? "fast-track"
+      : standardEligible
+        ? "standard"
+        : null;
+  const phaseInfo = phaseForAnalysisDay(analysisDay, eligibleForFirstScore);
+  const dataConfidence: HealthPulseDataConfidence =
+    routine7.dimensionCount >= 4
+      ? "complete"
+      : routine7.dimensionCount === 3
+        ? "fair"
+        : routine7.dimensionCount === 2
+          ? "low"
+          : "very-low";
+  const confidenceCap =
+    routine7.dimensionCount >= 4
+      ? phaseInfo.cap
+      : routine7.dimensionCount === 3
+        ? 50
+        : routine7.dimensionCount === 2
+          ? 45
+          : routine7.dimensionCount === 1
+            ? 35
+            : 0;
   const reasons: string[] = [];
 
-  if (analysisDay <= 7) {
+  if (!eligibleForFirstScore) {
     reasons.push(
-      `Health Pulse sedang mempelajari pola kebiasaanmu, hari ${analysisDay} dari 7.`,
+      `Health Pulse telah menilai ${analysisDay} dari 7 hari yang selesai. Jalur cepat memerlukan 4 hari lengkap berturut-turut.`,
     );
-  } else if (!eligibleForFirstScore) {
+  }
+  if (!eligibleForFirstScore && analysisDay >= 7) {
     reasons.push(
-      `Data belum cukup: tersedia ${routine7.dataDays} dari minimal 4 hari dan ${routine7.dimensionCount} dari minimal 3 dimensi.`,
+      "Tambahkan minimal satu catatan kebiasaan agar estimasi awal dapat dihitung.",
     );
   }
 
@@ -385,6 +452,10 @@ export function calculateLongTermHealthPulse(input: {
       routine90,
       weightTrendBonus,
       noDataStreak,
+      consecutiveCompleteDays,
+      unlockRoute,
+      dataConfidence,
+      confidenceCap,
       strongestDimension,
       focusDimension,
       reasons,
@@ -419,7 +490,12 @@ export function calculateLongTermHealthPulse(input: {
     strongMasteryCoverage &&
     strongNinetyDayConsistency &&
     noPersistentlyLowDimension;
-  rawScore = Math.min(rawScore, phaseInfo.cap, canReachPeak ? 100 : 99.9);
+  rawScore = Math.min(
+    rawScore,
+    phaseInfo.cap,
+    confidenceCap,
+    canReachPeak ? 100 : 99.9,
+  );
 
   let score = rawScore;
   if (previousScore !== null) {
@@ -464,6 +540,10 @@ export function calculateLongTermHealthPulse(input: {
     routine90,
     weightTrendBonus,
     noDataStreak,
+    consecutiveCompleteDays,
+    unlockRoute,
+    dataConfidence,
+    confidenceCap,
     strongestDimension,
     focusDimension,
     reasons,

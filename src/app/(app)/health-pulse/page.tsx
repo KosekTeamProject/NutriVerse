@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Info, ArrowRight, Database, Footprints, Utensils, Droplets, Moon, Check } from "lucide-react";
+import { Info, ArrowRight, Database, Footprints, Utensils, Droplets, Moon, Check, CheckCircle2, Circle, LockKeyhole } from "lucide-react";
 import Link from "next/link";
 import { 
   HealthPulseCard, 
@@ -14,6 +14,108 @@ import { CompanionCard } from "@/features/companion/components/CompanionComponen
 import { useCompanionName } from "@/hooks/useCompanionName";
 import { useProgressData } from "@/providers/ProgressDataProvider";
 import { notifyDataChanged } from "@/lib/data-sync";
+import type { HealthPulseSnapshot } from "@/features/health-pulse/types";
+
+function HealthPulseUnlockChecklist({ snapshot }: { snapshot: HealthPulseSnapshot }) {
+  const guide = snapshot.unlockGuide;
+  if (!guide) return null;
+  const fastProgress = Math.min(
+    100,
+    (guide.projectedCompleteDays / guide.fastTrackDaysRequired) * 100,
+  );
+  const standardProgress = Math.min(
+    100,
+    (guide.evaluatedDays / guide.standardDaysRequired) * 100,
+  );
+  const confidenceLabels = {
+    "very-low": "Sangat rendah",
+    low: "Rendah",
+    fair: "Cukup",
+    complete: "Lengkap",
+  } as const;
+
+  return (
+    <section className="card card-pad space-y-4" aria-labelledby="health-pulse-unlock-title">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-brand">
+            <LockKeyhole className="h-4 w-4" /> Persiapan Health Pulse
+          </p>
+          <h2 id="health-pulse-unlock-title" className="mt-1 font-display text-lg font-bold text-foreground">
+            {guide.isUnlocked ? "Checklist kebiasaan hari ini" : "Buka diagram Health Pulse-mu"}
+          </h2>
+          <p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted-foreground">
+            {guide.message}
+          </p>
+        </div>
+        <span className={`pill self-start text-[10px] font-bold ${guide.isUnlocked ? "bg-brand-soft text-brand" : "bg-secondary text-muted-foreground"}`}>
+          {guide.isUnlocked ? "DIAGRAM TERBUKA" : `${guide.todayCompleted}/${guide.todayTotal} HARI INI`}
+        </span>
+      </div>
+
+      {!guide.isUnlocked && (
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="rounded-2xl border border-brand/25 bg-brand-soft/15 p-4">
+            <div className="flex items-center justify-between gap-3 text-xs">
+              <span className="font-bold text-foreground">Jalur cepat</span>
+              <span className="font-bold text-brand">
+                {guide.projectedCompleteDays}/{guide.fastTrackDaysRequired} hari lengkap
+              </span>
+            </div>
+            <div className="mt-3 h-2 overflow-hidden rounded-full bg-secondary">
+              <div className="h-full rounded-full bg-brand transition-all" style={{ width: `${fastProgress}%` }} />
+            </div>
+            <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+              Empat checklist harus lengkap selama 4 hari berturut-turut.
+            </p>
+          </div>
+          <div className="rounded-2xl border border-line bg-secondary/25 p-4">
+            <div className="flex items-center justify-between gap-3 text-xs">
+              <span className="font-bold text-foreground">Jalur normal</span>
+              <span className="font-bold text-muted-foreground">
+                {guide.evaluatedDays}/{guide.standardDaysRequired} hari dinilai
+              </span>
+            </div>
+            <div className="mt-3 h-2 overflow-hidden rounded-full bg-secondary">
+              <div className="h-full rounded-full bg-muted-foreground/55 transition-all" style={{ width: `${standardProgress}%` }} />
+            </div>
+            <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+              Diagram terbuka setelah 7 hari selesai bila minimal ada satu data kebiasaan.
+            </p>
+          </div>
+        </div>
+      )}
+
+      <div className="grid gap-2 sm:grid-cols-2">
+        {guide.checklist.map((item) => (
+          <div key={item.id} className={`rounded-2xl border p-3.5 ${item.completed ? "border-brand/25 bg-brand-soft/15" : "border-line bg-secondary/20"}`}>
+            <div className="flex items-start gap-3">
+              {item.completed ? (
+                <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-brand" />
+              ) : (
+                <Circle className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-bold text-foreground">{item.label}</p>
+                <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{item.detail}</p>
+                {!item.completed && (
+                  <Link href={item.actionHref} className="mt-2 inline-flex items-center gap-1 text-[11px] font-bold text-brand hover:underline">
+                    {item.actionLabel} <ArrowRight className="h-3 w-3" />
+                  </Link>
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex flex-col gap-1 rounded-xl border border-line/60 bg-secondary/25 px-3 py-2.5 text-[11px] text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+        <span>Checklist reset pukul 00.00; riwayat hari sebelumnya tetap tersimpan.</span>
+        <span>Kepercayaan: <strong className="text-foreground">{confidenceLabels[guide.dataConfidence]}</strong>{guide.isUnlocked ? ` · batas saat ini ${guide.confidenceCap}` : ""}</span>
+      </div>
+    </section>
+  );
+}
 
 function DailyCheckIn() {
   const { refresh } = useProgressData();
@@ -68,7 +170,7 @@ function DailyCheckIn() {
   }
 
   return (
-    <form onSubmit={save} className="card card-pad space-y-4">
+    <form id="daily-check-in" onSubmit={save} className="card card-pad space-y-4 scroll-mt-24">
       <div>
         <h3 className="font-display text-base font-bold">Check-in harian</h3>
         <p className="mt-0.5 text-xs text-muted-foreground">
@@ -154,6 +256,8 @@ export default function HealthPulseDetailPage() {
           <div className="rounded-xl border border-line bg-secondary/30 p-3 text-xs"><span className="text-muted-foreground">Fase berikutnya</span><p className="mt-1 font-bold text-foreground">{current.nextPhaseInDays === null ? "Mastery aktif" : `${current.nextPhaseInDays} hari lagi`}</p></div>
         </div>
       </div>
+
+      <HealthPulseUnlockChecklist snapshot={current} />
 
       <DailyCheckIn />
 

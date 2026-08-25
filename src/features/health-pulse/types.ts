@@ -7,6 +7,33 @@ export type HealthPulsePhase = "LEARNING" | "FOUNDATION" | "GROWTH" | "SUSTAINED
 export type HealthPulseTrend = "improving" | "stable" | "recovering" | "needs-attention";
 
 export type HealthDataTrustLevel = "trusted" | "partially-verified" | "self-reported" | "simulated" | "missing";
+export type HealthPulseDataConfidence = "very-low" | "low" | "fair" | "complete";
+
+export interface HealthPulseChecklistItem {
+  readonly id: "nutrition" | "activity" | "sleep" | "hydration";
+  readonly label: string;
+  readonly detail: string;
+  readonly completed: boolean;
+  readonly actionHref: string;
+  readonly actionLabel: string;
+}
+
+export interface HealthPulseUnlockGuide {
+  readonly isUnlocked: boolean;
+  readonly scoreThroughDate: string;
+  readonly evaluatedDays: number;
+  readonly standardDaysRequired: 7;
+  readonly consecutiveCompleteDays: number;
+  readonly projectedCompleteDays: number;
+  readonly fastTrackDaysRequired: 4;
+  readonly todayCompleted: number;
+  readonly todayTotal: 4;
+  readonly todayIsComplete: boolean;
+  readonly dataConfidence: HealthPulseDataConfidence;
+  readonly confidenceCap: number;
+  readonly message: string;
+  readonly checklist: readonly HealthPulseChecklistItem[];
+}
 
 export interface HealthDimensionScore {
   readonly dimension: HealthDimension;
@@ -41,6 +68,7 @@ export interface HealthPulseSnapshot {
   readonly routineScore90: number | null;
   readonly isPublished: boolean;
   readonly learningMessage: string | null;
+  readonly unlockGuide?: HealthPulseUnlockGuide;
   readonly generatedAt: string;
   readonly dimensions: readonly HealthDimensionScore[];
   readonly reasons: readonly string[];
