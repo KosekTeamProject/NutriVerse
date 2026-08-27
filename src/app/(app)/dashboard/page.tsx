@@ -16,6 +16,7 @@ import {
 } from "@/components/app/DashboardWidgets";
 import { useProgressData } from "@/providers/ProgressDataProvider";
 import { useWeeklyLetter } from "@/hooks/useWeeklyLetter";
+import { DashboardEventPreview } from "@/components/app/DashboardEventPreview";
 
 import { ChevronDown, LayoutDashboard } from "lucide-react";
 
@@ -35,7 +36,7 @@ export default function DashboardPage() {
             <div data-tour="dashboard-summary">
               <DashboardHero />
             </div>
-            
+
             <div data-tour="quick-actions-widget">
               <DashboardStarter />
             </div>
@@ -44,7 +45,7 @@ export default function DashboardPage() {
           {/* KANAN: Health Pulse */}
           <div className="col-span-full md:col-span-4 flex w-full" data-tour="health-pulse-widget">
             {overview ? (
-              <HealthPulseCard snapshot={overview.healthPulse.current} variant="compact" className="h-full w-full" />
+              <div className="flex w-full flex-col gap-4 sm:gap-6"><div data-tour="dashboard-events-widget"><DashboardEventPreview compact /></div><HealthPulseCard snapshot={overview.healthPulse.current} variant="compact" className="h-full w-full" /></div>
             ) : (
               <div className="card card-pad w-full h-full grid min-h-48 place-items-center rounded-3xl text-xs text-muted-foreground border-dashed">
                 Memuat Health Pulse...

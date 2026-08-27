@@ -3,10 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { Activity, AlertTriangle, BarChart3, Bell, CalendarDays, Check, CircleDollarSign, FileWarning, Gift, Images, LayoutDashboard, LogOut, Menu, Settings, ShieldCheck, Trophy, UserCog, Users, X, Newspaper } from "lucide-react";
 import { BrandLogo } from "@/components/brand/BrandLogo";
+import { AdminEventPanel } from "@/components/admin/AdminEventPanel";
 import { ShareTemplateAdmin } from "@/components/admin/ShareTemplateAdmin";
 import { clearAdminSession, type AdminRole, type AdminSession } from "@/features/admin/session";
 
-type AdminView = "overview" | "moderation" | "users" | "operations" | "templates" | "admins" | "settings";
+type AdminView = "overview" | "moderation" | "users" | "operations" | "templates" | "admins" | "settings" | "events";
 type ReportStatus = "Menunggu" | "Dipertahankan" | "Diturunkan";
 
 const NAV_ITEMS = [
@@ -17,6 +18,7 @@ const NAV_ITEMS = [
   { id: "templates" as const, label: "Template Berbagi", icon: Images },
   { id: "admins" as const, label: "Daftar Admin", icon: UserCog },
   { id: "settings" as const, label: "Pengaturan Sistem", icon: Settings },
+  { id: "events" as const, label: "Kelola Event", icon: CalendarDays },
 ];
 
 const USER_ROWS = [
@@ -574,6 +576,13 @@ function AdminList({ canManage }: { readonly canManage: boolean }) {
   };
   const [admins, setAdmins] = useState<AdminRow[]>([]);
   const [message, setMessage] = useState("Memuat administrator dari database...");
+  async function changeRole(admin: AdminRow) {
+    const role = admin.role === "ADMIN" ? "MODERATOR" : "ADMIN";
+    const response = await fetch(`/api/admin/users/${admin.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ role }) });
+    const result = await response.json().catch(() => null) as { success?: boolean; error?: string } | null;
+    if (!response.ok || !result?.success) { setMessage(result?.error ?? "Role gagal diubah."); return; }
+    setAdmins((current) => current.map((item) => item.id === admin.id ? { ...item, role } : item));
+  }
 
   useEffect(() => {
     void Promise.all([
@@ -610,6 +619,7 @@ function AdminList({ canManage }: { readonly canManage: boolean }) {
               <div className="min-w-0 flex-1"><p className="text-sm font-bold">{admin.name}</p><p className="truncate text-[10px] text-muted-foreground">{admin.email}</p></div>
               <span className="rounded-full bg-secondary px-2.5 py-1 text-[9px] font-bold">{admin.role}</span>
               <span className={`rounded-full px-2.5 py-1 text-[9px] font-bold ${admin.isSuspended ? "bg-amber/10 text-amber" : "bg-brand-soft text-brand"}`}>{admin.isSuspended ? "Nonaktif" : "Aktif"}</span>
+              {canManage && <button type="button" onClick={() => void changeRole(admin)} className="btn btn-outline btn-sm">Jadikan {admin.role === "ADMIN" ? "Moderator" : "Super Admin"}</button>}
             </div>
           ))}
         </div>
@@ -728,7 +738,11 @@ export function AdminPortal({ serverSession: session }: { readonly serverSession
     clearAdminSession();
     window.location.assign("/");
   }
-  const content = view === "overview" ? <Overview /> : view === "moderation" ? <Moderation /> : view === "users" ? <UsersView /> : view === "operations" ? <Operations canManage={canManage} /> : view === "templates" ? <ShareTemplateAdmin canPublish={canManage} /> : view === "admins" ? <AdminList canManage={canManage} /> : <SystemSettings canManage={canManage} />;
+  const content = view === "overview" ? <Overview /> : view === "moderation" ? <Moderation /> : view === "users" ? <UsersView /> : view === "operations" ? <Operations canManage={canManage} /> : view === "templates" ? <ShareTemplateAdmin canPublish={canManage} /> : view === "admins" ? <AdminList canManage={canManage} /> : view === "events" ? <AdminEventPanel embedded /> : <SystemSettings canManage={canManage} />;
   const selectView = (nextView: AdminView) => { setView(nextView); setMobileOpen(false); };
   return <div className="min-h-screen bg-background text-foreground"><aside className="fixed inset-y-0 left-0 z-40 hidden w-64 lg:block"><AdminSidebar view={view} session={session} onSelect={selectView} onLogout={logout} /></aside>{mobileOpen && <div className="fixed inset-0 z-50 lg:hidden"><button onClick={() => setMobileOpen(false)} className="absolute inset-0 bg-black/55" aria-label="Tutup menu admin" /><aside className="absolute inset-y-0 left-0 w-[84vw] max-w-72"><button onClick={() => setMobileOpen(false)} className="absolute right-3 top-3 z-10 grid h-8 w-8 place-items-center rounded-lg bg-white/10 text-white" aria-label="Tutup menu"><X className="h-4 w-4" /></button><AdminSidebar view={view} session={session} onSelect={selectView} onLogout={logout} /></aside></div>}<div className="lg:pl-64"><header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-line bg-background/90 px-4 backdrop-blur-xl sm:px-6"><button onClick={() => setMobileOpen(true)} className="grid h-9 w-9 place-items-center rounded-lg text-muted-foreground hover:bg-secondary lg:hidden" aria-label="Buka menu admin"><Menu className="h-5 w-5" /></button><div className="min-w-0 flex-1"><p className="text-[9px] font-bold uppercase tracking-[0.16em] text-brand">NutriVerse Control</p><h1 className="truncate font-display text-base font-extrabold">{pageTitle}</h1></div><button className="relative grid h-9 w-9 place-items-center rounded-xl text-muted-foreground hover:bg-secondary" aria-label="Notifikasi admin"><Bell className="h-4 w-4" /></button><span className="hidden rounded-full bg-brand-soft px-3 py-1.5 text-[9px] font-bold text-brand sm:inline">{session.role}</span></header><main className="mx-auto max-w-[1440px] p-4 sm:p-6 lg:p-8"><div className="mb-6 flex flex-wrap items-end justify-between gap-3"><div><h2 className="font-display text-2xl font-extrabold">{pageTitle}</h2><p className="mt-1 text-xs text-muted-foreground">Data operasional dimuat melalui API administrator dan database.</p></div><span className="flex items-center gap-1.5 rounded-full bg-brand-soft px-3 py-1.5 text-[9px] font-bold text-brand"><ShieldCheck className="h-3.5 w-3.5" /> Sesi Supabase berbasis role</span></div>{content}</main></div></div>;
 }
+
+
+
+

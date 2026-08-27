@@ -321,6 +321,10 @@ model User {
   eventRegistrations      EventRegistration[]
   eventsCreated           Event[]                   @relation("EventCreator")
   eventsReviewed          Event[]                   @relation("EventReviewer")
+  eventAdminAssignments   EventAdminAssignment[]    @relation("EventAdminUser")
+  communityAdminAssignments CommunityAdminAssignment[] @relation("CommunityAdminUser")
+  eventAdminAssignmentsMade EventAdminAssignment[] @relation("EventAdminAssigner")
+  communityAdminAssignmentsMade CommunityAdminAssignment[] @relation("CommunityAdminAssigner")
   eventComments           EventComment[]            @relation("EventCommentAuthor")
   eventCommentsModerated  EventComment[]            @relation("EventCommentModerator")
   connectionsSent         UserConnection[]          @relation("ConnectionRequester")
@@ -1128,6 +1132,7 @@ model Event {
   comments      EventComment[]
   createdBy     User?               @relation("EventCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
   reviewedBy    User?               @relation("EventReviewer", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  adminAssignments EventAdminAssignment[]
 
   @@index([isActive, startDate])
   @@index([approvalStatus, createdAt])
@@ -1345,11 +1350,40 @@ model Guild {
   members    GuildMember[]
   posts      Post[]
   moments    Moment[]
+  adminAssignments CommunityAdminAssignment[]
 
   @@index([leaderId])
   @@index([approvalStatus, isActive, createdAt])
   @@index([reviewedByUserId])
   @@map("guilds")
+}
+
+model EventAdminAssignment {
+  id        String   @id @default(uuid())
+  eventId   String
+  userId    String
+  assignedByUserId String
+  createdAt DateTime @default(now())
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user User @relation("EventAdminUser", fields: [userId], references: [id], onDelete: Cascade)
+  assignedBy User @relation("EventAdminAssigner", fields: [assignedByUserId], references: [id], onDelete: Restrict)
+  @@unique([eventId, userId])
+  @@index([userId])
+  @@map("event_admin_assignments")
+}
+
+model CommunityAdminAssignment {
+  id        String   @id @default(uuid())
+  guildId   String
+  userId    String
+  assignedByUserId String
+  createdAt DateTime @default(now())
+  guild Guild @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  user User @relation("CommunityAdminUser", fields: [userId], references: [id], onDelete: Cascade)
+  assignedBy User @relation("CommunityAdminAssigner", fields: [assignedByUserId], references: [id], onDelete: Restrict)
+  @@unique([guildId, userId])
+  @@index([userId])
+  @@map("community_admin_assignments")
 }
 
 model GuildMember {
