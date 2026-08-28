@@ -330,6 +330,7 @@ export default function OnboardingPage() {
       companionName: companionData.name || "Nora",
       companionAvatarId: companionData.avatarId,
       provider,
+      onboardingCompleted: true,
       baseline: finalBaseline,
       preferences: {
         preferredActivities: selectedActivities,

@@ -97,13 +97,13 @@ function buildUnlockGuide(input: {
     },
     {
       id: "sleep",
-      label: "Catat waktu tidur terakhir",
+      label: "Catat total tidur hari ini",
       detail: input.aggregate.sleepHours !== undefined
         ? `${rounded(input.aggregate.sleepHours)} jam tercatat`
         : "Belum ada durasi tidur hari ini",
       completed: input.aggregate.sleepHours !== undefined,
       actionHref: "/health-pulse#daily-check-in",
-      actionLabel: "Isi tidur",
+      actionLabel: "Tambah tidur",
     },
     {
       id: "hydration",
@@ -342,7 +342,6 @@ export async function refreshDailyHealthPulse(input: {
   userId: string;
   occurredAt?: Date;
   dayKey?: string;
-  sleepHours?: number;
 }) {
   const occurredAt = input.occurredAt ?? new Date();
   const user = await prisma.user.findUniqueOrThrow({
@@ -358,7 +357,7 @@ export async function refreshDailyHealthPulse(input: {
   const firstBounds = utcDayBoundsForKey(dayKeys[0], timezone);
   const finalBounds = utcDayBoundsForKey(dayKey, timezone);
 
-  const [activities, nutritionEntries, waterLogs, pulseInputs, healthMetrics, previous, earliestPulse] =
+  const [activities, nutritionEntries, waterLogs, sleepLogs, pulseInputs, healthMetrics, previous, earliestPulse] =
     await Promise.all([
       prisma.activitySession.findMany({
         where: {
@@ -375,6 +374,10 @@ export async function refreshDailyHealthPulse(input: {
       prisma.waterLog.findMany({
         where: { userId: input.userId, loggedAt: { gte: firstBounds.start, lt: finalBounds.end } },
         select: { loggedAt: true, volumeMl: true },
+      }),
+      prisma.sleepLog.findMany({
+        where: { userId: input.userId, loggedAt: { gte: firstBounds.start, lt: finalBounds.end } },
+        select: { loggedAt: true, durationHours: true },
       }),
       prisma.healthPulse.findMany({
         where: {
@@ -435,19 +438,21 @@ export async function refreshDailyHealthPulse(input: {
     const aggregate = aggregates.get(calendarDayKey(log.loggedAt, timezone));
     if (aggregate) aggregate.hydrationMl += log.volumeMl;
   }
+  for (const log of sleepLogs) {
+    const aggregate = aggregates.get(calendarDayKey(log.loggedAt, timezone));
+    if (!aggregate) continue;
+    aggregate.sleepHours = (aggregate.sleepHours ?? 0) + log.durationHours;
+  }
   for (const pulse of pulseInputs) {
     const aggregate = aggregates.get(pulse.pulseDate.toISOString().slice(0, 10));
     if (!aggregate) continue;
-    if (pulse.sleepHours !== null) aggregate.sleepHours = pulse.sleepHours;
+    if (pulse.sleepHours !== null && aggregate.sleepHours === undefined) {
+      aggregate.sleepHours = pulse.sleepHours;
+    }
     if (aggregate.hydrationMl === 0 && pulse.hydrationLiters !== null) {
       aggregate.hydrationMl = pulse.hydrationLiters * 1_000;
     }
   }
-  if (input.sleepHours !== undefined) {
-    const aggregate = aggregates.get(dayKey);
-    if (aggregate) aggregate.sleepHours = input.sleepHours;
-  }
-
   const profile = user.healthProfile;
   const activityTargetMinutes = profile?.dailyActiveTargetMinutes ?? 30;
   const waterTargetMl = profile?.dailyWaterTargetMl ?? 2_000;
@@ -552,9 +557,7 @@ export async function refreshDailyHealthPulse(input: {
       activityScore: result.routine7.dimensions.activity ?? 0,
       sleepScore: result.routine7.dimensions.sleep,
       hydrationScore: result.routine7.dimensions.hydration,
-      ...(input.sleepHours !== undefined
-        ? { sleepHours: input.sleepHours }
-        : {}),
+      sleepHours: currentAggregate.sleepHours ?? null,
       hydrationLiters:
         currentAggregate.hydrationMl > 0
           ? currentAggregate.hydrationMl / 1_000

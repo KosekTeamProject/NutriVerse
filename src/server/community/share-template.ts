@@ -32,6 +32,8 @@ export type ShareTemplateElement = {
   width: number;
   height: number;
   fontSize?: number;
+  fontFamily?: "INTER" | "JAKARTA" | "ARIAL" | "GEORGIA";
+  fontWeight?: 400 | 500 | 600 | 700 | 800 | 900;
   color?: string;
   align?: "left" | "center" | "right";
   required?: boolean;
@@ -45,7 +47,7 @@ function percentage(value: unknown, label: string, fallback: number) {
 }
 
 export function normalizeTemplateLayout(value: unknown) {
-  const input = value && typeof value === "object" ? value as { elements?: unknown; photoAsBackground?: unknown } : {};
+  const input = value && typeof value === "object" ? value as { elements?: unknown; photoAsBackground?: unknown; presetKey?: unknown } : {};
   if (!Array.isArray(input.elements)) throw new ApiRequestError("Layout template harus memiliki daftar elemen.");
   if (input.elements.length > 40) throw new ApiRequestError("Maksimal 40 elemen dalam satu template.");
   const elements: ShareTemplateElement[] = input.elements.map((raw, index) => {
@@ -57,6 +59,17 @@ export function normalizeTemplateLayout(value: unknown) {
       : undefined;
     if (!dataKey && !staticText) throw new ApiRequestError(`Elemen ${index + 1} harus memiliki sumber data atau teks statis.`);
     const color = typeof element.color === "string" && /^#[0-9a-f]{6}$/i.test(element.color) ? element.color : "#ffffff";
+    const fontFamily = ["INTER", "JAKARTA", "ARIAL", "GEORGIA"].includes(
+      String(element.fontFamily),
+    )
+      ? (element.fontFamily as ShareTemplateElement["fontFamily"])
+      : "JAKARTA";
+    const numericFontWeight = Number(element.fontWeight);
+    const fontWeight = [400, 500, 600, 700, 800, 900].includes(
+      numericFontWeight,
+    )
+      ? (numericFontWeight as ShareTemplateElement["fontWeight"])
+      : 800;
     return {
       id: typeof element.id === "string" && element.id.trim() ? element.id.slice(0, 80) : `element-${index + 1}`,
       kind,
@@ -67,13 +80,20 @@ export function normalizeTemplateLayout(value: unknown) {
       width: percentage(element.width, "Lebar", 40),
       height: percentage(element.height, "Tinggi", 10),
       fontSize: Math.min(Math.max(typeof element.fontSize === "number" ? element.fontSize : 32, 8), 160),
+      fontFamily,
+      fontWeight,
       color,
       align: element.align === "center" || element.align === "right" ? element.align : "left",
       required: element.required === true,
       userCanHide: element.userCanHide !== false,
     };
   });
-  return { elements, photoAsBackground: input.photoAsBackground === true };
+  const presetKey = ["HEALTH_PULSE", "ACTIVITY", "PROGRESS", "CUSTOM"].includes(
+    String(input.presetKey),
+  )
+    ? String(input.presetKey)
+    : "CUSTOM";
+  return { elements, photoAsBackground: input.photoAsBackground === true, presetKey };
 }
 
 export function templateAllowedDataKeys(layout: ReturnType<typeof normalizeTemplateLayout>) {

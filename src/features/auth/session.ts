@@ -35,6 +35,7 @@ export type AuthSession = {
   readonly avatarUrl?: string;
   readonly coverUrl?: string;
   readonly provider?: "password" | "google";
+  readonly onboardingCompleted?: boolean;
   readonly baseline?: HealthBaseline;
   readonly preferences?: OnboardingPreferences;
   readonly createdAt: string;

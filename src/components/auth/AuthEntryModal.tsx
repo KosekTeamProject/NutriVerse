@@ -43,6 +43,7 @@ export function AuthEntryModal({ open, onClose, initialView = "choice" }: { read
           avatarUrl?: string | null;
           companionName?: string;
           companionAvatarId?: string;
+          onboardingCompleted?: boolean;
         };
       };
       if (!response.ok || !result.success || !result.user) {
@@ -59,6 +60,7 @@ export function AuthEntryModal({ open, onClose, initialView = "choice" }: { read
         companionAvatarId: result.user.companionAvatarId,
         avatarUrl: result.user.avatarUrl || undefined,
         provider: "password",
+        onboardingCompleted: result.user.onboardingCompleted ?? false,
         createdAt: new Date().toISOString(),
         lastLoginTimestamp: Date.now(),
       });

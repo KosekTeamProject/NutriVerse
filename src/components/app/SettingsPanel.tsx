@@ -51,6 +51,43 @@ type DailyTargetDraft = {
   sleepHours: number;
 };
 
+type PersonalContextDraft = {
+  birthDate: string;
+  gender: "MALE" | "FEMALE" | "OTHER" | "PREFER_NOT_TO_SAY";
+  heightCm: string;
+  weightKg: string;
+  targetWeightKg: string;
+  healthGoals: string;
+  activityLevel: string;
+  companionName: string;
+  companionAvatarId: string;
+};
+
+const HEALTH_GOALS = [
+  "Menurunkan Berat Badan",
+  "Menambah Massa Otot",
+  "Pola Hidup Sehat",
+  "Lebih Aktif Bergerak",
+  "Menjaga Berat Badan",
+  "Hidup Lebih Seimbang",
+];
+
+const ACTIVITY_LEVELS = [
+  { value: "sedentary", label: "Jarang bergerak" },
+  { value: "light", label: "Aktivitas ringan" },
+  { value: "moderate", label: "Cukup aktif" },
+  { value: "active", label: "Sangat aktif" },
+];
+
+const COMPANION_AVATARS = [
+  { value: "sparkles", label: "Sparkles" },
+  { value: "bot", label: "Robot" },
+  { value: "ghost", label: "Ghost" },
+  { value: "cat", label: "Cat" },
+  { value: "bird", label: "Bird" },
+  { value: "trees", label: "Nature" },
+];
+
 function Switch({ on, onToggle, ariaLabel }: { readonly on: boolean; readonly onToggle: () => void; readonly ariaLabel: string }) {
   return (
     <button
@@ -157,6 +194,19 @@ export function SettingsPanel() {
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileFeedback, setProfileFeedback] = useState<ProfileFeedback | null>(null);
   const [settingsLoading, setSettingsLoading] = useState(true);
+  const [personalSaving, setPersonalSaving] = useState(false);
+  const [personalFeedback, setPersonalFeedback] = useState<ProfileFeedback | null>(null);
+  const [personalContext, setPersonalContext] = useState<PersonalContextDraft>({
+    birthDate: "",
+    gender: "PREFER_NOT_TO_SAY",
+    heightCm: "",
+    weightKg: "",
+    targetWeightKg: "",
+    healthGoals: "",
+    activityLevel: "",
+    companionName: session?.companionName ?? "Nora",
+    companionAvatarId: session?.companionAvatarId ?? "sparkles",
+  });
   const [targets, setTargets] = useState<DailyTargetDraft>({
     calories: 2000,
     protein: 80,
@@ -268,12 +318,22 @@ export function SettingsPanel() {
             foodSimulationEnabled: boolean;
           } | null;
           companion?: {
+            companionName: string;
+            companionAvatarId: string;
             morningBriefEnabled: boolean;
             weeklyLetterEnabled: boolean;
             breakReminderEnabled: boolean;
             breakReminderIntervalMinutes: number;
           } | null;
           healthProfile?: {
+            birthDate: string | null;
+            gender: PersonalContextDraft["gender"];
+            heightCm: number | null;
+            weightKg: number | null;
+            targetWeightKg: number | null;
+            healthGoals: string | null;
+            activityLevel: string | null;
+            onboardingCompleted: boolean;
             dailyCalorieTarget: number;
             dailyProteinTargetGrams: number;
             dailyWaterTargetMl: number;
@@ -334,6 +394,11 @@ export function SettingsPanel() {
             JSON.stringify(storedReminder),
           );
           window.dispatchEvent(new Event(BREAK_REMINDER_EVENT));
+          setPersonalContext((current) => ({
+            ...current,
+            companionName: result.companion!.companionName,
+            companionAvatarId: result.companion!.companionAvatarId,
+          }));
         }
         if (result.healthProfile) {
           setTargets({
@@ -343,6 +408,16 @@ export function SettingsPanel() {
             steps: result.healthProfile.dailyStepTarget,
             sleepHours: result.healthProfile.dailySleepTargetHours,
           });
+          setPersonalContext((current) => ({
+            ...current,
+            birthDate: result.healthProfile!.birthDate?.slice(0, 10) ?? "",
+            gender: result.healthProfile!.gender,
+            heightCm: result.healthProfile!.heightCm?.toString() ?? "",
+            weightKg: result.healthProfile!.weightKg?.toString() ?? "",
+            targetWeightKg: result.healthProfile!.targetWeightKg?.toString() ?? "",
+            healthGoals: result.healthProfile!.healthGoals ?? "",
+            activityLevel: result.healthProfile!.activityLevel ?? "",
+          }));
         }
       })
       .catch(() => {
@@ -444,6 +519,91 @@ export function SettingsPanel() {
     }
   }
 
+  async function savePersonalContext() {
+    const heightCm = Number(personalContext.heightCm);
+    const weightKg = Number(personalContext.weightKg);
+    const targetWeightKg = personalContext.targetWeightKg.trim()
+      ? Number(personalContext.targetWeightKg)
+      : null;
+    if (!personalContext.birthDate) {
+      setPersonalFeedback({ tone: "error", message: "Tanggal lahir wajib diisi." });
+      return;
+    }
+    if (!Number.isFinite(heightCm) || heightCm < 80 || heightCm > 250) {
+      setPersonalFeedback({ tone: "error", message: "Tinggi badan harus berada di antara 80 dan 250 cm." });
+      return;
+    }
+    if (!Number.isFinite(weightKg) || weightKg < 20 || weightKg > 400) {
+      setPersonalFeedback({ tone: "error", message: "Berat badan harus berada di antara 20 dan 400 kg." });
+      return;
+    }
+    if (targetWeightKg !== null && (!Number.isFinite(targetWeightKg) || targetWeightKg < 20 || targetWeightKg > 400)) {
+      setPersonalFeedback({ tone: "error", message: "Target berat harus berada di antara 20 dan 400 kg." });
+      return;
+    }
+    if (!personalContext.healthGoals.trim() || !personalContext.activityLevel) {
+      setPersonalFeedback({ tone: "error", message: "Tujuan kesehatan dan tingkat aktivitas wajib dipilih." });
+      return;
+    }
+    if (personalContext.companionName.trim().length < 2) {
+      setPersonalFeedback({ tone: "error", message: "Nama companion minimal 2 karakter." });
+      return;
+    }
+
+    setPersonalSaving(true);
+    setPersonalFeedback(null);
+    try {
+      const response = await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          birthDate: personalContext.birthDate,
+          gender: personalContext.gender,
+          heightCm,
+          weightKg,
+          targetWeightKg,
+          healthGoals: personalContext.healthGoals.trim(),
+          activityLevel: personalContext.activityLevel,
+          companionName: personalContext.companionName.trim(),
+          companionAvatarId: personalContext.companionAvatarId,
+          dailyCalorieTarget: targets.calories,
+          dailyProteinTargetGrams: targets.protein,
+          dailyWaterTargetMl: Math.round(targets.waterLiters * 1_000),
+          dailyStepTarget: targets.steps,
+          dailySleepTargetHours: targets.sleepHours,
+        }),
+      });
+      const result = (await response.json().catch(() => null)) as {
+        success?: boolean;
+        error?: string;
+        healthProfile?: { onboardingCompleted: boolean };
+        companion?: { companionName: string; companionAvatarId: string };
+      } | null;
+      if (!response.ok || !result?.success || !result.healthProfile?.onboardingCompleted) {
+        throw new Error(result?.error || "Konteks personal belum lengkap.");
+      }
+      const savedCompanionName = result.companion?.companionName ?? personalContext.companionName.trim();
+      companionName.setDisplayName(savedCompanionName);
+      updateAuthSession({
+        onboardingCompleted: true,
+        companionName: savedCompanionName,
+        companionAvatarId: result.companion?.companionAvatarId ?? personalContext.companionAvatarId,
+      });
+      notifyDataChanged();
+      setPersonalFeedback({
+        tone: "success",
+        message: "Konteks personal sudah lengkap. Kartu pengingat di dashboard akan hilang.",
+      });
+    } catch (error) {
+      setPersonalFeedback({
+        tone: "error",
+        message: error instanceof Error ? error.message : "Konteks personal belum dapat disimpan.",
+      });
+    } finally {
+      setPersonalSaving(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* 1. Profile section */}
@@ -513,7 +673,39 @@ export function SettingsPanel() {
         )}
       </SectionCard>
 
-      {/* 2. Target harian section */}
+      {/* 2. Personal health context */}
+      <SectionCard icon={Activity} title="Konteks Kesehatan Personal">
+        <div className="rounded-2xl border border-brand/15 bg-brand-soft/25 p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-bold text-foreground">Data dasar untuk personalisasi</p>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Isian bertanda * diperlukan agar Health Pulse, target, dan saran Nora memakai konteks yang tepat.</p>
+            </div>
+            <span className={`pill text-[10px] font-bold ${(session?.onboardingCompleted || session?.baseline) ? "bg-brand-soft text-brand" : "bg-secondary text-muted-foreground"}`}>
+              {(session?.onboardingCompleted || session?.baseline) ? "SUDAH LENGKAP" : "PERLU DILENGKAPI"}
+            </span>
+          </div>
+        </div>
+
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <label><span className="label text-xs font-bold uppercase text-muted-foreground">Tanggal lahir *</span><input type="date" value={personalContext.birthDate} onChange={(event) => { setPersonalContext((current) => ({ ...current, birthDate: event.target.value })); setPersonalFeedback(null); }} className="input mt-1.5" /></label>
+          <label><span className="label text-xs font-bold uppercase text-muted-foreground">Jenis kelamin *</span><select value={personalContext.gender} onChange={(event) => { setPersonalContext((current) => ({ ...current, gender: event.target.value as PersonalContextDraft["gender"] })); setPersonalFeedback(null); }} className="input mt-1.5"><option value="MALE">Laki-laki</option><option value="FEMALE">Perempuan</option><option value="OTHER">Lainnya</option><option value="PREFER_NOT_TO_SAY">Tidak ingin menyebutkan</option></select></label>
+          <label><span className="label text-xs font-bold uppercase text-muted-foreground">Tinggi badan (cm) *</span><input type="number" min="80" max="250" value={personalContext.heightCm} onChange={(event) => { setPersonalContext((current) => ({ ...current, heightCm: event.target.value })); setPersonalFeedback(null); }} className="input mt-1.5" placeholder="170" /></label>
+          <label><span className="label text-xs font-bold uppercase text-muted-foreground">Berat badan (kg) *</span><input type="number" min="20" max="400" step="0.1" value={personalContext.weightKg} onChange={(event) => { setPersonalContext((current) => ({ ...current, weightKg: event.target.value })); setPersonalFeedback(null); }} className="input mt-1.5" placeholder="65" /></label>
+          <label><span className="label text-xs font-bold uppercase text-muted-foreground">Target berat (kg)</span><input type="number" min="20" max="400" step="0.1" value={personalContext.targetWeightKg} onChange={(event) => { setPersonalContext((current) => ({ ...current, targetWeightKg: event.target.value })); setPersonalFeedback(null); }} className="input mt-1.5" placeholder="Opsional" /></label>
+          <label><span className="label text-xs font-bold uppercase text-muted-foreground">Tingkat aktivitas *</span><select value={personalContext.activityLevel} onChange={(event) => { setPersonalContext((current) => ({ ...current, activityLevel: event.target.value })); setPersonalFeedback(null); }} className="input mt-1.5"><option value="">Pilih tingkat aktivitas</option>{personalContext.activityLevel && !ACTIVITY_LEVELS.some((item) => item.value === personalContext.activityLevel) && <option value={personalContext.activityLevel}>{personalContext.activityLevel}</option>}{ACTIVITY_LEVELS.map((level) => <option key={level.value} value={level.value}>{level.label}</option>)}</select></label>
+          <label className="sm:col-span-2"><span className="label text-xs font-bold uppercase text-muted-foreground">Tujuan kesehatan *</span><select value={personalContext.healthGoals} onChange={(event) => { setPersonalContext((current) => ({ ...current, healthGoals: event.target.value })); setPersonalFeedback(null); }} className="input mt-1.5"><option value="">Pilih tujuan utama</option>{personalContext.healthGoals && !HEALTH_GOALS.includes(personalContext.healthGoals) && <option value={personalContext.healthGoals}>{personalContext.healthGoals}</option>}{HEALTH_GOALS.map((goal) => <option key={goal} value={goal}>{goal}</option>)}</select></label>
+          <label><span className="label text-xs font-bold uppercase text-muted-foreground">Nama companion *</span><input value={personalContext.companionName} readOnly aria-readonly="true" className="input mt-1.5 cursor-not-allowed bg-secondary/45 text-muted-foreground" minLength={2} maxLength={30} title="Nama companion belum dapat diubah" /><span className="mt-1 block text-[10px] text-muted-foreground">Nama companion dikunci sementara.</span></label>
+          <label><span className="label text-xs font-bold uppercase text-muted-foreground">Avatar companion *</span><select value={personalContext.companionAvatarId} onChange={(event) => { setPersonalContext((current) => ({ ...current, companionAvatarId: event.target.value })); setPersonalFeedback(null); }} className="input mt-1.5">{COMPANION_AVATARS.map((avatar) => <option key={avatar.value} value={avatar.value}>{avatar.label}</option>)}</select></label>
+        </div>
+
+        <button type="button" onClick={() => void savePersonalContext()} disabled={personalSaving || settingsLoading} className="btn btn-primary btn-sm mt-4 font-bold disabled:cursor-not-allowed disabled:opacity-60">
+          {personalSaving ? "Menyimpan..." : <><Check className="h-4 w-4" /> Simpan &amp; Lengkapi Konteks</>}
+        </button>
+        {personalFeedback && <p className={`mt-2 text-xs font-semibold ${personalFeedback.tone === "success" ? "text-brand" : "text-destructive"}`} role={personalFeedback.tone === "error" ? "alert" : "status"}>{personalFeedback.message}</p>}
+      </SectionCard>
+
+      {/* 3. Target harian section */}
       <SectionCard icon={Target} title="Target Harian">
         <div className="grid gap-4 sm:grid-cols-4 text-xs">
           <div><label className="label text-xs font-bold uppercase text-muted-foreground">Target Protein (g)</label><input className="input mt-1.5" type="number" min={10} max={1000} value={targets.protein} onChange={(event) => setTargets((current) => ({ ...current, protein: Number(event.target.value) }))} /></div>

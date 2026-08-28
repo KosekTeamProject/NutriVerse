@@ -118,7 +118,7 @@ function HealthPulseUnlockChecklist({ snapshot }: { snapshot: HealthPulseSnapsho
 }
 
 function DailyCheckIn() {
-  const { refresh } = useProgressData();
+  const { overview, refresh } = useProgressData();
   const [sleepHours, setSleepHours] = useState("");
   const [waterMl, setWaterMl] = useState("");
   const [saving, setSaving] = useState(false);
@@ -132,10 +132,14 @@ function DailyCheckIn() {
     setSaving(true);
     setMessage(null);
     try {
-      const requests: Promise<Response>[] = [];
+      async function ensureSaved(response: Response) {
+        if (response.ok) return;
+        const result = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(result?.error ?? "Check-in belum dapat disimpan.");
+      }
       if (water > 0) {
-        requests.push(
-          fetch("/api/nutrition/water", {
+        await ensureSaved(
+          await fetch("/api/nutrition/water", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ volumeMl: water }),
@@ -143,21 +147,17 @@ function DailyCheckIn() {
         );
       }
       if (sleep > 0) {
-        requests.push(
-          fetch("/api/health/pulse", {
+        await ensureSaved(
+          await fetch("/api/health/pulse", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ sleepHours: sleep }),
+            body: JSON.stringify({ sleepHoursToAdd: sleep }),
           }),
         );
       }
-      const responses = await Promise.all(requests);
-      if (responses.some((response) => !response.ok)) {
-        throw new Error("Check-in belum dapat disimpan.");
-      }
       setSleepHours("");
       setWaterMl("");
-      setMessage("Check-in tersimpan dan semua grafik sudah diperbarui.");
+      setMessage("Check-in tersimpan. Total harian dan seluruh grafik sudah diperbarui.");
       notifyDataChanged();
       await refresh();
     } catch (error) {
@@ -174,21 +174,24 @@ function DailyCheckIn() {
       <div>
         <h3 className="font-display text-base font-bold">Check-in harian</h3>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          Catat tidur dan air minum; Health Pulse serta ring progres akan
+          Tambahkan tidur dan air minum; total hari ini serta Health Pulse akan
           dihitung ulang dari database.
         </p>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="text-xs font-bold">
-          Tidur terakhir (jam)
+          Tambah waktu tidur (jam)
           <input
             type="text"
             inputMode="decimal"
             value={sleepHours}
             onChange={(event) => setSleepHours(event.target.value)}
             className="input mt-1 w-full"
-            placeholder="Contoh: 7.5 atau 7,5"
+            placeholder="Contoh: 1.5 atau 1,5"
           />
+          <span className="mt-1 block text-[10px] font-normal text-muted-foreground">
+            Saat ini {overview?.daily.sleep.value ?? 0} jam tercatat hari ini.
+          </span>
         </label>
         <label className="text-xs font-bold">
           Tambah air (ml)

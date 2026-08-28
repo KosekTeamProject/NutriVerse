@@ -156,6 +156,7 @@ export function AppShell({ children }: { readonly children: React.ReactNode }) {
             companionName?: string;
             companionAvatarId?: string;
             provider?: "password" | "google";
+            onboardingCompleted?: boolean;
             economy?: { totalXp: number; currentHp: number } | null;
           };
         } | null;
@@ -175,6 +176,10 @@ export function AppShell({ children }: { readonly children: React.ReactNode }) {
             companionAvatarId: result.user.companionAvatarId || current?.companionAvatarId,
             avatarUrl: result.user.avatarUrl || current?.avatarUrl,
             provider: result.user.provider ?? "password",
+            onboardingCompleted:
+              result.user.onboardingCompleted ??
+              current?.onboardingCompleted ??
+              Boolean(current?.baseline),
             createdAt: current?.createdAt || new Date().toISOString(),
             lastLoginTimestamp: Date.now(),
           });

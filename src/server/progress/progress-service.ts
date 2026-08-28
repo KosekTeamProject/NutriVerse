@@ -162,6 +162,7 @@ export async function buildProgressOverview(
     activities,
     nutritionEntries,
     waterLogs,
+    sleepLogs,
     pulseInputs,
     challengeRows,
     xpToday,
@@ -203,6 +204,13 @@ export async function buildProgressOverview(
         loggedAt: { gte: firstBounds.start, lt: todayBounds.end },
       },
       select: { loggedAt: true, volumeMl: true },
+    }),
+    prisma.sleepLog.findMany({
+      where: {
+        userId,
+        loggedAt: { gte: firstBounds.start, lt: todayBounds.end },
+      },
+      select: { loggedAt: true, durationHours: true },
     }),
     prisma.healthPulse.findMany({
       where: {
@@ -285,10 +293,17 @@ export async function buildProgressOverview(
     const aggregate = aggregates.get(calendarDayKey(log.loggedAt, timezone));
     if (aggregate) aggregate.waterMl += log.volumeMl;
   }
+  for (const log of sleepLogs) {
+    const aggregate = aggregates.get(calendarDayKey(log.loggedAt, timezone));
+    if (!aggregate) continue;
+    aggregate.sleepHours = (aggregate.sleepHours ?? 0) + log.durationHours;
+  }
   for (const pulse of pulseInputs) {
     const aggregate = aggregates.get(pulse.pulseDate.toISOString().slice(0, 10));
     if (!aggregate) continue;
-    if (pulse.sleepHours !== null) aggregate.sleepHours = pulse.sleepHours;
+    if (pulse.sleepHours !== null && aggregate.sleepHours === undefined) {
+      aggregate.sleepHours = pulse.sleepHours;
+    }
     if (pulse.hydrationLiters !== null) {
       aggregate.pulseHydrationLiters = pulse.hydrationLiters;
     }

@@ -46,8 +46,8 @@ type MomentComment = {
 
 type Community = { id: string; name: string };
 type Activity = { id: string; activityType: string; startTime: string; distanceMeters: number; durationSeconds: number; caloriesBurned: number; verificationStatus: string };
-type TemplateElement = { id: string; kind: "text" | "image"; dataKey?: string; staticText?: string; x: number; y: number; width: number; height: number; fontSize?: number; color?: string; align?: CanvasTextAlign; required?: boolean; userCanHide?: boolean };
-type ShareTemplate = { id: string; name: string; category: string; description: string | null; aspectRatio: string; width: number; height: number; backgroundUrl: string | null; thumbnailUrl: string | null; layoutConfig: { elements?: TemplateElement[]; photoAsBackground?: boolean }; allowedDataKeys: string[]; version: number };
+type TemplateElement = { id: string; kind: "text" | "image"; dataKey?: string; staticText?: string; x: number; y: number; width: number; height: number; fontSize?: number; fontFamily?: "INTER" | "JAKARTA" | "ARIAL" | "GEORGIA"; fontWeight?: number; color?: string; align?: CanvasTextAlign; required?: boolean; userCanHide?: boolean };
+type ShareTemplate = { id: string; name: string; category: string; description: string | null; aspectRatio: string; width: number; height: number; backgroundUrl: string | null; thumbnailUrl: string | null; layoutConfig: { elements?: TemplateElement[]; photoAsBackground?: boolean; presetKey?: string }; allowedDataKeys: string[]; version: number };
 type StudioContext = { user: { name: string; username: string | null; avatarUrl: string | null }; progress: { totalXp: number; currentTier: string; streakDays: number } | null; healthPulse: { current: number | null; previous: number | null; delta: number | null; trend: string }; activities: Activity[] };
 
 const AUDIENCES: Array<{ value: Audience; label: string; description: string; icon: typeof Lock }> = [
@@ -576,7 +576,7 @@ export function NutriVerseMoments() {
       "progress.streak": `${context?.progress?.streakDays ?? 0} hari streak`,
       "progress.rank": context?.progress?.currentTier ?? "SPROUT",
       "progress.xp": `${context?.progress?.totalXp ?? 0} XP`,
-      "healthPulse.current": context?.healthPulse.current === null || context?.healthPulse.current === undefined ? "Health Pulse belum tersedia" : `Health Pulse ${context.healthPulse.current.toFixed(0)}`,
+      "healthPulse.current": context?.healthPulse.current === null || context?.healthPulse.current === undefined ? "Belum tersedia" : context.healthPulse.current.toFixed(0),
       "healthPulse.previous": context?.healthPulse.previous === null || context?.healthPulse.previous === undefined ? "Belum ada pembanding" : `Sebelumnya ${context.healthPulse.previous.toFixed(0)}`,
       "healthPulse.delta": context?.healthPulse.delta === null || context?.healthPulse.delta === undefined ? "Tren Health Pulse belum tersedia" : `${context.healthPulse.delta >= 0 ? "↑" : "↓"} ${Math.abs(context.healthPulse.delta).toFixed(1)} poin Health Pulse`,
       "healthPulse.trend": context?.healthPulse.trend === "UP" ? "Meningkat" : context?.healthPulse.trend === "DOWN" ? "Menurun" : "Stabil",
@@ -588,9 +588,11 @@ export function NutriVerseMoments() {
     setComposerMessage("");
     if (!template) { setOutputPhoto(null); setComposerMessage("Belum ada template yang dipublikasikan admin."); return null; }
     const usesActivity = template.allowedDataKeys.some((key) => key.startsWith("activity."));
-    const requiresPhoto = template.layoutConfig.elements?.some((element) => element.dataKey === "moment.photo" && element.required) ?? false;
+    const requiresPhoto = template.layoutConfig.photoAsBackground
+      || (template.layoutConfig.elements?.some((element) => element.dataKey === "moment.photo" && element.required) ?? false);
     if (usesActivity && !selectedActivity) { setOutputPhoto(null); setComposerMessage("Template ini memerlukan aktivitas tervalidasi. Selesaikan aktivitas terlebih dahulu."); return null; }
     if (requiresPhoto && !photoSource) { setOutputPhoto(null); setComposerMessage("Template ini memerlukan foto. Ambil atau unggah foto terlebih dahulu."); return null; }
+    await document.fonts.ready;
     const canvas = document.createElement("canvas"); canvas.width = template.width; canvas.height = template.height;
     const context = canvas.getContext("2d"); if (!context) return null;
     const gradient = context.createLinearGradient(0, 0, canvas.width, canvas.height); gradient.addColorStop(0, "#052f22"); gradient.addColorStop(0.55, "#00a874"); gradient.addColorStop(1, "#a3e635"); context.fillStyle = gradient; context.fillRect(0, 0, canvas.width, canvas.height);
@@ -607,7 +609,15 @@ export function NutriVerseMoments() {
         if (imageSource) { try { drawCover(context, await loadImage(imageSource), x, y, width, height); } catch { /* elemen gambar opsional */ } }
         continue;
       }
-      context.save(); context.fillStyle = element.color ?? "#ffffff"; context.font = `800 ${element.fontSize ?? 32}px Arial`; context.textAlign = element.align ?? "left"; context.textBaseline = "top";
+      const rootStyle = getComputedStyle(document.documentElement);
+      const fontFamily = element.fontFamily === "JAKARTA"
+        ? rootStyle.getPropertyValue("--font-jakarta").trim() || "Arial"
+        : element.fontFamily === "INTER"
+          ? rootStyle.getPropertyValue("--font-inter").trim() || "Arial"
+          : element.fontFamily === "GEORGIA"
+            ? "Georgia"
+            : "Arial";
+      context.save(); context.fillStyle = element.color ?? "#ffffff"; context.font = `${element.fontWeight ?? 800} ${element.fontSize ?? 32}px ${fontFamily}`; context.textAlign = element.align ?? "left"; context.textBaseline = "top";
       const textX = element.align === "center" ? x + width / 2 : element.align === "right" ? x + width : x;
       context.fillText(element.staticText ?? templateValue(element.dataKey ?? ""), textX, y, width); context.restore();
     }

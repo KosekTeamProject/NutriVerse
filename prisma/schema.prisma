@@ -293,6 +293,7 @@ model User {
   journalEntries          JournalEntry[]
   nutritionEntries        NutritionEntry[]
   waterLogs               WaterLog[]
+  sleepLogs               SleepLog[]
   customFoodItems         CustomFoodItem[]
   healthPulses            HealthPulse[]
   healthMetrics           HealthMetric[]
@@ -1015,6 +1016,18 @@ model WaterLog {
 
   @@index([userId, loggedAt])
   @@map("water_logs")
+}
+
+model SleepLog {
+  id            String   @id @default(uuid())
+  userId        String
+  durationHours Float
+  loggedAt      DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, loggedAt])
+  @@map("sleep_logs")
 }
 
 model CustomFoodItem {

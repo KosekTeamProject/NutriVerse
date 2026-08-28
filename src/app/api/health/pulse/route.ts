@@ -10,6 +10,7 @@ import { prisma } from "@/lib/prisma";
 import {
   calendarDayKey,
   isCalendarDayKey,
+  utcDayBoundsForKey,
 } from "@/server/economy/economy-policy";
 import {
   getHealthPulseOverview,
@@ -52,24 +53,49 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       );
     }
-    const sleepHours = finiteNumber(body?.sleepHours, "Durasi tidur", {
-      min: 1,
-      max: 16,
+    const sleepHoursToAdd = finiteNumber(
+      body?.sleepHoursToAdd ?? body?.sleepHours,
+      "Tambahan durasi tidur",
+      {
+      min: 0.25,
+      max: 24,
       optional: true,
-    });
-    if (sleepHours === undefined) {
+      },
+    );
+    if (sleepHoursToAdd === undefined) {
       throw new ApiRequestError(
-        "Isi durasi tidur antara 1 sampai 16 jam.",
+        "Isi tambahan durasi tidur antara 0,25 sampai 24 jam.",
         400,
         "SLEEP_DURATION_REQUIRED",
       );
     }
+    const bounds = utcDayBoundsForKey(dayKey, timezone);
+    const existing = await prisma.sleepLog.aggregate({
+      where: { userId: user.id, loggedAt: { gte: bounds.start, lt: bounds.end } },
+      _sum: { durationHours: true },
+    });
+    const currentTotal = existing._sum.durationHours ?? 0;
+    if (currentTotal + sleepHoursToAdd > 24) {
+      throw new ApiRequestError(
+        `Total tidur hari ini maksimal 24 jam. Saat ini sudah tercatat ${currentTotal} jam.`,
+        400,
+        "SLEEP_DAILY_LIMIT",
+      );
+    }
+    const loggedAt = dayKey === currentDayKey
+      ? new Date()
+      : new Date((bounds.start.getTime() + bounds.end.getTime()) / 2);
+    const log = await prisma.sleepLog.create({
+      data: { userId: user.id, durationHours: sleepHoursToAdd, loggedAt },
+    });
     const result = await refreshDailyHealthPulse({
       userId: user.id,
       dayKey,
-      sleepHours,
     });
-    return NextResponse.json({ success: true, ...result });
+    return NextResponse.json(
+      { success: true, log, totalSleepHours: currentTotal + sleepHoursToAdd, ...result },
+      { status: 201 },
+    );
   } catch (error) {
     return apiErrorResponse(error);
   }

@@ -24,6 +24,7 @@ export async function POST(request: NextRequest) {
     where: { id: user.id },
     select: {
       username: true,
+      healthProfile: { select: { onboardingCompleted: true } },
       companionPreference: {
         select: { companionName: true, companionAvatarId: true },
       },
@@ -40,6 +41,7 @@ export async function POST(request: NextRequest) {
       companionName: domain?.companionPreference?.companionName ?? "Nora",
       companionAvatarId:
         domain?.companionPreference?.companionAvatarId ?? "sparkles",
+      onboardingCompleted: domain?.healthProfile?.onboardingCompleted ?? false,
       provider: "password",
     },
   });

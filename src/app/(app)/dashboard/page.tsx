@@ -37,7 +37,7 @@ export default function DashboardPage() {
               <DashboardHero />
             </div>
 
-            <div data-tour="quick-actions-widget">
+            <div className="flex flex-1" data-tour="quick-actions-widget">
               <DashboardStarter />
             </div>
           </div>
