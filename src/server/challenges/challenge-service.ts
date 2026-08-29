@@ -1,16 +1,16 @@
 import {
+  ChallengeMetric,
   ChallengeTrustLevel,
   LedgerType,
   Prisma,
+  RewardSource,
   VerificationStatus,
 } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import {
-  ECONOMY_POLICY,
-  applyDailyAwardPolicy,
-  tierForTotalXp,
-  utcDayBounds,
-} from "@/server/economy/economy-policy";
+import { ECONOMY_FORMULA_VERSION } from "@/lib/economy-rules";
+import { calendarDayKey, tierForTotalXp } from "@/server/economy/economy-policy";
+import { creditActiveSeasonXp } from "@/server/leaderboard/season-service";
+import { SEASON_TIMEZONE } from "@/server/leaderboard/season-policy";
 import {
   applyChallengeProgress,
   challengeContributionAmount,
@@ -78,9 +78,25 @@ async function runApplyVerifiedActivityToChallenges(activitySessionId: string) {
           continue;
         }
 
+        const dayKey = challenge.metric === ChallengeMetric.ACTIVE_DAY_COUNT
+          ? calendarDayKey(effectiveAt, SEASON_TIMEZONE)
+          : null;
+        const dayAlreadyCounted = dayKey
+          ? await transaction.challengeContribution.findFirst({
+              where: {
+                challengeId: challenge.id,
+                userId: activity.userId,
+                dayKey,
+                amount: { gt: 0 },
+              },
+              select: { id: true },
+            })
+          : null;
+        const creditedAmount = dayAlreadyCounted ? 0 : amount;
+
         const next = applyChallengeProgress(
           progress.currentValue,
-          amount,
+          creditedAmount,
           challenge.targetValue,
         );
         const contribution = await transaction.challengeContribution.create({
@@ -89,7 +105,8 @@ async function runApplyVerifiedActivityToChallenges(activitySessionId: string) {
             challengeId: challenge.id,
             challengeProgressId: progress.id,
             activitySessionId: activity.id,
-            amount,
+            amount: creditedAmount,
+            dayKey,
           },
         });
         const updatedProgress = await transaction.challengeProgress.update({
@@ -163,54 +180,29 @@ export async function claimChallengeReward(challengeProgressId: string) {
 
       const xpKey = `challenge:${progress.id}:xp`;
       const hpKey = `challenge:${progress.id}:hp`;
-      const timezone = progress.user.settings?.timezone ?? "Asia/Jakarta";
-      const bounds = utcDayBounds(progress.completedAt, timezone);
-      const [xpToday, hpToday] = await Promise.all([
-        transaction.xPGrant.aggregate({
-          where: {
-            userId: progress.userId,
-            effectiveAt: { gte: bounds.start, lt: bounds.end },
-            type: {
-              in: [LedgerType.XP_GRANT, LedgerType.XP_REVERSAL],
-            },
-          },
-          _sum: { amount: true },
-        }),
-        transaction.hPLedgerEntry.aggregate({
-          where: {
-            userId: progress.userId,
-            effectiveAt: { gte: bounds.start, lt: bounds.end },
-            type: {
-              in: [LedgerType.HP_GRANT, LedgerType.HP_REVERSAL],
-            },
-          },
-          _sum: { amount: true },
-        }),
-      ]);
-
       const trustedReward =
         progress.challenge.trustLevel === ChallengeTrustLevel.GPS_VERIFIED_ONLY;
-      const xpAward = applyDailyAwardPolicy(
-        trustedReward ? progress.challenge.bonusXp : 0,
-        xpToday._sum.amount ?? 0,
-        ECONOMY_POLICY.xp,
-      );
-      const hpAward = applyDailyAwardPolicy(
-        trustedReward ? progress.challenge.bonusHp : 0,
-        hpToday._sum.amount ?? 0,
-        ECONOMY_POLICY.hp,
-      );
+      const xpAmount = trustedReward ? progress.challenge.bonusXp : 0;
+      const hpAmount = trustedReward ? progress.challenge.bonusHp : 0;
       const currentEconomy =
         progress.user.economy ??
         (await transaction.userEconomy.create({ data: { userId: progress.userId } }));
-      const totalXp = currentEconomy.totalXp + xpAward.awardedAmount;
+      const totalXp = currentEconomy.totalXp + xpAmount;
       const hpDebtPaid = Math.min(
         currentEconomy.hpDebt,
-        hpAward.awardedAmount,
+        hpAmount,
       );
-      const hpBalanceIncrease = hpAward.awardedAmount - hpDebtPaid;
+      const hpBalanceIncrease = hpAmount - hpDebtPaid;
       const versionSuffix =
         progress.claimVersion > 0 ? `:v${progress.claimVersion}` : "";
+
+      const seasonCredit = await creditActiveSeasonXp(transaction, {
+        userId: progress.userId,
+        amount: xpAmount,
+        effectiveAt: progress.completedAt,
+        lifetimeTier: currentEconomy.currentTier,
+        source: RewardSource.CHALLENGE,
+      });
 
       const xpGrant = await transaction.xPGrant.create({
         data: {
@@ -218,10 +210,13 @@ export async function claimChallengeReward(challengeProgressId: string) {
           challengeId: progress.challengeId,
           idempotencyKey: `${xpKey}${versionSuffix}`,
           type: LedgerType.XP_GRANT,
-          amount: xpAward.awardedAmount,
-          capApplied: xpAward.capApplied,
-          diminishingApplied: xpAward.diminishingApplied,
+          amount: xpAmount,
+          capApplied: false,
+          diminishingApplied: false,
           reason: "Completed challenge reward",
+          source: RewardSource.CHALLENGE,
+          formulaVersion: ECONOMY_FORMULA_VERSION,
+          seasonId: seasonCredit.seasonId,
           effectiveAt: progress.completedAt,
         },
       });
@@ -231,10 +226,13 @@ export async function claimChallengeReward(challengeProgressId: string) {
           challengeId: progress.challengeId,
           idempotencyKey: `${hpKey}${versionSuffix}`,
           type: LedgerType.HP_GRANT,
-          amount: hpAward.awardedAmount,
-          capApplied: hpAward.capApplied,
-          diminishingApplied: hpAward.diminishingApplied,
+          amount: hpAmount,
+          capApplied: false,
+          diminishingApplied: false,
           description: "Completed challenge reward",
+          source: RewardSource.CHALLENGE,
+          formulaVersion: ECONOMY_FORMULA_VERSION,
+          seasonId: seasonCredit.seasonId,
           effectiveAt: progress.completedAt,
         },
       });

@@ -20,6 +20,10 @@ test("maps verified telemetry to each supported challenge metric", () => {
     challengeContributionAmount(ChallengeMetric.VERIFIED_ACTIVITY_COUNT, metrics),
     1,
   );
+  assert.equal(
+    challengeContributionAmount(ChallengeMetric.ACTIVE_DAY_COUNT, metrics),
+    1,
+  );
 });
 
 test("caps challenge progress at target and marks completion", () => {

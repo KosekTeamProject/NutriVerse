@@ -19,6 +19,7 @@ export function ProfileCollection() {
       name: string;
       description: string;
       earned: boolean;
+      progress: { current: number; target: number; percentage: number };
     }>
   >([]);
 
@@ -34,6 +35,7 @@ export function ProfileCollection() {
             name: string;
             description: string;
             earned: boolean;
+            progress: { current: number; target: number; percentage: number };
           }>;
         }) => {
           if (result.success) setBadges(result.badges ?? []);
@@ -117,6 +119,10 @@ export function ProfileCollection() {
                 </span>
                 <p className="mt-2 text-xs font-bold leading-tight">{b.name}</p>
                 <p className="mt-0.5 text-[10px] text-muted-foreground">{b.description}</p>
+                <div className="mt-3 w-full">
+                  <div className="flex justify-between text-[9px] font-semibold text-muted-foreground"><span>{b.earned ? "Didapat" : "Progres"}</span><span>{Math.round(b.progress.current).toLocaleString("id-ID")}/{b.progress.target.toLocaleString("id-ID")}</span></div>
+                  <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-secondary"><div className="h-full rounded-full bg-gradient-to-r from-brand to-lime" style={{ width: `${b.progress.percentage}%` }} /></div>
+                </div>
               </div>
             );
           })}

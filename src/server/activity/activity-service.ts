@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto";
 import { VerificationStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { ACTIVITY_XP_PER_KILOMETER } from "@/lib/activity";
+import { computeActivityXp } from "@/lib/activity";
+import { ACTIVITY_HP_RATE } from "@/lib/economy-rules";
 import {
   type ActivityVerificationDecision,
   type VerificationReasonCode,
@@ -103,14 +104,14 @@ export async function verifyStoredActivity(
       : 0;
   const eligibleXp =
     decision.verificationStatus === VerificationStatus.VERIFIED
-      ? Math.floor(
-          distanceKilometers *
-            ACTIVITY_XP_PER_KILOMETER[session.activityType],
+      ? computeActivityXp(
+          decision.trustedDistanceMeters,
+          session.activityType,
         )
       : 0;
   const eligibleHp =
     decision.verificationStatus === VerificationStatus.VERIFIED
-      ? Math.floor(eligibleXp / 2)
+      ? Math.floor(eligibleXp * ACTIVITY_HP_RATE)
       : 0;
 
   return prisma.$transaction(async (transaction) => {

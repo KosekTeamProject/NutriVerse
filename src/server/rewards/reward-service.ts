@@ -3,6 +3,7 @@ import {
   NotificationType,
   Prisma,
   RedemptionStatus,
+  RewardSource,
 } from "@prisma/client";
 import { randomBytes } from "node:crypto";
 import { prisma } from "@/lib/prisma";
@@ -71,6 +72,8 @@ async function runRedemption(
           type: LedgerType.HP_REDEEM,
           amount: -reward.hpCost,
           description: `Redeem reward: ${reward.title}`,
+          source: RewardSource.REDEMPTION,
+          formulaVersion: "reward-store-v1",
         },
       });
       await createUserNotification(
@@ -180,6 +183,8 @@ async function refundRedemption(input: RefundRedemptionInput) {
             type: LedgerType.HP_REFUND,
             amount: redemption.hpSpent,
             description: `Refund reward: ${redemption.reward.title}`,
+            source: RewardSource.REFUND,
+            formulaVersion: "reward-store-v1",
           },
         });
         await transaction.reward.update({

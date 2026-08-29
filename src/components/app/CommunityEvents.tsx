@@ -4,12 +4,13 @@ import NextImage from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { CalendarDays, Check, ChevronRight, MapPin, Plus, RefreshCw, Search, Send, UsersRound, X } from "lucide-react";
+import { Award, CalendarDays, Check, ChevronRight, MapPin, Plus, RefreshCw, Search, Send, UsersRound, X } from "lucide-react";
 import { RecommendationCarousel, type RecommendationSlide } from "@/components/app/RecommendationCarousel";
 
 type EventItem = {
   id: string; title: string; description: string; bannerUrl: string; startDate: string; endDate: string;
   location: string | null; capacity: number; registrations: Array<{ status: string }>;
+  participationHp: number; firstPlaceBonusHp: number; secondPlaceBonusHp: number; thirdPlaceBonusHp: number;
   createdBy: { name: string; username: string | null } | null;
   _count: { registrations: number };
 };
@@ -36,7 +37,7 @@ function EventCard({ event }: { readonly event: EventItem }) {
         <h3 className="absolute inset-x-4 bottom-4 line-clamp-2 font-display text-lg font-extrabold text-white">{event.title}</h3>
       </div>
       <div className="p-4">
-        <div className="space-y-2 text-[11px] text-muted-foreground"><p className="flex items-center gap-2"><CalendarDays className="h-3.5 w-3.5 text-brand" />{date}</p><p className="flex items-center gap-2"><MapPin className="h-3.5 w-3.5 text-brand" />{event.location ?? "Lokasi menyusul"}</p><p className="flex items-center gap-2"><UsersRound className="h-3.5 w-3.5 text-brand" />{event._count.registrations} / {event.capacity} peserta</p></div>
+        <div className="space-y-2 text-[11px] text-muted-foreground"><p className="flex items-center gap-2"><CalendarDays className="h-3.5 w-3.5 text-brand" />{date}</p><p className="flex items-center gap-2"><MapPin className="h-3.5 w-3.5 text-brand" />{event.location ?? "Lokasi menyusul"}</p><p className="flex items-center gap-2"><UsersRound className="h-3.5 w-3.5 text-brand" />{event._count.registrations} / {event.capacity} peserta</p><p className="flex items-center gap-2"><Award className="h-3.5 w-3.5 text-brand" />{event.participationHp} HP untuk kehadiran terverifikasi</p></div>
         <p className="mt-3 line-clamp-2 text-xs leading-relaxed text-muted-foreground">{event.description}</p>
         <Link href={`/komunitas/event/${event.id}`} className="btn btn-outline btn-sm mt-4 w-full">Lihat detail &amp; diskusi <ChevronRight className="h-4 w-4" /></Link>
       </div>

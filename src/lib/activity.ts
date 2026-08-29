@@ -8,6 +8,8 @@ export const ACTIVITY_XP_PER_KILOMETER = {
   CYCLED: 45,
 } as const;
 
+type StoredActivityKind = keyof typeof ACTIVITY_XP_PER_KILOMETER;
+
 export const ACTIVITY: Record<ActivityKind, { label: string; xpPerKm: number; maxSpeedKmh: number }> = {
   walk: { label: "Jalan Kaki", xpPerKm: ACTIVITY_XP_PER_KILOMETER.WALK, maxSpeedKmh: 10 },
   run: { label: "Lari", xpPerKm: ACTIVITY_XP_PER_KILOMETER.RUN, maxSpeedKmh: 20 },
@@ -144,8 +146,17 @@ export function minimumMovementMetersForAccuracy(accuracy?: number | null) {
   );
 }
 
-export function computeXp(distanceM: number, kind: ActivityKind): number {
-  return Math.floor((distanceM / 1000) * ACTIVITY[kind].xpPerKm);
+export function computeActivityXp(
+  distanceMeters: number,
+  kind: ActivityKind | StoredActivityKind,
+): number {
+  const rate =
+    kind === "walk" || kind === "WALK"
+      ? ACTIVITY_XP_PER_KILOMETER.WALK
+      : kind === "run" || kind === "RUN"
+        ? ACTIVITY_XP_PER_KILOMETER.RUN
+        : ACTIVITY_XP_PER_KILOMETER.CYCLED;
+  return Math.max(0, Math.floor((distanceMeters / 1_000) * rate));
 }
 
 /**

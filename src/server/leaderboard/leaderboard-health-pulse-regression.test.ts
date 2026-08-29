@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-test("league leaderboard remains ordered by verified XP, not raw Health Pulse", () => {
+test("league leaderboard is ordered by Season XP, not Lifetime XP or Health Pulse", () => {
   const serviceSource = readFileSync(
     new URL("./leaderboard-service.ts", import.meta.url),
     "utf8",
@@ -12,8 +12,10 @@ test("league leaderboard remains ordered by verified XP, not raw Health Pulse", 
     "utf8",
   );
 
-  assert.match(serviceSource, /totalXp:\s*"desc"/);
-  assert.match(routeSource, /totalXp:\s*"desc"/);
+  assert.match(serviceSource, /seasonParticipations/);
+  assert.match(serviceSource, /rightXp\s*-\s*leftXp/);
+  assert.match(routeSource, /seasonXp/);
+  assert.match(routeSource, /right\.seasonXp\s*-\s*left\.seasonXp/);
   assert.doesNotMatch(serviceSource, /healthPulse/i);
   assert.doesNotMatch(routeSource, /healthPulse/i);
   assert.match(routeSource, /leaderboardVisible:\s*true/);

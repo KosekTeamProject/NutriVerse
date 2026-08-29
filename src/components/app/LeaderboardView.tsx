@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { ChevronUp, ChevronDown, Minus, Crown, Flame, ShieldCheck, CalendarDays, MapPinOff } from "lucide-react";
 import { RankCrest } from "@/components/brand/RankCrest";
+import { BadgeGallery } from "@/components/app/BadgeGallery";
 import { TIER_EMBLEM_NAMES, tierBySlug, tierForXp, nextTier } from "@/lib/tiers";
 
 type Entry = { 
@@ -14,13 +15,15 @@ type Entry = {
   you?: boolean; 
   consistencyDays: number;
   healthyDays: number;
+  lifetimeXp: number;
 };
-type Scope = "liga" | "teman" | "lokal";
+type Scope = "liga" | "teman" | "lokal" | "badge";
 
 const SCOPES: { key: Scope; label: string }[] = [
   { key: "liga", label: "Liga" },
   { key: "teman", label: "Teman" },
   { key: "lokal", label: "Lokal" },
+  { key: "badge", label: "Badge" },
 ];
 
 type ApiLeaderboardRow = {
@@ -32,19 +35,22 @@ type ApiLeaderboardRow = {
     currentTier: string;
     streakDays: number;
   } | null;
+  seasonXp: number;
+  lifetimeXp: number;
 };
 
 function mapLeaderboardEntry(row: ApiLeaderboardRow, you: boolean): Entry {
-  const xp = row.economy?.totalXp ?? 0;
+  const xp = row.seasonXp ?? 0;
   return {
     rank: row.rank,
     name: row.name,
     xp,
-    tier: row.economy?.currentTier.toLowerCase() ?? tierForXp(xp).slug,
+    tier: row.economy?.currentTier.toLowerCase() ?? tierForXp(row.lifetimeXp ?? 0).slug,
     delta: 0,
     you,
     consistencyDays: row.economy?.streakDays ?? 0,
     healthyDays: Math.min(7, row.economy?.streakDays ?? 0),
+    lifetimeXp: row.lifetimeXp ?? row.economy?.totalXp ?? 0,
   };
 }
 
@@ -83,6 +89,7 @@ function Podium({ e, place }: { readonly e: Entry; readonly place: 1 | 2 | 3 }) 
 
 export function LeaderboardView() {
   const [scope, setScope] = useState<Scope>("liga");
+  const [timeWindow, setTimeWindow] = useState<"season" | "7d">("season");
   const [renderedAt] = useState(() => Date.now());
   const [list, setList] = useState<Entry[]>([]);
   const [myEntry, setMyEntry] = useState<Entry | null>(null);
@@ -90,10 +97,11 @@ export function LeaderboardView() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (scope === "badge") return;
     let active = true;
     const apiScope =
       scope === "teman" ? "FRIENDS" : scope === "lokal" ? "LOCAL" : "LEAGUE";
-    void fetch(`/api/leaderboard?scope=${apiScope}&limit=50`, {
+    void fetch(`/api/leaderboard?scope=${apiScope}&window=${timeWindow}&limit=50`, {
       cache: "no-store",
     })
       .then(async (response) => {
@@ -134,13 +142,13 @@ export function LeaderboardView() {
     return () => {
       active = false;
     };
-  }, [scope]);
+  }, [scope, timeWindow]);
 
   const top3 = list.slice(0, 3);
   const rest = list.slice(3);
   const me = list.find((e) => e.you) ?? myEntry;
-  const meTier = me ? tierForXp(me.xp) : null;
-  const nxt = me ? nextTier(me.xp) : null;
+  const meTier = me ? tierBySlug(me.tier) : null;
+  const nxt = me ? nextTier(me.lifetimeXp) : null;
   const daysRemaining = season
     ? Math.max(
         0,
@@ -195,6 +203,15 @@ export function LeaderboardView() {
         ))}
       </div>
 
+      {scope !== "badge" && (
+        <div className="inline-flex rounded-full border border-line bg-card p-1">
+          <button onClick={() => setTimeWindow("season")} className={`rounded-full px-4 py-1.5 text-xs font-bold ${timeWindow === "season" ? "bg-brand-soft text-brand" : "text-muted-foreground"}`}>Season</button>
+          <button onClick={() => setTimeWindow("7d")} className={`rounded-full px-4 py-1.5 text-xs font-bold ${timeWindow === "7d" ? "bg-brand-soft text-brand" : "text-muted-foreground"}`}>7 Hari</button>
+        </div>
+      )}
+
+      {scope === "badge" ? <BadgeGallery title="Badge & Pencapaian" /> : <>
+
       {/* my rank */}
       {me && meTier && (
         <div className="card card-pad border-line/65">
@@ -211,7 +228,7 @@ export function LeaderboardView() {
           </div>
           {nxt && (
             <p className="mt-3 text-xs text-muted-foreground leading-normal border-t border-line/45 pt-2">
-              {(nxt.minXp - me.xp).toLocaleString("id-ID")} Progress XP lagi menuju <span className="font-semibold text-foreground">{nxt.name}</span>
+              {(nxt.minXp - me.lifetimeXp).toLocaleString("id-ID")} Lifetime XP lagi menuju <span className="font-semibold text-foreground">{nxt.name}</span>
             </p>
           )}
         </div>
@@ -246,7 +263,7 @@ export function LeaderboardView() {
                   <p className="stat-num w-20 text-right text-xs font-bold text-foreground flex items-center justify-end gap-1">
                     <Flame className="h-3.5 w-3.5 text-brand" /> {e.consistencyDays}d
                   </p>
-                  <p className="text-[9px] text-muted-foreground">{e.xp.toLocaleString("id-ID")} XP</p>
+                  <p className="text-[9px] text-muted-foreground">{e.xp.toLocaleString("id-ID")} Season XP</p>
                 </div>
               </div>
             );
@@ -263,6 +280,7 @@ export function LeaderboardView() {
           Catatan mandiri tetap tersimpan sebagai riwayat pribadi, tetapi tidak memberi poin kompetitif. Peringkat bukan diagnosis kesehatan atau ukuran nilai diri. Posisi, musim, XP, tier, dan streak dibaca dari database sesuai visibilitas akun.
         </p>
       </div>
+      </>}
     </div>
   );
 }

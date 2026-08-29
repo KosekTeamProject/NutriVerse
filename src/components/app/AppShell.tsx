@@ -299,7 +299,7 @@ export function AppShell({ children }: { readonly children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="app-ambient-background min-h-screen">
       {session && <WellbeingReminder />}
       <aside className={`fixed inset-y-0 left-0 z-40 hidden w-64 border-r border-line bg-sidebar lg:block ${!session ? "lg:hidden" : ""}`}><SidebarContent pathname={pathname} companionName={companionName} onLogout={logout} /></aside>
 

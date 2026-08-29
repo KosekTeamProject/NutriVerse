@@ -14,6 +14,10 @@ const eventSelect = (userId: string) => ({
   endDate: true,
   location: true,
   capacity: true,
+  participationHp: true,
+  firstPlaceBonusHp: true,
+  secondPlaceBonusHp: true,
+  thirdPlaceBonusHp: true,
   createdBy: { select: { id: true, name: true, username: true } },
   registrations: {
     where: { userId },

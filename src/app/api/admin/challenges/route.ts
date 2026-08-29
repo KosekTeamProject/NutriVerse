@@ -35,6 +35,16 @@ function requiredDate(value: unknown, field: string) {
   return date;
 }
 
+const CHALLENGE_REWARD_LIMITS: Record<
+  ChallengeType,
+  { xp: number; hp: number }
+> = {
+  DAILY: { xp: 200, hp: 50 },
+  WEEKLY: { xp: 800, hp: 200 },
+  MONTHLY: { xp: 2_500, hp: 500 },
+  EVENT: { xp: 3_000, hp: 750 },
+};
+
 export async function GET(request: Request) {
   try {
     await requireAdminUser();
@@ -64,6 +74,11 @@ export async function POST(request: NextRequest) {
       Object.values(ChallengeTrustLevel),
       "Trust level",
     );
+    const challengeType = enumValue(
+      body?.type,
+      Object.values(ChallengeType),
+      "Tipe challenge",
+    );
     const bonusXp = Math.floor(
       finiteNumber(body?.bonusXp ?? 0, "Bonus XP", {
         min: 0,
@@ -86,6 +101,14 @@ export async function POST(request: NextRequest) {
         "SELF_REPORT_REWARD_FORBIDDEN",
       );
     }
+    const rewardLimit = CHALLENGE_REWARD_LIMITS[challengeType];
+    if (bonusXp > rewardLimit.xp || bonusHp > rewardLimit.hp) {
+      throw new ApiRequestError(
+        `Reward ${challengeType.toLowerCase()} maksimal ${rewardLimit.xp} XP dan ${rewardLimit.hp} HP.`,
+        400,
+        "CHALLENGE_REWARD_LIMIT",
+      );
+    }
     const startDate = requiredDate(body?.startDate, "Tanggal mulai");
     const endDate = requiredDate(body?.endDate, "Tanggal selesai");
     if (endDate <= startDate) {
@@ -106,11 +129,7 @@ export async function POST(request: NextRequest) {
       description: stringValue(body?.description, "Deskripsi", {
         max: 2_000,
       }),
-      type: enumValue(
-        body?.type,
-        Object.values(ChallengeType),
-        "Tipe challenge",
-      ),
+      type: challengeType,
       category: enumValue(
         body?.category ?? ChallengeCategory.CARDIO,
         Object.values(ChallengeCategory),

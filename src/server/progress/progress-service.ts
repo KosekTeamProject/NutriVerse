@@ -826,6 +826,10 @@ export async function buildCommunityOverview(
       ),
       bonusXp: event.bonusXp,
       bonusHp: event.bonusHp,
+      participationHp: event.participationHp,
+      firstPlaceBonusHp: event.firstPlaceBonusHp,
+      secondPlaceBonusHp: event.secondPlaceBonusHp,
+      thirdPlaceBonusHp: event.thirdPlaceBonusHp,
       bannerUrl: event.bannerUrl,
     })),
     challenge:

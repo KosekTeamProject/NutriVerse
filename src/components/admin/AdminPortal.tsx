@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Activity, AlertTriangle, BarChart3, Bell, CalendarDays, Check, CircleDollarSign, FileWarning, Gift, Images, LayoutDashboard, LogOut, Menu, Settings, ShieldCheck, Trophy, UserCog, Users, X, Newspaper } from "lucide-react";
 import { BrandLogo } from "@/components/brand/BrandLogo";
 import { AdminEventPanel } from "@/components/admin/AdminEventPanel";
+import { AdminSeasonPanel } from "@/components/admin/AdminSeasonPanel";
 import { ShareTemplateAdmin } from "@/components/admin/ShareTemplateAdmin";
 import { clearAdminSession, type AdminRole, type AdminSession } from "@/features/admin/session";
 
@@ -394,6 +395,7 @@ function Operations({ canManage }: { readonly canManage: boolean }) {
     title: string;
     capacity: number;
     bonusXp: number;
+    participationHp: number;
     isActive: boolean;
     description: string;
     startDate: string;
@@ -536,6 +538,7 @@ function Operations({ canManage }: { readonly canManage: boolean }) {
   return (
     <div className="space-y-4">
       {message && <p className="rounded-xl bg-secondary p-3 text-xs text-muted-foreground">{message}</p>}
+      <AdminSeasonPanel canManage={canManage} />
       <section className="overflow-hidden rounded-2xl border border-line bg-card shadow-soft">
         <div className="flex items-center justify-between border-b border-line p-5"><div><p className="text-[9px] font-bold uppercase tracking-wider text-brand">Persetujuan Super Admin</p><h2 className="mt-1 font-display text-lg font-extrabold">Pengajuan Komunitas</h2></div><span className="pill bg-amber/10 text-amber">{pendingCommunities.length} menunggu</span></div>
         <div className="divide-y divide-line/60">{pendingCommunities.length === 0 ? <p className="p-5 text-xs text-muted-foreground">Tidak ada pengajuan komunitas yang menunggu review.</p> : pendingCommunities.map((item) => <article key={item.id} className="p-5"><div className="flex flex-wrap items-start justify-between gap-3"><div><h3 className="text-sm font-bold">{item.name}</h3><p className="mt-1 text-[10px] text-muted-foreground">{item.category} · Oleh {item.leader?.name ?? "Pengguna"} · Rank {item.leader?.economy?.currentTier ?? "SPROUT"}</p></div><span className="pill bg-secondary text-[9px] font-bold text-muted-foreground">{item.joinPolicy === "OPEN" ? "Terbuka" : "Persetujuan anggota"}</span></div><p className="mt-3 line-clamp-3 text-xs leading-relaxed text-muted-foreground">{item.description}</p><p className="mt-2 text-[10px] text-muted-foreground">{item.rules.length} peraturan disertakan.</p><div className="mt-4 flex flex-wrap gap-2"><button disabled={!canManage} onClick={() => void reviewCommunity(item, "approve")} className="btn btn-primary btn-sm"><Check className="h-4 w-4" /> Setujui</button><button disabled={!canManage} onClick={() => void reviewCommunity(item, "needs_revision")} className="btn btn-outline btn-sm">Minta Revisi</button><button disabled={!canManage} onClick={() => void reviewCommunity(item, "reject")} className="btn btn-outline btn-sm text-rose-500">Tolak</button></div></article>)}</div>
@@ -548,7 +551,7 @@ function Operations({ canManage }: { readonly canManage: boolean }) {
       <div className="grid gap-5 xl:grid-cols-2">
         <section className="rounded-2xl border border-line bg-card p-5 shadow-soft">
           <div className="flex items-center justify-between"><div><p className="text-[9px] font-bold uppercase tracking-wider text-brand">Event Database</p><h2 className="mt-1 font-display text-lg font-extrabold">{event?.title ?? "Belum ada event"}</h2></div><CalendarDays className="h-6 w-6 text-brand" /></div>
-          {event && <><div className="mt-5 grid grid-cols-3 gap-2">{[["Peserta", event._count.registrations], ["Kapasitas", event.capacity], ["Reward", `${event.bonusXp} XP`]].map(([label, value]) => <div key={label} className="rounded-xl bg-secondary/50 p-3"><p className="text-[9px] text-muted-foreground">{label}</p><p className="mt-1 text-xs font-extrabold">{value}</p></div>)}</div><button onClick={() => toggleEvent(event)} className={`btn mt-5 w-full ${event.isActive ? "btn-outline" : "btn-primary"}`}>{event.isActive ? "Jeda Pendaftaran" : "Aktifkan Event"}</button></>}
+          {event && <><div className="mt-5 grid grid-cols-3 gap-2">{[["Peserta", event._count.registrations], ["Kapasitas", event.capacity], ["Reward Hadir", `${event.participationHp} HP`]].map(([label, value]) => <div key={label} className="rounded-xl bg-secondary/50 p-3"><p className="text-[9px] text-muted-foreground">{label}</p><p className="mt-1 text-xs font-extrabold">{value}</p></div>)}</div><button onClick={() => toggleEvent(event)} className={`btn mt-5 w-full ${event.isActive ? "btn-outline" : "btn-primary"}`}>{event.isActive ? "Jeda Pendaftaran" : "Aktifkan Event"}</button></>}
         </section>
         <section className="rounded-2xl border border-line bg-card p-5 shadow-soft">
           <div className="flex items-center justify-between"><div><p className="text-[9px] font-bold uppercase tracking-wider text-violet-500">Reward Database</p><h2 className="mt-1 font-display text-lg font-extrabold">{reward?.title ?? "Belum ada reward"}</h2></div><Gift className="h-6 w-6 text-violet-500" /></div>

@@ -72,51 +72,51 @@ canvas {
 }
 
 .dark {
-  --background: #08100c;
-  --foreground: #e8f0eb;
-  --card: #101b15;
-  --card-foreground: #e8f0eb;
-  --popover: #101b15;
-  --popover-foreground: #e8f0eb;
-  --primary: #10b981;
-  --primary-foreground: #04140d;
-  --secondary: #16231c;
-  --secondary-foreground: #e8f0eb;
-  --muted: #16231c;
-  --muted-foreground: #96aa9e;
-  --accent: #064e3b;
-  --accent-foreground: #6ee7b7;
+  --background: #06150f;
+  --foreground: #f3ebd6;
+  --card: #0d231a;
+  --card-foreground: #f3ebd6;
+  --popover: #0d231a;
+  --popover-foreground: #f3ebd6;
+  --primary: #38c995;
+  --primary-foreground: #04140e;
+  --secondary: #142f23;
+  --secondary-foreground: #f3ebd6;
+  --muted: #142f23;
+  --muted-foreground: #b8c3ba;
+  --accent: #173d2c;
+  --accent-foreground: #f3ebd6;
   --destructive: #fb7185;
-  --destructive-foreground: #04140d;
-  --border: #26362d;
-  --input: #26362d;
-  --ring: #34d399;
+  --destructive-foreground: #04140e;
+  --border: #2b4d3c;
+  --input: #2b4d3c;
+  --ring: #45d3a0;
 
-  --chart-1: #34d399;
-  --chart-2: #a3e635;
-  --chart-3: #fbbf24;
-  --chart-4: #60a5fa;
-  --chart-5: #c4b5fd;
+  --chart-1: #45d3a0;
+  --chart-2: #9eae68;
+  --chart-3: #d3a65c;
+  --chart-4: #6ea79d;
+  --chart-5: #b29aaa;
 
-  --sidebar: #101b15;
-  --sidebar-foreground: #e8f0eb;
-  --sidebar-primary: #10b981;
-  --sidebar-primary-foreground: #04140d;
-  --sidebar-accent: #16231c;
-  --sidebar-accent-foreground: #e8f0eb;
-  --sidebar-border: #26362d;
-  --sidebar-ring: #34d399;
+  --sidebar: #04110d;
+  --sidebar-foreground: #f3ebd6;
+  --sidebar-primary: #38c995;
+  --sidebar-primary-foreground: #04140e;
+  --sidebar-accent: #123526;
+  --sidebar-accent-foreground: #f3ebd6;
+  --sidebar-border: #244535;
+  --sidebar-ring: #45d3a0;
 
-  --brand: #10b981;
-  --brand-bright: #34d399;
-  --brand-soft: #064e3b;
-  --lime: #a3e635;
-  --amber: #fbbf24;
-  --sky: #60a5fa;
-  --surface: #101b15;
-  --surface-2: #16231c;
-  --line: #26362d;
-  --ink: #e8f0eb;
+  --brand: #38c995;
+  --brand-bright: #65ddb1;
+  --brand-soft: #123b2a;
+  --lime: #9eae68;
+  --amber: #d3a65c;
+  --sky: #6ea79d;
+  --surface: #0d231a;
+  --surface-2: #142f23;
+  --line: #2b4d3c;
+  --ink: #f3ebd6;
 }
 
 @theme inline {
@@ -221,6 +221,15 @@ canvas {
 }
 
 @layer components {
+  .app-ambient-background { background-color: var(--background); }
+  .dark .app-ambient-background {
+    background-color: var(--background);
+    background-image:
+      radial-gradient(circle at 84% 18%, rgb(45 181 122 / 0.16) 0, rgb(28 105 73 / 0.08) 18%, transparent 42%),
+      radial-gradient(circle at 22% 76%, rgb(31 151 100 / 0.14) 0, rgb(20 82 57 / 0.07) 20%, transparent 45%);
+    background-attachment: fixed;
+  }
+
   .container-app { @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8; }
 
   .card { @apply min-w-0 max-w-full rounded-2xl border bg-card text-card-foreground; overflow-wrap: break-word; box-shadow: var(--shadow-soft); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s ease, border-color 0.4s ease; }

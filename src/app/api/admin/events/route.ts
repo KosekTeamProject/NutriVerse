@@ -8,6 +8,7 @@ import {
 } from "@/lib/api";
 import { requireAdminUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { validateEventRewardConfig } from "@/server/events/event-reward-policy";
 
 function dateValue(value: unknown) {
   if (typeof value !== "string") return null;
@@ -48,24 +49,16 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       );
     }
-    const requestedBonusXp = Math.round(
-      finiteNumber(body?.bonusXp ?? 0, "Bonus XP", {
-        min: 0,
-        max: 10_000,
-      }),
-    );
-    const requestedBonusHp = Math.round(
-      finiteNumber(body?.bonusHp ?? 0, "Bonus HP", {
-        min: 0,
-        max: 10_000,
-      }),
-    );
-    if (requestedBonusXp > 0 || requestedBonusHp > 0) {
-      throw new ApiRequestError(
-        "Bonus event memerlukan aktivitas GPS terverifikasi dan belum boleh diberikan dari kehadiran saja.",
-        409,
-        "EVENT_REWARD_REQUIRES_VERIFIED_ACTIVITY",
-      );
+    let rewardConfig;
+    try {
+      rewardConfig = validateEventRewardConfig({
+        participationHp: finiteNumber(body?.participationHp ?? 25, "HP partisipasi"),
+        firstPlaceBonusHp: finiteNumber(body?.firstPlaceBonusHp ?? 150, "Bonus HP juara 1"),
+        secondPlaceBonusHp: finiteNumber(body?.secondPlaceBonusHp ?? 100, "Bonus HP juara 2"),
+        thirdPlaceBonusHp: finiteNumber(body?.thirdPlaceBonusHp ?? 75, "Bonus HP juara 3"),
+      });
+    } catch {
+      throw new ApiRequestError("Reward harus berurutan juara 1 > 2 > 3 dan berada dalam batas yang ditentukan.", 400, "EVENT_REWARD_INVALID");
     }
     const event = await prisma.event.create({
       data: {
@@ -91,6 +84,7 @@ export async function POST(request: NextRequest) {
         ),
         bonusXp: 0,
         bonusHp: 0,
+        ...rewardConfig,
         createdByUserId: admin.id,
       },
     });

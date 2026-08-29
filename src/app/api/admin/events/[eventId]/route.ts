@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
+  ApiRequestError,
   apiErrorResponse,
   assertSameOrigin,
   finiteNumber,
@@ -7,6 +8,7 @@ import {
 } from "@/lib/api";
 import { requireAdminUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { validateEventRewardConfig } from "@/server/events/event-reward-policy";
 
 type RouteContext = { params: Promise<{ eventId: string }> };
 
@@ -25,7 +27,10 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     const body = (await request.json().catch(() => null)) as
       | Record<string, unknown>
       | null;
-    const existing = await prisma.event.findUnique({ where: { id: eventId } });
+    const existing = await prisma.event.findUnique({
+      where: { id: eventId },
+      include: { _count: { select: { registrations: true } } },
+    });
     if (!existing) {
       return NextResponse.json(
         { success: false, error: "Event tidak ditemukan." },
@@ -47,6 +52,30 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         { success: false, error: "Rentang tanggal event tidak valid." },
         { status: 400 },
       );
+    }
+    const rewardFields = [
+      "participationHp",
+      "firstPlaceBonusHp",
+      "secondPlaceBonusHp",
+      "thirdPlaceBonusHp",
+    ];
+    const updatesReward = rewardFields.some((field) => body?.[field] !== undefined);
+    if (updatesReward && (existing.rewardsLockedAt || existing._count.registrations > 0)) {
+      return NextResponse.json(
+        { success: false, error: "Reward event terkunci setelah peserta pertama mendaftar." },
+        { status: 409 },
+      );
+    }
+    let rewardConfig = null;
+    try {
+      rewardConfig = updatesReward ? validateEventRewardConfig({
+          participationHp: finiteNumber(body?.participationHp ?? existing.participationHp, "HP partisipasi"),
+          firstPlaceBonusHp: finiteNumber(body?.firstPlaceBonusHp ?? existing.firstPlaceBonusHp, "Bonus HP juara 1"),
+          secondPlaceBonusHp: finiteNumber(body?.secondPlaceBonusHp ?? existing.secondPlaceBonusHp, "Bonus HP juara 2"),
+          thirdPlaceBonusHp: finiteNumber(body?.thirdPlaceBonusHp ?? existing.thirdPlaceBonusHp, "Bonus HP juara 3"),
+        }) : null;
+    } catch {
+      throw new ApiRequestError("Reward harus berurutan juara 1 > 2 > 3 dan berada dalam batas yang ditentukan.", 400, "EVENT_REWARD_INVALID");
     }
     const event = await prisma.event.update({
       where: { id: eventId },
@@ -97,6 +126,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         ...(body?.isActive !== undefined
           ? { isActive: body.isActive === true }
           : {}),
+        ...(rewardConfig ?? {}),
       },
     });
     await prisma.auditLog.create({

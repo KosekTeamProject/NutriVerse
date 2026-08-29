@@ -7,6 +7,7 @@ import {
 } from "@/lib/api";
 import { requireAdminUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { SEASON_DURATION_DAYS, SEASON_TIMEZONE } from "@/server/leaderboard/season-policy";
 
 function requiredDate(value: unknown, field: string) {
   const date = typeof value === "string" ? new Date(value) : null;
@@ -43,6 +44,10 @@ export async function POST(request: NextRequest) {
         "Tanggal selesai harus setelah tanggal mulai.",
       );
     }
+    const durationDays = (endDate.getTime() - startDate.getTime()) / 86_400_000;
+    if (Math.abs(durationDays - SEASON_DURATION_DAYS) > 0.001) {
+      throw new ApiRequestError(`Durasi season harus ${SEASON_DURATION_DAYS} hari untuk semua pengguna.`);
+    }
     const isActive =
       typeof body?.isActive === "boolean" ? body.isActive : true;
     if (isActive) {
@@ -69,6 +74,7 @@ export async function POST(request: NextRequest) {
           startDate,
           endDate,
           isActive,
+          timezone: SEASON_TIMEZONE,
         },
       });
       await transaction.auditLog.create({

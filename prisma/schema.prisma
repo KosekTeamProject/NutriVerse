@@ -64,6 +64,7 @@ enum ChallengeMetric {
   DISTANCE_METERS
   DURATION_SECONDS
   VERIFIED_ACTIVITY_COUNT
+  ACTIVE_DAY_COUNT
 }
 
 enum ChallengeCategory {
@@ -101,6 +102,19 @@ enum LedgerType {
   HP_REFUND
   HP_EXPIRED
   HP_REVERSAL
+}
+
+enum RewardSource {
+  ACTIVITY
+  CHALLENGE
+  EVENT_PARTICIPATION
+  EVENT_PODIUM
+  SEASON_CARRYOVER
+  SEASON_REWARD
+  REDEMPTION
+  REFUND
+  REVERSAL
+  SYSTEM
 }
 
 enum RedemptionStatus {
@@ -276,67 +290,68 @@ model User {
   updatedAt         DateTime  @updatedAt
 
   // Relationships
-  healthProfile           HealthProfile?
-  companionPreference     CompanionPreference?
-  settings                UserSettings?
-  economy                 UserEconomy?
-  activitySessions        ActivitySession[]
-  appeals                 Appeal[]
-  xpGrants                XPGrant[]
-  hpLedgerEntries         HPLedgerEntry[]
-  challengeProgresses     ChallengeProgress[]
-  challengeContributions  ChallengeContribution[]
-  badges                  UserBadge[]
-  rankings                Ranking[]
-  redemptions             Redemption[]
-  journeyEntries          JourneyEntry[]
-  journalEntries          JournalEntry[]
-  nutritionEntries        NutritionEntry[]
-  waterLogs               WaterLog[]
-  sleepLogs               SleepLog[]
-  customFoodItems         CustomFoodItem[]
-  healthPulses            HealthPulse[]
-  healthMetrics           HealthMetric[]
-  moments                 Moment[]
-  reportsSubmitted        ContentReport[]           @relation("ReportedBy")
-  auditLogs               AuditLog[]                @relation("ActorUser")
-  notifications           UserNotification[]
-  deviceTokens            UserDeviceToken[]
-  companionConversations  CompanionConversation[]
-  companionMemories       CompanionMemory[]
-  weeklyLetters           WeeklyLetterArchive[]
-  journalReactions        JournalReaction[]
-  guildsLed               Guild[]                   @relation("GuildLeader")
-  guildsReviewed          Guild[]                   @relation("GuildReviewer")
-  guildMemberships        GuildMember[]
-  posts                   Post[]
-  postComments            PostComment[]
-  postReactions           PostReaction[]
-  momentReactions         MomentReaction[]
-  momentComments          MomentComment[]
-  momentBookmarks         MomentBookmark[]
-  mutesCreated            UserMute[]                @relation("UserMuter")
-  mutesReceived           UserMute[]                @relation("UserMuted")
-  shareTemplatesCreated   ShareTemplate[]           @relation("ShareTemplateCreator")
-  shareTemplatesPublished ShareTemplate[]           @relation("ShareTemplatePublisher")
-  eventRegistrations      EventRegistration[]
-  eventsCreated           Event[]                   @relation("EventCreator")
-  eventsReviewed          Event[]                   @relation("EventReviewer")
-  eventAdminAssignments   EventAdminAssignment[]    @relation("EventAdminUser")
-  communityAdminAssignments CommunityAdminAssignment[] @relation("CommunityAdminUser")
-  eventAdminAssignmentsMade EventAdminAssignment[] @relation("EventAdminAssigner")
+  healthProfile                 HealthProfile?
+  companionPreference           CompanionPreference?
+  settings                      UserSettings?
+  economy                       UserEconomy?
+  activitySessions              ActivitySession[]
+  appeals                       Appeal[]
+  xpGrants                      XPGrant[]
+  hpLedgerEntries               HPLedgerEntry[]
+  challengeProgresses           ChallengeProgress[]
+  challengeContributions        ChallengeContribution[]
+  badges                        UserBadge[]
+  rankings                      Ranking[]
+  seasonParticipations          SeasonParticipant[]
+  redemptions                   Redemption[]
+  journeyEntries                JourneyEntry[]
+  journalEntries                JournalEntry[]
+  nutritionEntries              NutritionEntry[]
+  waterLogs                     WaterLog[]
+  sleepLogs                     SleepLog[]
+  customFoodItems               CustomFoodItem[]
+  healthPulses                  HealthPulse[]
+  healthMetrics                 HealthMetric[]
+  moments                       Moment[]
+  reportsSubmitted              ContentReport[]            @relation("ReportedBy")
+  auditLogs                     AuditLog[]                 @relation("ActorUser")
+  notifications                 UserNotification[]
+  deviceTokens                  UserDeviceToken[]
+  companionConversations        CompanionConversation[]
+  companionMemories             CompanionMemory[]
+  weeklyLetters                 WeeklyLetterArchive[]
+  journalReactions              JournalReaction[]
+  guildsLed                     Guild[]                    @relation("GuildLeader")
+  guildsReviewed                Guild[]                    @relation("GuildReviewer")
+  guildMemberships              GuildMember[]
+  posts                         Post[]
+  postComments                  PostComment[]
+  postReactions                 PostReaction[]
+  momentReactions               MomentReaction[]
+  momentComments                MomentComment[]
+  momentBookmarks               MomentBookmark[]
+  mutesCreated                  UserMute[]                 @relation("UserMuter")
+  mutesReceived                 UserMute[]                 @relation("UserMuted")
+  shareTemplatesCreated         ShareTemplate[]            @relation("ShareTemplateCreator")
+  shareTemplatesPublished       ShareTemplate[]            @relation("ShareTemplatePublisher")
+  eventRegistrations            EventRegistration[]
+  eventsCreated                 Event[]                    @relation("EventCreator")
+  eventsReviewed                Event[]                    @relation("EventReviewer")
+  eventAdminAssignments         EventAdminAssignment[]     @relation("EventAdminUser")
+  communityAdminAssignments     CommunityAdminAssignment[] @relation("CommunityAdminUser")
+  eventAdminAssignmentsMade     EventAdminAssignment[]     @relation("EventAdminAssigner")
   communityAdminAssignmentsMade CommunityAdminAssignment[] @relation("CommunityAdminAssigner")
-  eventComments           EventComment[]            @relation("EventCommentAuthor")
-  eventCommentsModerated  EventComment[]            @relation("EventCommentModerator")
-  connectionsSent         UserConnection[]          @relation("ConnectionRequester")
-  connectionsReceived     UserConnection[]          @relation("ConnectionAddressee")
-  connectionsBlocked      UserConnection[]          @relation("ConnectionBlocker")
-  cmsArticlesCreated      CmsArticle[]              @relation("CmsArticleAuthor")
-  cmsArticlesUpdated      CmsArticle[]              @relation("CmsArticleUpdater")
-  cmsArticlesPublished    CmsArticle[]              @relation("CmsArticlePublisher")
-  cmsMediaUploaded        CmsMedia[]                @relation("CmsMediaUploader")
-  cmsRevisionsCreated     CmsArticleRevision[]      @relation("CmsRevisionAuthor")
-  cmsStatusChanges        CmsArticleStatusHistory[] @relation("CmsStatusChanger")
+  eventComments                 EventComment[]             @relation("EventCommentAuthor")
+  eventCommentsModerated        EventComment[]             @relation("EventCommentModerator")
+  connectionsSent               UserConnection[]           @relation("ConnectionRequester")
+  connectionsReceived           UserConnection[]           @relation("ConnectionAddressee")
+  connectionsBlocked            UserConnection[]           @relation("ConnectionBlocker")
+  cmsArticlesCreated            CmsArticle[]               @relation("CmsArticleAuthor")
+  cmsArticlesUpdated            CmsArticle[]               @relation("CmsArticleUpdater")
+  cmsArticlesPublished          CmsArticle[]               @relation("CmsArticlePublisher")
+  cmsMediaUploaded              CmsMedia[]                 @relation("CmsMediaUploader")
+  cmsRevisionsCreated           CmsArticleRevision[]       @relation("CmsRevisionAuthor")
+  cmsStatusChanges              CmsArticleStatusHistory[]  @relation("CmsStatusChanger")
 
   @@map("users")
 }
@@ -489,49 +504,61 @@ model UserEconomy {
 }
 
 model XPGrant {
-  id                 String     @id @default(uuid())
-  userId             String
-  activitySessionId  String?
-  challengeId        String?
-  idempotencyKey     String     @unique // Mencegah pendelegasian ganda
-  type               LedgerType @default(XP_GRANT)
-  amount             Int
-  capApplied         Boolean    @default(false) // Penanda cap harian
-  diminishingApplied Boolean    @default(false) // Penanda diminishing return
-  reason             String
-  effectiveAt        DateTime   @default(now())
-  createdAt          DateTime   @default(now())
+  id                   String       @id @default(uuid())
+  userId               String
+  activitySessionId    String?
+  challengeId          String?
+  seasonId             String?
+  idempotencyKey       String       @unique // Mencegah pendelegasian ganda
+  type                 LedgerType   @default(XP_GRANT)
+  amount               Int
+  capApplied           Boolean      @default(false) // Penanda cap harian
+  diminishingApplied   Boolean      @default(false) // Penanda diminishing return
+  reason               String
+  source               RewardSource @default(ACTIVITY)
+  formulaVersion       String       @default("activity-distance-v1")
+  countsTowardLifetime Boolean      @default(true)
+  effectiveAt          DateTime     @default(now())
+  createdAt            DateTime     @default(now())
 
   user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   activitySession   ActivitySession?   @relation(fields: [activitySessionId], references: [id], onDelete: SetNull)
   challenge         Challenge?         @relation(fields: [challengeId], references: [id], onDelete: SetNull)
+  season            LeaderboardSeason? @relation(fields: [seasonId], references: [id], onDelete: SetNull)
   claimedByProgress ChallengeProgress? @relation("ClaimedXpGrant")
 
   @@index([userId, createdAt])
   @@index([userId, effectiveAt])
   @@index([activitySessionId])
   @@index([challengeId])
+  @@index([seasonId, userId, effectiveAt])
   @@map("xp_grants")
 }
 
 model HPLedgerEntry {
-  id                 String     @id @default(uuid())
+  id                 String       @id @default(uuid())
   userId             String
   type               LedgerType
-  idempotencyKey     String     @unique // Mencegah transaksi ganda
+  idempotencyKey     String       @unique // Mencegah transaksi ganda
   amount             Int // Positif (Grant) atau Negatif (Redeem)
   activitySessionId  String?
   challengeId        String?
+  eventId            String?
+  seasonId           String?
   redemptionId       String?
   description        String
-  capApplied         Boolean    @default(false)
-  diminishingApplied Boolean    @default(false)
-  effectiveAt        DateTime   @default(now())
-  createdAt          DateTime   @default(now())
+  source             RewardSource @default(ACTIVITY)
+  formulaVersion     String       @default("activity-distance-v1")
+  capApplied         Boolean      @default(false)
+  diminishingApplied Boolean      @default(false)
+  effectiveAt        DateTime     @default(now())
+  createdAt          DateTime     @default(now())
 
   user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   activitySession   ActivitySession?   @relation(fields: [activitySessionId], references: [id], onDelete: SetNull)
   challenge         Challenge?         @relation(fields: [challengeId], references: [id], onDelete: SetNull)
+  event             Event?             @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  season            LeaderboardSeason? @relation(fields: [seasonId], references: [id], onDelete: SetNull)
   redemption        Redemption?        @relation(fields: [redemptionId], references: [id], onDelete: SetNull)
   claimedByProgress ChallengeProgress? @relation("ClaimedHpLedger")
 
@@ -539,6 +566,8 @@ model HPLedgerEntry {
   @@index([userId, effectiveAt])
   @@index([activitySessionId])
   @@index([challengeId])
+  @@index([eventId])
+  @@index([seasonId, userId, effectiveAt])
   @@index([redemptionId])
   @@map("hp_ledger_entries")
 }
@@ -767,6 +796,7 @@ model ChallengeContribution {
   challengeProgressId String
   activitySessionId   String
   amount              Float
+  dayKey              String?
   createdAt           DateTime @default(now())
 
   user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -777,6 +807,7 @@ model ChallengeContribution {
   @@unique([challengeId, userId, activitySessionId], map: "challenge_contributions_challengeId_userId_activitySessionId_ke")
   @@index([challengeProgressId, createdAt])
   @@index([activitySessionId])
+  @@index([challengeId, userId, dayKey])
   @@map("challenge_contributions")
 }
 
@@ -786,6 +817,8 @@ model Badge {
   name        String
   description String
   iconUrl     String
+  criteriaKey String   @default("VERIFIED_ACTIVITY_COUNT")
+  targetValue Int      @default(1)
   createdAt   DateTime @default(now())
 
   userBadges UserBadge[]
@@ -811,14 +844,19 @@ model UserBadge {
 // ==========================================
 
 model LeaderboardSeason {
-  id        String   @id @default(uuid())
-  name      String // Misal "Season 1 - Summer 2026"
-  startDate DateTime
-  endDate   DateTime
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
+  id          String    @id @default(uuid())
+  name        String // Misal "Season 1 - Summer 2026"
+  startDate   DateTime
+  endDate     DateTime
+  isActive    Boolean   @default(true)
+  timezone    String    @default("Asia/Jakarta")
+  finalizedAt DateTime?
+  createdAt   DateTime  @default(now())
 
-  rankings Ranking[]
+  rankings        Ranking[]
+  participants    SeasonParticipant[]
+  xpGrants        XPGrant[]
+  hpLedgerEntries HPLedgerEntry[]
 
   @@map("leaderboard_seasons")
 }
@@ -1018,6 +1056,33 @@ model WaterLog {
   @@map("water_logs")
 }
 
+model SeasonParticipant {
+  id                     String    @id @default(uuid())
+  seasonId               String
+  userId                 String
+  lifetimeTierAtStart    Tier      @default(SPROUT)
+  carryoverXp            Int       @default(0)
+  earnedXp               Int       @default(0)
+  activeDayCount         Int       @default(0)
+  verifiedActivityCount  Int       @default(0)
+  verifiedChallengeCount Int       @default(0)
+  status                 String    @default("ACTIVE")
+  missedSeasonCount      Int       @default(0)
+  finalPosition          Int?
+  seasonRewardHp         Int       @default(0)
+  finalizedAt            DateTime?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  season LeaderboardSeason @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  user   User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([seasonId, userId])
+  @@index([seasonId, earnedXp, carryoverXp])
+  @@index([userId, createdAt])
+  @@map("season_participants")
+}
+
 model SleepLog {
   id            String   @id @default(uuid())
   userId        String
@@ -1126,6 +1191,12 @@ model Event {
   capacity           Int                  @default(0)
   bonusXp            Int                  @default(0)
   bonusHp            Int                  @default(0)
+  participationHp    Int                  @default(25)
+  firstPlaceBonusHp  Int                  @default(150)
+  secondPlaceBonusHp Int                  @default(100)
+  thirdPlaceBonusHp  Int                  @default(75)
+  rewardsLockedAt    DateTime?
+  resultsFinalizedAt DateTime?
   isActive           Boolean              @default(true)
   status             CmsPublicationStatus @default(PUBLISHED)
   slug               String?              @unique
@@ -1141,10 +1212,11 @@ model Event {
   createdAt          DateTime             @default(now())
   updatedAt          DateTime             @updatedAt
 
-  registrations EventRegistration[]
-  comments      EventComment[]
-  createdBy     User?               @relation("EventCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
-  reviewedBy    User?               @relation("EventReviewer", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  registrations    EventRegistration[]
+  hpLedgerEntries  HPLedgerEntry[]
+  comments         EventComment[]
+  createdBy        User?                  @relation("EventCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  reviewedBy       User?                  @relation("EventReviewer", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
   adminAssignments EventAdminAssignment[]
 
   @@index([isActive, startDate])
@@ -1309,12 +1381,15 @@ model EventRegistration {
   status     EventRegistrationStatus @default(JOINED)
   joinedAt   DateTime                @default(now())
   attendedAt DateTime?
+  placement  Int?
+  rewardedAt DateTime?
   updatedAt  DateTime                @updatedAt
 
   event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([eventId, userId])
+  @@unique([eventId, placement])
   @@index([userId, status])
   @@map("event_registrations")
 }
@@ -1358,11 +1433,11 @@ model Guild {
   createdAt        DateTime                @default(now())
   updatedAt        DateTime                @updatedAt
 
-  leader     User?         @relation("GuildLeader", fields: [leaderId], references: [id], onDelete: SetNull)
-  reviewedBy User?         @relation("GuildReviewer", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
-  members    GuildMember[]
-  posts      Post[]
-  moments    Moment[]
+  leader           User?                      @relation("GuildLeader", fields: [leaderId], references: [id], onDelete: SetNull)
+  reviewedBy       User?                      @relation("GuildReviewer", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  members          GuildMember[]
+  posts            Post[]
+  moments          Moment[]
   adminAssignments CommunityAdminAssignment[]
 
   @@index([leaderId])
@@ -1372,28 +1447,30 @@ model Guild {
 }
 
 model EventAdminAssignment {
-  id        String   @id @default(uuid())
-  eventId   String
-  userId    String
+  id               String   @id @default(uuid())
+  eventId          String
+  userId           String
   assignedByUserId String
-  createdAt DateTime @default(now())
-  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  user User @relation("EventAdminUser", fields: [userId], references: [id], onDelete: Cascade)
-  assignedBy User @relation("EventAdminAssigner", fields: [assignedByUserId], references: [id], onDelete: Restrict)
+  createdAt        DateTime @default(now())
+  event            Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user             User     @relation("EventAdminUser", fields: [userId], references: [id], onDelete: Cascade)
+  assignedBy       User     @relation("EventAdminAssigner", fields: [assignedByUserId], references: [id], onDelete: Restrict)
+
   @@unique([eventId, userId])
   @@index([userId])
   @@map("event_admin_assignments")
 }
 
 model CommunityAdminAssignment {
-  id        String   @id @default(uuid())
-  guildId   String
-  userId    String
+  id               String   @id @default(uuid())
+  guildId          String
+  userId           String
   assignedByUserId String
-  createdAt DateTime @default(now())
-  guild Guild @relation(fields: [guildId], references: [id], onDelete: Cascade)
-  user User @relation("CommunityAdminUser", fields: [userId], references: [id], onDelete: Cascade)
-  assignedBy User @relation("CommunityAdminAssigner", fields: [assignedByUserId], references: [id], onDelete: Restrict)
+  createdAt        DateTime @default(now())
+  guild            Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  user             User     @relation("CommunityAdminUser", fields: [userId], references: [id], onDelete: Cascade)
+  assignedBy       User     @relation("CommunityAdminAssigner", fields: [assignedByUserId], references: [id], onDelete: Restrict)
+
   @@unique([guildId, userId])
   @@index([userId])
   @@map("community_admin_assignments")

@@ -102,6 +102,8 @@ function toDisplayChallenge(challenge: ProgressChallenge): Challenge {
     metric:
       challenge.metric === "DURATION_SECONDS"
         ? "menit"
+        : challenge.metric === "ACTIVE_DAY_COUNT"
+          ? "hari_aktif"
         : challenge.metric === "VERIFIED_ACTIVITY_COUNT"
           ? "sesi"
           : "aktivitas_km",

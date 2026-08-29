@@ -9,7 +9,7 @@ import {
   AlertTriangle,
   Compass
 } from "lucide-react";
-import { getActivitySummaryById, ACTIVITY, formatTime, computeXp, type ActivityRiskSignal, type UpgradedActivitySummary } from "@/lib/activity";
+import { getActivitySummaryById, ACTIVITY, formatTime, computeActivityXp, type ActivityRiskSignal, type UpgradedActivitySummary } from "@/lib/activity";
 import { ActivityVerificationCard } from "@/features/activity/components/ActivityVerificationComponents";
 import { companionInsights } from "@/features/companion/data";
 import { CompanionGuidanceSection } from "@/features/companion/components/CompanionGuidanceSection";
@@ -169,7 +169,7 @@ export default async function ActivityDetailPage({ params }: ActivityDetailPageP
           </div>
           <div className="rounded-xl border border-line bg-brand-soft/20 p-3.5 text-center">
             <Zap className="mx-auto h-4 w-4 text-brand" />
-            <p className="stat-num mt-1.5 text-base font-bold text-brand">+{computeXp(activity.distanceKm * 1000, activity.type)}</p>
+            <p className="stat-num mt-1.5 text-base font-bold text-brand">+{computeActivityXp(activity.distanceKm * 1_000, activity.type)}</p>
             <p className="text-[10px] text-muted-foreground">XP Potensial</p>
           </div>
         </div>

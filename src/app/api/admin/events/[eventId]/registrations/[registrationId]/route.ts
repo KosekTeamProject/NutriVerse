@@ -7,6 +7,7 @@ import {
 } from "@/lib/api";
 import { requireAdminUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { reconcileUserBadges } from "@/server/badges/badge-service";
 
 type RouteContext = {
   params: Promise<{ eventId: string; registrationId: string }>;
@@ -72,6 +73,9 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         return updated;
       },
     );
+    if (status === EventRegistrationStatus.ATTENDED) {
+      await reconcileUserBadges(existing.userId);
+    }
     return NextResponse.json({ success: true, registration });
   } catch (error) {
     return apiErrorResponse(error);

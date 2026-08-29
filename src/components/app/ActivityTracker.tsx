@@ -9,7 +9,7 @@ import {
   Download, ChevronRight,
 } from "lucide-react";
 import {
-  ACTIVITY, haversine, formatTime, paceMinPerKm, speedKmh, computeXp,
+  ACTIVITY, haversine, formatTime, paceMinPerKm, speedKmh, computeActivityXp,
   applyDailyXpPolicy, XP_SAFETY_POLICY, minimumMovementMetersForAccuracy,
   type ActivityKind, type LatLng,
 } from "@/lib/activity";
@@ -640,7 +640,7 @@ export function ActivityTracker() {
     durationTooLong ||
     serverRejected;
   const km = distance / 1000;
-  const baseXp = computeXp(distance, kind);
+  const baseXp = computeActivityXp(distance, kind);
   const xpEarnedToday = overview?.economy.xpToday ?? 0;
   const xpPolicy = applyDailyXpPolicy(baseXp, xpEarnedToday);
   const provisionalXp = suspicious ? 0 : xpPolicy.awarded;

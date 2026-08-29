@@ -30,8 +30,18 @@ export async function rebuildLeagueLeaderboardSnapshot(now = new Date()) {
           streakDays: true,
         },
       },
+      seasonParticipations: {
+        where: { seasonId: season.id },
+        select: { carryoverXp: true, earnedXp: true, activeDayCount: true },
+      },
     },
-    orderBy: [{ economy: { totalXp: "desc" } }, { id: "asc" }],
+  });
+  users.sort((left, right) => {
+    const leftSeason = left.seasonParticipations[0];
+    const rightSeason = right.seasonParticipations[0];
+    const leftXp = (leftSeason?.carryoverXp ?? 0) + (leftSeason?.earnedXp ?? 0);
+    const rightXp = (rightSeason?.carryoverXp ?? 0) + (rightSeason?.earnedXp ?? 0);
+    return rightXp - leftXp || (rightSeason?.activeDayCount ?? 0) - (leftSeason?.activeDayCount ?? 0) || left.id.localeCompare(right.id);
   });
   const rankByTier = new Map<Tier, number>();
   const rows = users.flatMap((user) => {
@@ -45,8 +55,8 @@ export async function rebuildLeagueLeaderboardSnapshot(now = new Date()) {
         scope: LeaderboardScope.LEAGUE,
         tier: user.economy.currentTier,
         rankPosition: rank,
-        totalVerifiedXp: user.economy.totalXp,
-        consistencyScore: user.economy.streakDays,
+        totalVerifiedXp: (user.seasonParticipations[0]?.carryoverXp ?? 0) + (user.seasonParticipations[0]?.earnedXp ?? 0),
+        consistencyScore: user.seasonParticipations[0]?.activeDayCount ?? 0,
       },
     ];
   });

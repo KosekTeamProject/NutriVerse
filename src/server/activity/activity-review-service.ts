@@ -1,8 +1,10 @@
 import {
   ActivityProcessingStatus,
+  ChallengeMetric,
   LedgerType,
   NotificationType,
   Prisma,
+  RewardSource,
   VerificationStatus,
 } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -105,6 +107,9 @@ export async function rejectActivityWithCompensation(input: {
               type: LedgerType.XP_REVERSAL,
               amount: -directXp.amount,
               reason: `Activity review reversal: ${input.reason}`,
+              source: RewardSource.REVERSAL,
+              formulaVersion: directXp.formulaVersion,
+              seasonId: directXp.seasonId,
               effectiveAt: directXp.effectiveAt,
             },
           });
@@ -125,6 +130,9 @@ export async function rejectActivityWithCompensation(input: {
               type: LedgerType.HP_REVERSAL,
               amount: -directHp.amount,
               description: `Activity review reversal: ${input.reason}`,
+              source: RewardSource.REVERSAL,
+              formulaVersion: directHp.formulaVersion,
+              seasonId: directHp.seasonId,
               effectiveAt: directHp.effectiveAt,
             },
           });
@@ -155,14 +163,16 @@ export async function rejectActivityWithCompensation(input: {
       });
 
       for (const progress of progressById.values()) {
-        const remaining = await transaction.challengeContribution.aggregate({
+        const remaining = await transaction.challengeContribution.findMany({
           where: { challengeProgressId: progress.id },
-          _sum: { amount: true },
-          _max: { createdAt: true },
+          select: { amount: true, dayKey: true, createdAt: true },
         });
+        const remainingValue = progress.challenge.metric === ChallengeMetric.ACTIVE_DAY_COUNT
+          ? new Set(remaining.map((item) => item.dayKey).filter(Boolean)).size
+          : remaining.reduce((sum, item) => sum + item.amount, 0);
         const currentValue = Math.min(
           progress.challenge.targetValue,
-          remaining._sum.amount ?? 0,
+          remainingValue,
         );
         const isCompleted =
           currentValue >= progress.challenge.targetValue;
@@ -184,6 +194,9 @@ export async function rejectActivityWithCompensation(input: {
                 type: LedgerType.XP_REVERSAL,
                 amount: -progress.claimedXpGrant.amount,
                 reason: `Challenge reward reversed after activity review: ${input.reason}`,
+                source: RewardSource.REVERSAL,
+                formulaVersion: progress.claimedXpGrant.formulaVersion,
+                seasonId: progress.claimedXpGrant.seasonId,
                 effectiveAt: progress.claimedXpGrant.effectiveAt,
               },
             });
@@ -201,6 +214,9 @@ export async function rejectActivityWithCompensation(input: {
                 type: LedgerType.HP_REVERSAL,
                 amount: -progress.claimedHpLedgerEntry.amount,
                 description: `Challenge reward reversed after activity review: ${input.reason}`,
+                source: RewardSource.REVERSAL,
+                formulaVersion: progress.claimedHpLedgerEntry.formulaVersion,
+                seasonId: progress.claimedHpLedgerEntry.seasonId,
                 effectiveAt:
                   progress.claimedHpLedgerEntry.effectiveAt,
               },
@@ -215,7 +231,7 @@ export async function rejectActivityWithCompensation(input: {
             currentValue,
             isCompleted,
             completedAt: isCompleted ? progress.completedAt : null,
-            lastContributedAt: remaining._max.createdAt,
+            lastContributedAt: remaining.reduce<Date | null>((latest, item) => !latest || item.createdAt > latest ? item.createdAt : latest, null),
             ...(rewardMustBeReversed
               ? {
                   claimedXpGrantId: null,
@@ -365,6 +381,9 @@ export async function approveActivityReview(input: {
               type: LedgerType.XP_GRANT,
               amount: originalXp.amount,
               reason: `Activity reward reinstated: ${input.reason}`,
+              source: RewardSource.ACTIVITY,
+              formulaVersion: originalXp.formulaVersion,
+              seasonId: originalXp.seasonId,
               effectiveAt: originalXp.effectiveAt,
             },
           });
@@ -379,6 +398,9 @@ export async function approveActivityReview(input: {
               type: LedgerType.HP_GRANT,
               amount: originalHp.amount,
               description: `Activity reward reinstated: ${input.reason}`,
+              source: RewardSource.ACTIVITY,
+              formulaVersion: originalHp.formulaVersion,
+              seasonId: originalHp.seasonId,
               effectiveAt: originalHp.effectiveAt,
             },
           });

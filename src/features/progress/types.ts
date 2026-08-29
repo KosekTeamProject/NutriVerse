@@ -15,7 +15,7 @@ export type ProgressChallenge = {
   type: "DAILY" | "WEEKLY" | "MONTHLY" | "EVENT";
   category: string;
   trustLevel: "GPS_VERIFIED_ONLY" | "HABIT_SELF_REPORT";
-  metric: "DISTANCE_METERS" | "DURATION_SECONDS" | "VERIFIED_ACTIVITY_COUNT";
+  metric: "DISTANCE_METERS" | "DURATION_SECONDS" | "VERIFIED_ACTIVITY_COUNT" | "ACTIVE_DAY_COUNT";
   activityType: string | null;
   currentValue: number;
   targetValue: number;
@@ -101,6 +101,10 @@ export type CommunityOverview = {
     isJoined: boolean;
     bonusXp: number;
     bonusHp: number;
+    participationHp: number;
+    firstPlaceBonusHp: number;
+    secondPlaceBonusHp: number;
+    thirdPlaceBonusHp: number;
     bannerUrl: string;
   }>;
   challenge: {

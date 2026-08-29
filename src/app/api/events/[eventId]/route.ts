@@ -15,6 +15,7 @@ export async function GET(_request: Request, context: RouteContext) {
       select: {
         id: true, title: true, description: true, bannerUrl: true, startDate: true, endDate: true,
         location: true, capacity: true, createdByUserId: true,
+        participationHp: true, firstPlaceBonusHp: true, secondPlaceBonusHp: true, thirdPlaceBonusHp: true,
         whatsappInviteUrl: true, whatsappLinkStatus: true,
         createdBy: { select: { id: true, name: true, username: true, avatarUrl: true } },
         registrations: { where: { userId: user.id }, select: { id: true, status: true, joinedAt: true } },

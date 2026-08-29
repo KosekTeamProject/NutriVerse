@@ -176,7 +176,7 @@ export function RewardStore() {
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {[
             { icon: Activity, title: "Sumber HP", text: "Aktivitas dan challenge tepercaya; bukan scan makanan atau self-report." },
-            { icon: Gauge, title: "Batas harian", text: "Maks. 300 HP/hari sebagai guardrail awal, sebelum evaluasi ekonomi." },
+            { icon: Gauge, title: "Aktivitas harian", text: "HP aktivitas maksimal 60 per hari. Reward challenge, event, dan season dihitung terpisah." },
             { icon: CalendarClock, title: "Masa berlaku", text: "Belum kedaluwarsa pada MVP; kebijakan produksi wajib diumumkan lebih dulu." },
             { icon: PackageCheck, title: "Stok & audit", text: "Stok mitra terbatas dan setiap perubahan saldo harus tercatat di ledger server." },
           ].map((rule) => {

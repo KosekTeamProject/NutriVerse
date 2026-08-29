@@ -15,6 +15,7 @@ export function challengeContributionAmount(
     case ChallengeMetric.DURATION_SECONDS:
       return Math.max(0, activity.trustedDurationSeconds);
     case ChallengeMetric.VERIFIED_ACTIVITY_COUNT:
+    case ChallengeMetric.ACTIVE_DAY_COUNT:
       return 1;
   }
 }

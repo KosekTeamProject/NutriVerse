@@ -74,6 +74,12 @@ export async function POST(request: NextRequest, context: RouteContext) {
             attendedAt: null,
           },
         });
+        if (!event.rewardsLockedAt) {
+          await transaction.event.update({
+            where: { id: event.id },
+            data: { rewardsLockedAt: new Date() },
+          });
+        }
         await createUserNotification(
           {
             userId: user.id,

@@ -14,25 +14,55 @@ async function main() {
   // 1. Seed Master Badges
   const badge1 = await prisma.badge.upsert({
     where: { code: 'FIRST_STEP' },
-    update: {},
+    update: { criteriaKey: 'VERIFIED_ACTIVITY_COUNT', targetValue: 1 },
     create: {
       code: 'FIRST_STEP',
       name: 'Langkah Pertama',
       description: 'Selesaikan aktivitas olahraga pertama Anda.',
       iconUrl: '/badges/first-step.png',
+      criteriaKey: 'VERIFIED_ACTIVITY_COUNT',
+      targetValue: 1,
     },
   });
 
   const badge2 = await prisma.badge.upsert({
     where: { code: 'STREAK_MASTER' },
-    update: {},
+    update: { criteriaKey: 'STREAK_DAYS', targetValue: 7 },
     create: {
       code: 'STREAK_MASTER',
       name: 'Streak Master',
       description: 'Pertahankan streak aktivitas selama 7 hari berturut-turut.',
       iconUrl: '/badges/streak-master.png',
+      criteriaKey: 'STREAK_DAYS',
+      targetValue: 7,
     },
   });
+  await Promise.all([
+    {
+      code: 'ACTIVE_10', name: 'Ritme Terbentuk',
+      description: 'Selesaikan 10 aktivitas yang lolos verifikasi.',
+      iconUrl: '/badges/active-10.png', criteriaKey: 'VERIFIED_ACTIVITY_COUNT', targetValue: 10,
+    },
+    {
+      code: 'DISTANCE_50K', name: 'Penjelajah 50K',
+      description: 'Tempuh total 50 kilometer dari aktivitas terverifikasi.',
+      iconUrl: '/badges/distance-50k.png', criteriaKey: 'VERIFIED_DISTANCE_METERS', targetValue: 50000,
+    },
+    {
+      code: 'CHALLENGE_5', name: 'Pemburu Tantangan',
+      description: 'Selesaikan 5 tantangan terverifikasi.',
+      iconUrl: '/badges/challenge-5.png', criteriaKey: 'COMPLETED_CHALLENGE_COUNT', targetValue: 5,
+    },
+    {
+      code: 'EVENT_EXPLORER', name: 'Event Explorer',
+      description: 'Hadir dan terverifikasi di 3 event NutriVerse.',
+      iconUrl: '/badges/event-explorer.png', criteriaKey: 'ATTENDED_EVENT_COUNT', targetValue: 3,
+    },
+  ].map((badge) => prisma.badge.upsert({
+    where: { code: badge.code },
+    update: badge,
+    create: badge,
+  })));
 
   // 2. Seed Initial Challenge
   const now = new Date();
@@ -140,7 +170,7 @@ async function main() {
         where: { id: existingSeason.id },
         data: {
           startDate: now,
-          endDate: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000),
+          endDate: new Date(now.getTime() + 84 * 24 * 60 * 60 * 1000),
           isActive: true,
         },
       })
@@ -148,7 +178,7 @@ async function main() {
         data: {
           name: 'Season 1: Origin Nutriverse',
           startDate: now,
-          endDate: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000),
+          endDate: new Date(now.getTime() + 84 * 24 * 60 * 60 * 1000),
           isActive: true,
         },
       });

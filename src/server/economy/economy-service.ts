@@ -1,9 +1,11 @@
 import {
   LedgerType,
   Prisma,
+  RewardSource,
   VerificationStatus,
 } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { ACTIVITY_HP_RATE, ECONOMY_FORMULA_VERSION } from "@/lib/economy-rules";
 import {
   ECONOMY_POLICY,
   applyDailyAwardPolicy,
@@ -11,6 +13,7 @@ import {
   tierForTotalXp,
   utcDayBounds,
 } from "@/server/economy/economy-policy";
+import { creditActiveSeasonXp } from "@/server/leaderboard/season-service";
 
 function activityRewardKey(activitySessionId: string) {
   return `activity:${activitySessionId}`;
@@ -78,6 +81,8 @@ async function runActivityAwardTransaction(activitySessionId: string) {
             type: {
               in: [LedgerType.XP_GRANT, LedgerType.XP_REVERSAL],
             },
+            source: { in: [RewardSource.ACTIVITY, RewardSource.REVERSAL] },
+            activitySessionId: { not: null },
           },
           _sum: { amount: true },
         }),
@@ -88,6 +93,8 @@ async function runActivityAwardTransaction(activitySessionId: string) {
             type: {
               in: [LedgerType.HP_GRANT, LedgerType.HP_REVERSAL],
             },
+            source: { in: [RewardSource.ACTIVITY, RewardSource.REVERSAL] },
+            activitySessionId: { not: null },
           },
           _sum: { amount: true },
         }),
@@ -99,9 +106,9 @@ async function runActivityAwardTransaction(activitySessionId: string) {
         ECONOMY_POLICY.xp,
       );
       const hpAward = applyDailyAwardPolicy(
-        activity.verificationResult.eligibleHp,
+        Math.floor(xpAward.awardedAmount * ACTIVITY_HP_RATE),
         hpToday._sum.amount ?? 0,
-        ECONOMY_POLICY.hp,
+        ECONOMY_POLICY.activityHp,
       );
       const currentEconomy =
         activity.user.economy ??
@@ -118,6 +125,13 @@ async function runActivityAwardTransaction(activitySessionId: string) {
         effectiveAt,
         timezone,
       );
+      const seasonCredit = await creditActiveSeasonXp(transaction, {
+        userId: activity.userId,
+        amount: xpAward.awardedAmount,
+        effectiveAt,
+        lifetimeTier: currentEconomy.currentTier,
+        source: RewardSource.ACTIVITY,
+      });
 
       const xpGrant = await transaction.xPGrant.create({
         data: {
@@ -129,6 +143,9 @@ async function runActivityAwardTransaction(activitySessionId: string) {
           capApplied: xpAward.capApplied,
           diminishingApplied: xpAward.diminishingApplied,
           reason: "Verified activity reward",
+          source: RewardSource.ACTIVITY,
+          formulaVersion: ECONOMY_FORMULA_VERSION,
+          seasonId: seasonCredit.seasonId,
           effectiveAt,
         },
       });
@@ -142,6 +159,9 @@ async function runActivityAwardTransaction(activitySessionId: string) {
           capApplied: hpAward.capApplied,
           diminishingApplied: hpAward.diminishingApplied,
           description: "Verified activity reward",
+          source: RewardSource.ACTIVITY,
+          formulaVersion: ECONOMY_FORMULA_VERSION,
+          seasonId: seasonCredit.seasonId,
           effectiveAt,
         },
       });
