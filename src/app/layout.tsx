@@ -8,6 +8,20 @@ const jakarta = Plus_Jakarta_Sans({ subsets: ["latin"], variable: "--font-jakart
 export const metadata: Metadata = {
   title: "NutriVerse",
   description: "Platform kesehatan & nutrisi gamified dengan sistem peringkat kompetitif CHPS.",
+  icons: {
+    icon: [
+      {
+        url: "/brand/nutriverse-favicon-v2.svg",
+        type: "image/svg+xml",
+      },
+      {
+        url: "/brand/nutriverse-favicon-v2.png",
+        type: "image/png",
+        sizes: "512x512",
+      },
+    ],
+    shortcut: "/brand/nutriverse-favicon-v2.png",
+  },
 };
 
 export const viewport: Viewport = {
