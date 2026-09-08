@@ -250,6 +250,7 @@ enum CommunityMemberStatus {
   BANNED
 }
 
+
 enum ConnectionStatus {
   PENDING
   ACCEPTED
@@ -1202,6 +1203,7 @@ model Event {
   slug               String?              @unique
   publishedAt        DateTime?
   createdByUserId    String?
+  guildId            String?
   updatedByUserId    String?
   approvalStatus     EventApprovalStatus  @default(APPROVED)
   reviewNote         String?
@@ -1218,12 +1220,14 @@ model Event {
   createdBy        User?                  @relation("EventCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
   reviewedBy       User?                  @relation("EventReviewer", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
   adminAssignments EventAdminAssignment[]
+  guild            Guild?                 @relation(fields: [guildId], references: [id], onDelete: SetNull)
 
   @@index([isActive, startDate])
   @@index([approvalStatus, createdAt])
   @@index([createdByUserId, approvalStatus])
   @@map("events")
 }
+
 
 model EventComment {
   id            String             @id @default(uuid())
@@ -1439,6 +1443,7 @@ model Guild {
   posts            Post[]
   moments          Moment[]
   adminAssignments CommunityAdminAssignment[]
+  events           Event[]
 
   @@index([leaderId])
   @@index([approvalStatus, isActive, createdAt])

@@ -56,7 +56,7 @@ export function DashboardEventPreview({ compact = false }: { compact?: boolean }
     return <a href={event?.href ?? "/komunitas"} className="group relative block h-56 overflow-hidden rounded-3xl border border-brand/20 bg-gradient-to-br from-[#07563f] via-brand to-lime shadow-soft" aria-label={event ? `Buka event ${event.title}` : "Lihat event"}>
       {event?.imageUrl && <img src={event.imageUrl} alt={event.title} className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-105" />}
       <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-transparent" />
-      <div className="absolute inset-x-4 bottom-4 text-white"><p className="text-[9px] font-bold uppercase tracking-wider text-white/80">Event mendatang</p><h2 className="mt-1 line-clamp-2 text-xl font-extrabold">{event?.title ?? "Event sehat segera hadir"}</h2><p className="mt-1 line-clamp-1 text-xs text-white/80">{event?.meta[1] ?? "Event terverifikasi"}</p></div>
+      <div className="absolute inset-x-4 bottom-4 text-white"><p className="text-[9px] font-bold uppercase tracking-wider text-white/80">Event mendatang</p><h2 className="mt-1 line-clamp-2 text-xl font-extrabold">{event?.title ?? "Event sehat segera hadir"}</h2><p className="mt-1 line-clamp-1 text-xs text-white/80">{event?.meta[1] ?? "Event terverifikasi"}</p><span className="mt-3 inline-flex rounded-full bg-white px-4 py-2 text-xs font-bold text-[#07563f]">Detail event <span className="ml-2">→</span></span></div>
     </a>;
   }
   return <RecommendationCarousel kind="event" slides={slides} loading={loading} />;

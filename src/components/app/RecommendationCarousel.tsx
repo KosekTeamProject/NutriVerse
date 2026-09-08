@@ -56,7 +56,7 @@ export function RecommendationCarousel({ kind, slides, loading = false }: Readon
     if (!hasMultipleSlides || paused || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const interval = window.setInterval(() => {
       setActiveIndex((current) => (current + 1) % availableSlides.length);
-    }, 6000);
+    }, 1000);
     return () => window.clearInterval(interval);
   }, [availableSlides.length, hasMultipleSlides, paused]);
 

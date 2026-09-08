@@ -150,10 +150,10 @@ export function AdminEventPanel({ embedded = false, createOnly = false }: { embe
       startDate: event.startDate.slice(0, 16),
       endDate: event.endDate.slice(0, 16),
       capacity: String(event.capacity),
-      participationHp: String(event.participationHp),
-      firstPlaceBonusHp: String(event.firstPlaceBonusHp),
-      secondPlaceBonusHp: String(event.secondPlaceBonusHp),
-      thirdPlaceBonusHp: String(event.thirdPlaceBonusHp),
+      participationHp: String(event.participationHp ?? 25),
+      firstPlaceBonusHp: String(event.firstPlaceBonusHp ?? 150),
+      secondPlaceBonusHp: String(event.secondPlaceBonusHp ?? 100),
+      thirdPlaceBonusHp: String(event.thirdPlaceBonusHp ?? 75),
     });
     setOpen(true);
   }
@@ -245,7 +245,7 @@ export function AdminEventPanel({ embedded = false, createOnly = false }: { embe
               <label className="btn btn-outline btn-sm shrink-0 cursor-pointer">{uploading ? "Mengunggah…" : "Pilih gambar"}<input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" onChange={async (event) => { const file = event.target.files?.[0]; if (!file) return; setUploading(true); const data = new FormData(); data.set("bucket", "cms-media"); data.set("file", file); const response = await fetch("/api/storage/upload", { method: "POST", body: data }); const result = await response.json().catch(() => null); if (response.ok && result?.publicUrl) setForm((current) => ({ ...current, bannerUrl: result.publicUrl })); else setMessage(result?.error ?? "Upload gagal"); setUploading(false); }} /></label>
             </div>
             <button className="btn btn-primary">Simpan</button>
-            <button type="button" className="btn btn-outline" onClick={() => setOpen(false)}>Batal</button>
+            <button type="button" className="btn btn-outline" onClick={() => createOnly ? window.location.assign("/admin") : setOpen(false)}>Batal</button>
           </form>
         )}
         <section className={createOnly ? "hidden" : "card card-pad"}>
