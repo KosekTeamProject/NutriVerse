@@ -23,7 +23,11 @@ export function AuthEntryModal({ open, onClose, initialView = "choice" }: { read
 
   async function login(event: React.FormEvent) {
     event.preventDefault();
-    if (!email.trim() || password.length < 8 || pending) return;
+    if (pending) return;
+    if (!email.trim() || password.length < 8) {
+      setError("Isi email dan kata sandi minimal 8 karakter.");
+      return;
+    }
     setPending(true);
     setError("");
     setNotice("");
@@ -65,7 +69,7 @@ export function AuthEntryModal({ open, onClose, initialView = "choice" }: { read
         lastLoginTimestamp: Date.now(),
       });
       onClose();
-      router.push("/dashboard");
+      router.push(result.user.onboardingCompleted ? "/dashboard" : "/onboarding");
       router.refresh();
     } catch (loginError) {
       setError(loginError instanceof Error ? loginError.message : "Login gagal.");
@@ -156,7 +160,7 @@ export function AuthEntryModal({ open, onClose, initialView = "choice" }: { read
               <div>
                 <label htmlFor="login-password" className="label">Kata sandi</label>
                 <div className="relative mt-1.5">
-                  <input id="login-password" type={showPassword ? "text" : "password"} value={password} onChange={(event) => setPassword(event.target.value)} className="input pr-11" required />
+                  <input id="login-password" type={showPassword ? "text" : "password"} value={password} onChange={(event) => setPassword(event.target.value)} className="input pr-11" minLength={8} required />
                   <button type="button" onClick={() => setShowPassword((value) => !value)} className="absolute right-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-lg text-muted-foreground hover:bg-secondary" aria-label={showPassword ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"}>{showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>
                 </div>
                 <button type="button" onClick={forgotPassword} className="mt-2 text-xs font-bold text-brand hover:underline">

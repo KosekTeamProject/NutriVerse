@@ -7,6 +7,7 @@ import { AlertTriangle, ArrowRight, Play, Check, Trophy, Flame, ScanLine, Activi
 import { RankCrest } from "@/components/brand/RankCrest";
 import { BrandLogo } from "@/components/brand/BrandLogo";
 import { AuthEntryModal } from "@/components/auth/AuthEntryModal";
+import { clearAuthSession, readAuthSession, saveAuthSession } from "@/features/auth/session";
 import { useAuthSession } from "@/hooks/useAuthSession";
 import { useTheme } from "@/hooks/useTheme";
 import { TIER_EMBLEM_NAMES, type TierSlug } from "@/lib/tiers";
@@ -390,6 +391,63 @@ export default function Home() {
     }, 350);
     return () => window.clearTimeout(timer);
   }, [session]);
+
+  // The app shell refreshes this local UI cache after a user reaches a private
+  // page. Do the same on the landing page so an expired cache cannot make the
+  // user appear logged in while the server correctly rejects the dashboard.
+  useEffect(() => {
+    let cancelled = false;
+
+    fetch("/api/auth/session", { cache: "no-store" })
+      .then(async (response) => {
+        const result = (await response.json().catch(() => null)) as {
+          success?: boolean;
+          user?: {
+            name: string;
+            email: string;
+            username?: string | null;
+            avatarUrl?: string | null;
+            companionName?: string;
+            companionAvatarId?: string;
+            provider?: "password" | "google";
+            onboardingCompleted?: boolean;
+          };
+        } | null;
+        if (cancelled) return;
+
+        if (response.ok && result?.success && result.user) {
+          const current = readAuthSession();
+          saveAuthSession({
+            ...current,
+            name: result.user.name,
+            email: result.user.email,
+            username: result.user.username || result.user.email.split("@")[0] || "nutriverse-user",
+            companionName: result.user.companionName || current?.companionName || "Nora",
+            companionAvatarId: result.user.companionAvatarId || current?.companionAvatarId,
+            avatarUrl: result.user.avatarUrl || current?.avatarUrl,
+            provider: result.user.provider ?? "password",
+            onboardingCompleted: result.user.onboardingCompleted ?? current?.onboardingCompleted ?? false,
+            createdAt: current?.createdAt || new Date().toISOString(),
+            lastLoginTimestamp: Date.now(),
+          });
+        } else if (response.status === 401) {
+          clearAuthSession();
+        }
+      })
+      .catch(() => {
+        // Leave the current UI intact if the connection is temporarily unavailable.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!new URLSearchParams(window.location.search).get("auth_error")) return;
+    setAuthView("login");
+    setAuthOpen(true);
+  }, []);
 
   function openAuth(view: "choice" | "login") {
     setAuthView(view);
